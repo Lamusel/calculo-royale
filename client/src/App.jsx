@@ -1,44 +1,76 @@
 import { useEffect, useState } from 'react';
-import { socket } from './net/socket.js';
 import { EVENTS } from '@calculo-royale/shared/protocol';
+import { socket } from './net/socket.js';
+import { clearSession, leaveRoom, loadSession, resumeRoom } from './net/session.js';
+import Game from './screens/Game.jsx';
+import Home from './screens/Home.jsx';
 
 export default function App() {
   const [connected, setConnected] = useState(socket.connected);
-  const [latency, setLatency] = useState(null);
+  // { code, playerId, key } — key cambia en cada (re)ingreso para recrear el cliente de juego
+  const [session, setSession] = useState(null);
+  const [room, setRoom] = useState(null);
+  const [notice, setNotice] = useState('');
+  const [resuming, setResuming] = useState(() => Boolean(loadSession()));
 
   useEffect(() => {
-    const onConnect = () => setConnected(true);
-    const onDisconnect = () => {
-      setConnected(false);
-      setLatency(null);
+    const enter = (res) => setSession({ code: res.code, playerId: res.playerId, key: Date.now() });
+    const exit = (message) => {
+      setSession(null);
+      setRoom(null);
+      setNotice(message);
     };
-    const onPong = ({ clientTime }) => setLatency(Date.now() - clientTime);
+
+    // Al conectar (o reconectar) se vuelve a la sala guardada con el mismo jugador
+    const onConnect = async () => {
+      setConnected(true);
+      const res = await resumeRoom();
+      if (res?.ok) enter(res);
+      else if (res) exit(res.error);
+      setResuming(false);
+    };
+    const onDisconnect = (reason) => {
+      setConnected(false);
+      // Tras un "kick" el servidor cierra el socket; se reconecta para poder volver a entrar
+      if (reason === 'io server disconnect') socket.connect();
+    };
+    const onInfo = (info) => setRoom(info);
+    const onKicked = ({ reason }) => {
+      clearSession();
+      exit(reason);
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
-    socket.on(EVENTS.PONG, onPong);
-
-    // Medir latencia cada 2 s
-    const interval = setInterval(() => {
-      if (socket.connected) socket.emit(EVENTS.PING, Date.now());
-    }, 2000);
-
+    socket.on(EVENTS.ROOM_INFO, onInfo);
+    socket.on(EVENTS.ROOM_KICKED, onKicked);
+    if (socket.connected) onConnect();
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
-      socket.off(EVENTS.PONG, onPong);
-      clearInterval(interval);
+      socket.off(EVENTS.ROOM_INFO, onInfo);
+      socket.off(EVENTS.ROOM_KICKED, onKicked);
     };
   }, []);
 
-  return (
-    <main className="flex h-full flex-col items-center justify-center gap-6 bg-slate-900 text-slate-100">
-      <h1 className="text-4xl font-extrabold tracking-tight">Cálculo Royale</h1>
-      <div className="flex items-center gap-3 rounded-full bg-slate-800 px-5 py-2">
-        <span className={`h-3 w-3 rounded-full ${connected ? 'bg-green-400' : 'bg-red-500'}`} />
-        <span>{connected ? 'Conectado' : 'Desconectado'}</span>
-        {latency !== null && <span className="text-slate-400">{latency} ms</span>}
-      </div>
-    </main>
-  );
+  function onEnter(res) {
+    setNotice('');
+    setSession({ code: res.code, playerId: res.playerId, key: Date.now() });
+  }
+
+  function onLeave() {
+    leaveRoom();
+    setSession(null);
+    setRoom(null);
+  }
+
+  if (resuming) {
+    return <div className="flex h-full items-center justify-center bg-slate-950 text-slate-400">Volviendo a la sala…</div>;
+  }
+
+  if (session && room?.code === session.code) {
+    return <Game room={room} myId={session.playerId} sessionKey={session.key} onLeave={onLeave} />;
+  }
+
+  return <Home connected={connected} notice={notice} onEnter={onEnter} />;
 }

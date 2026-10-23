@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./constants": "./src/constants.js",
-    "./protocol": "./src/protocol.js"
+    "./*": "./src/*.js"
   }
 }

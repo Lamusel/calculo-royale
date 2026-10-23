@@ -29,6 +29,28 @@ Las armas, armaduras y objetos se consiguen abriendo **cofres** que piden respon
 | **Todo o nada** | Cofres dorados: pregunta legendaria; si aciertas, botín doble; si fallas, pierdes tu armadura. |
 | **Preguntas paramétricas** | Mismo tipo de ejercicio con números distintos por jugador, opciones barajadas. Nadie puede soplar "es la C". |
 
+### El cálculo es la física del juego (ideas aprobadas 2026-10-22)
+
+Principio: quien entiende el cálculo juega mejor, y quien no, lo aprende jugando.
+
+| # | Idea | Descripción | Fase |
+|---|---|---|---|
+| 1 | **El mapa es z = f(x, y)** | Terreno de colinas suaves que nunca tapan jugadores con la cámara. Una sola función fija por ahora: `z = 2·sin(x/10)·cos(y/10)`. La pendiente (derivada direccional `∇f · û`) modifica la velocidad **solo entre 80 % y 115 %**. La altura **no** da ventaja de alcance (descartado). | Visual: 1 ✅ · velocidad: 2 |
+| 2 | **Piso = plano cartesiano** | Ejes x (rojo) e y (azul) numerados, cuadrícula de tiza, curvas de nivel y tus coordenadas `(x, y)` siempre en el HUD. Quien lee la desigualdad de la zona llega primero al centro. | Piso: 1 ✅ · zona: 4 |
+| 5 | **Fantasmas matemáticos** | Los eliminados siguen respondiendo preguntas: con sus aciertos votan dónde cae el siguiente cofre legendario, suman al ranking de clase o ganan su reanimación. Nadie se queda sin hacer nada. | 5 |
+| 7 | **Examen relámpago** | Cada 2 min todos reciben la misma pregunta rápida que se responde sin detenerse (panel pequeño). Los 5 primeros en acertar ganan un buff de 15 s. | 5 |
+| 8 | **Lobby jugable** | Mientras esperan, todos ya están en la escena moviéndose (en la fase 2 también disparando a muñecos de práctica). Es el tutorial sin tutorial. | 1 ✅ · muñecos: 2 |
+| 9 | **Detalles pro** | Reconexión al mismo jugador, unirse por QR, aviso de girar el celular y pantalla completa *(1 ✅)*; vibración y killfeed en notación ("Ana ∂ Juan") *(2)*; pantalla final con tus errores resueltos en KaTeX *(4)*; mapa de calor de temas en el panel del profe *(5)*. | 1, 2, 4, 5 |
+
+**Opcionales (si alcanza el tiempo):**
+
+| # | Idea | Descripción | Fase |
+|---|---|---|---|
+| 3 | **Zonas con regiones de verdad** | Además del círculo: elipses, cardioide en polares `r ≤ 4(1 + cos θ)`, rectángulos `|x| ≤ a, |y| ≤ b`. La última fase se anuncia solo como fórmula. | 4 |
+| 4 | **Campos vectoriales vivos** | Zonas de viento `F(x, y) = (−y, x)` dibujadas con flechas que empujan jugadores y balas (rotacional y divergencia visibles). | 2 o 4 |
+
+**Al final de la lista:** #6 *Suministro por centro de masa* (el cofre legendario cae en el centro de masa de una región con densidad dada; se revela a los 20 s).
+
 ### Rarezas y botín
 
 | Rareza | Dificultad | Tiempo para responder | Botín posible |
@@ -74,11 +96,17 @@ calculo-royale/
 ├── shared/
 │   └── src/
 │       ├── constants.js       # tamaño del mapa, tick rate, stats de armas, rarezas
-│       └── protocol.js        # nombres de eventos de Socket.io
+│       ├── protocol.js        # nombres de eventos de Socket.io
+│       ├── codec.js           # codificación compacta de inputs y snapshots
+│       ├── movement.js        # movimiento compartido (servidor = verdad, cliente = predicción)
+│       └── terrain.js         # z = f(x, y) y su gradiente
 ├── server/
+│   ├── scripts/bots.js        # bots de prueba (npm run bots)
 │   └── src/
 │       ├── index.js           # Express + Socket.io
-│       ├── rooms/RoomManager.js
+│       ├── rooms/
+│       │   ├── RoomManager.js # códigos, unirse, reconexión
+│       │   └── Room.js        # jugadores, host, fase lobby/partida
 │       ├── game/
 │       │   ├── Game.js        # loop de la partida (tick 20 Hz)
 │       │   ├── World.js       # mapa, obstáculos, colisiones
@@ -93,16 +121,18 @@ calculo-royale/
 │           └── bank/          # JSON por tema
 └── client/
     └── src/
-        ├── net/socket.js
+        ├── net/               # socket, session (salas y reconexión), GameClient,
+        │                      # interpolation (otros jugadores), prediction (jugador propio)
         ├── screens/           # Home, Lobby, Game, Results, Spectator, Host
         ├── game/
         │   ├── Scene.jsx      # Canvas R3F, cámara, luces
-        │   ├── Players.jsx    # interpolación de jugadores
+        │   ├── Players.jsx    # cápsulas, nombres, sombra inclinada con el terreno
         │   ├── Bullets.jsx
-        │   ├── MapMesh.jsx
+        │   ├── MapMesh.jsx    # terreno "pizarra": shader con ejes, cuadrícula y curvas de nivel
+        │   ├── labels.js      # textos como texturas de canvas
         │   └── ZoneMesh.jsx
-        ├── input/             # TouchControls (nipplejs), KeyboardMouse
-        └── ui/                # HUD, QuestionModal (KaTeX), Minimap, Killfeed
+        ├── input/             # inputState, TouchControls (nipplejs), KeyboardMouse
+        └── ui/                # HUD, RotateDevice, QuestionModal (KaTeX), Minimap, Killfeed
 ```
 
 ---
@@ -112,17 +142,22 @@ calculo-royale/
 - **Servidor autoritativo:** el cliente solo envía intenciones; el servidor mueve, dispara, calcula impactos, valida respuestas y reparte botín.
 - **Tick del servidor:** 20 Hz. **Snapshots** a los clientes: 20 Hz, formato compacto (arrays, no objetos con claves largas).
 - **Cliente:** interpola posiciones de los demás con ~100 ms de retraso; predice su propio movimiento y se corrige con el servidor.
-- **El mapa es 2D por dentro** (plano x, z). Colisiones círculo vs círculo y círculo vs rectángulo. El 3D es solo visual.
+- **El mapa es 2D por dentro.** Servidor y `shared` usan las coordenadas matemáticas `(x, y)` del plano cartesiano (las mismas que ve el jugador en el HUD y en la desigualdad de la zona). Three.js las dibuja como `(x, f(x, y), −y)`, así y crece hacia arriba en la pantalla. Colisiones círculo vs círculo y círculo vs rectángulo. El 3D es solo visual.
+- **Inputs a 20 Hz** con número de secuencia; si el jugador está quieto y no gira, no se envía nada. El servidor acepta ráfagas de hasta 3 inputs pero en promedio solo 1 por tick (anti speed hack).
+- **Reconexión:** cada jugador tiene un token (guardado en `sessionStorage`, por pestaña). Si se cae la conexión o se recarga la página, vuelve como el mismo jugador durante 60 s.
 - **Las respuestas correctas nunca viajan al cliente.** El cliente recibe enunciado y opciones; el servidor valida el índice elegido.
 
 ### Eventos principales (ver `shared/src/protocol.js`)
 
 | Dirección | Evento | Datos |
 |---|---|---|
-| C → S | `room:create` / `room:join` | nombre, código, configuración (host) |
-| C → S | `input` | `{ seq, mx, my, aim, shoot }` |
+| C → S | `room:create` / `room:join` (ack) | nombre, código, token de reconexión |
+| C → S | `room:leave` / `game:start` | — (iniciar: solo host) |
+| S → C | `room:info` | código, fase, host, lista de jugadores |
+| S → C | `room:kicked` | la sesión se abrió en otra pestaña |
+| C → S | `input` | `[seq, mx, my, aim]` (`shoot` llega en la fase 2) |
 | C → S | `chest:open` / `chest:answer` / `chest:cancel` | id del cofre, índice elegido |
-| S → C | `state` | snapshot de jugadores, balas, cofres, zona |
+| S → C | `state` | `[tick, [[id, x, y, aim, lastSeq], ...]]`; luego balas, cofres, zona |
 | S → C | `chest:question` | enunciado, opciones, tiempo límite |
 | S → C | `chest:result` | correcto o no, botín, explicación |
 | S → C | `game:over` | ranking y estadísticas por tema |
@@ -158,12 +193,13 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | Fase | Objetivo | Resultado verificable |
 |---|---|---|
 | **0. Base** | Monorepo, cliente y servidor corriendo, conexión Socket.io | Cliente muestra "conectado" |
-| **1. Movimiento multijugador** | Salas con código, lobby, escena 3D, jugadores moviéndose con interpolación, controles táctiles y teclado | 2 pestañas + 1 celular se ven moverse |
-| **2. Combate** | Disparo, balas, vida, muerte, obstáculos con colisión | Se pueden eliminar entre jugadores |
+| **1. Movimiento multijugador** | Salas con código y QR, lobby jugable, escena 3D con terreno z = f(x, y) y plano cartesiano, interpolación y predicción, controles táctiles y teclado, reconexión, bots de prueba | 2 pestañas + 1 celular se ven moverse |
+| **2. Combate** | Disparo, balas, vida, muerte, obstáculos con colisión, velocidad según pendiente (80–115 %), muñecos de práctica en el lobby, vibración, killfeed en notación. *Opcional: campos vectoriales (#4)* | Se pueden eliminar entre jugadores |
 | **3. Cofres y preguntas** | Banco JSON, modal con KaTeX, validación en servidor, rarezas, armas y Seguro | Abrir cofre, responder y recibir botín |
-| **4. Zona y victoria** | Zona por fases con desigualdad, daño fuera de zona, último en pie gana, pantalla de resultados | Partida completa de principio a fin |
-| **5. Extras de clase** | Reanimación, racha y radar, Todo o nada, vista espectador, panel del host, reporte por tema (Supabase) | El profe ve estadísticas al final |
-| **6. Pulido y carga** | Modelos low-poly, sonidos, despliegue, **script de bots que simula 40 jugadores** | Prueba de carga estable con 40 conexiones |
+| **4. Zona y victoria** | Zona por fases con desigualdad, daño fuera de zona, último en pie gana, pantalla de resultados con tus errores resueltos. *Opcional: regiones polares y elípticas (#3)* | Partida completa de principio a fin |
+| **5. Extras de clase** | Reanimación, fantasmas matemáticos, examen relámpago, racha y radar, Todo o nada, vista espectador, panel del host con mapa de calor por tema, reporte por tema (Supabase) | El profe ve estadísticas al final |
+| **6. Pulido y carga** | Modelos low-poly, sonidos, despliegue, división del bundle de Three.js, **bots ampliados a 40 jugadores** | Prueba de carga estable con 40 conexiones |
+| *Backlog* | #6 Suministro por centro de masa | |
 
 **Meta semana 1:** fases 0 a 4 (núcleo jugable).
 **Semanas 2 y 3:** fases 5 y 6, y cargar las preguntas reales del corte 3.
@@ -180,12 +216,21 @@ npm run dev        # cliente y servidor a la vez
 npm run dev:server # solo servidor
 npm run dev:client # solo cliente
 npm run build      # build de producción del cliente (client/dist)
+npm run bots -- ABCD 5   # 5 bots caminando al azar en la sala ABCD (Ctrl+C para sacarlos)
 ```
 
 | Servicio | Puerto | Comprobación |
 |---|---|---|
-| Cliente (Vite) | 5173 | `http://localhost:5173` muestra "Conectado" con la latencia en ms |
-| Servidor (Express + Socket.io) | 3001 | `http://localhost:3001/health` |
+| Cliente (Vite) | 5173 | `http://localhost:5173` muestra la pantalla de inicio con "Conectado" |
+| Servidor (Express + Socket.io) | 3001 | `http://localhost:3001/health` (incluye cuántas salas hay) |
+
+### Probar solo, sin más dispositivos
+
+1. Abrir `http://localhost:5173`, escribir un nombre y **Crear sala (profe)**.
+2. En otra terminal: `npm run bots -- <CÓDIGO> 5`. Los bots aparecen en el lobby y caminan.
+3. Abrir una segunda pestaña y entrar con el mismo código (cada pestaña es un jugador distinto).
+4. **Controles PC:** WASD o flechas para moverse, mouse para apuntar. **Celular:** mitad izquierda de la pantalla = moverse, mitad derecha = apuntar (el joystick aparece donde tocas).
+5. Recargar una pestaña: vuelve al mismo jugador, en la misma posición.
 
 ### Variables de entorno (opcionales en desarrollo)
 
@@ -199,8 +244,8 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 
 ### Probar desde el celular (misma red Wi-Fi)
 
-1. Correr `npm run dev` y fijarse en la línea `Network: http://192.168.x.x:5173` que imprime Vite.
-2. Abrir esa URL en el celular. El cliente se conecta solo al servidor en la misma IP, puerto 3001.
+1. Correr `npm run dev`, crear la sala en el PC y tocar **QR** junto al código. El QR ya apunta a la IP de la red local (aunque el PC haya abierto `localhost`).
+2. Escanear con el celular. También sirve abrir la línea `Network: http://192.168.x.x:5173` que imprime Vite y escribir el código.
 3. Si no carga, permitir Node.js en el Firewall de Windows (red privada) para los puertos 5173 y 3001.
 
 ---
@@ -210,7 +255,7 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 | Fase | Estado | Notas |
 |---|---|---|
 | 0 | ✅ Completa | Monorepo con workspaces, Express + Socket.io, Vite + React + Tailwind, indicador de conexión con ping |
-| 1 | Pendiente | |
+| 1 | ✅ Completa | Salas con código y QR, lobby jugable, terreno pizarra z = f(x, y), predicción + interpolación, joysticks y teclado, reconexión, bots. Falta probar en un celular real |
 | 2 | Pendiente | |
 | 3 | Pendiente | |
 | 4 | Pendiente | |
@@ -221,3 +266,5 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 
 - 2026-10-22: definido el concepto, stack y plan por fases.
 - 2026-10-22: **fase 0 completa.** Workspaces `shared`, `server` y `client`. El servidor responde `/health` y `ping`/`pong` por Socket.io; el cliente muestra conectado/desconectado y la latencia. Dependencias extra aprobadas: `concurrently` (raíz) y `cors` (servidor). Sin `dotenv`: se usa `--env-file-if-exists` de Node.
+- 2026-10-22: aprobadas las ideas #1, #2, #5, #7, #8 y #9 (base), #3 y #4 (opcionales) y #6 (backlog). Ajustes a #1: colinas suaves que no tapen jugadores, pendiente solo entre 80 % y 115 % de velocidad, sin ventaja de alcance por altura y una sola f(x, y) fija.
+- 2026-10-22: **fase 1 completa.** Salas de 4 letras (sin I ni O) hasta 40 jugadores, host que inicia, QR con IP de la red local, reconexión por token (60 s) y "toma de control" si se abre en otra pestaña. Loop de 20 Hz también en el lobby (lobby jugable). Movimiento compartido en `shared/movement.js`: predicción del jugador propio con reconciliación suavizada e interpolación de los demás a 100 ms. Terreno con shader tipo pizarra que calcula f(x, y) y su gradiente por píxel (curvas de nivel exactas). Coordenadas (x, y) y altura z en el HUD. Controles: nipplejs dinámico en celular y WASD/flechas + mouse en PC; aviso de girar el celular y pantalla completa. Script `npm run bots`. Dependencias nuevas: `three`, `@react-three/fiber`, `nipplejs` (del stack) y `qrcode.react` (aprobada). drei aún no hizo falta. Verificado con prueba de servidor (20 casos: salas, movimiento a 8 u/s, anti speed hack, reconexión, inicio) y prueba visual en Edge headless (lobby, QR, recarga, inicio, sin errores de consola). La velocidad por pendiente queda para la fase 2. El bundle pesa ~300 KB gzip (Three.js); se dividirá en la fase 6.
