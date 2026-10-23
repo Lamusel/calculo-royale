@@ -1,0 +1,10 @@
+{
+  "name": "@calculo-royale/shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./constants": "./src/constants.js",
+    "./protocol": "./src/protocol.js"
+  }
+}

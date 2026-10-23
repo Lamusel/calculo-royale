@@ -172,12 +172,36 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 
 ## 7. Cómo correr
 
+Requisitos: **Node 22+** (se usa `node --env-file-if-exists`; probado con Node 24).
+
 ```bash
-npm install
+npm install        # instala client, server y shared (workspaces)
 npm run dev        # cliente y servidor a la vez
+npm run dev:server # solo servidor
+npm run dev:client # solo cliente
+npm run build      # build de producción del cliente (client/dist)
 ```
 
-(Se completa en la fase 0 con puertos, variables de entorno y cómo probar desde el celular en la misma red.)
+| Servicio | Puerto | Comprobación |
+|---|---|---|
+| Cliente (Vite) | 5173 | `http://localhost:5173` muestra "Conectado" con la latencia en ms |
+| Servidor (Express + Socket.io) | 3001 | `http://localhost:3001/health` |
+
+### Variables de entorno (opcionales en desarrollo)
+
+Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.env` solo si hace falta cambiar algo.
+
+| Variable | Dónde | Uso |
+|---|---|---|
+| `PORT` | server | Puerto del servidor (por defecto 3001; Render lo asigna) |
+| `CLIENT_ORIGIN` | server | Orígenes CORS permitidos, separados por coma. Vacío = cualquiera |
+| `VITE_SERVER_URL` | client | URL del servidor. Vacío = `http://<host de la página>:3001` |
+
+### Probar desde el celular (misma red Wi-Fi)
+
+1. Correr `npm run dev` y fijarse en la línea `Network: http://192.168.x.x:5173` que imprime Vite.
+2. Abrir esa URL en el celular. El cliente se conecta solo al servidor en la misma IP, puerto 3001.
+3. Si no carga, permitir Node.js en el Firewall de Windows (red privada) para los puertos 5173 y 3001.
 
 ---
 
@@ -185,7 +209,7 @@ npm run dev        # cliente y servidor a la vez
 
 | Fase | Estado | Notas |
 |---|---|---|
-| 0 | Pendiente | |
+| 0 | ✅ Completa | Monorepo con workspaces, Express + Socket.io, Vite + React + Tailwind, indicador de conexión con ping |
 | 1 | Pendiente | |
 | 2 | Pendiente | |
 | 3 | Pendiente | |
@@ -196,3 +220,4 @@ npm run dev        # cliente y servidor a la vez
 ### Bitácora
 
 - 2026-10-22: definido el concepto, stack y plan por fases.
+- 2026-10-22: **fase 0 completa.** Workspaces `shared`, `server` y `client`. El servidor responde `/health` y `ping`/`pong` por Socket.io; el cliente muestra conectado/desconectado y la latencia. Dependencias extra aprobadas: `concurrently` (raíz) y `cors` (servidor). Sin `dotenv`: se usa `--env-file-if-exists` de Node.
