@@ -96,7 +96,7 @@ export function updateMatch(game, dt) {
   const frozen = game.duel && game.now < game.duel.introEndsAt;
   if (dps > 0 && !frozen) {
     for (const p of game.room.players.values()) {
-      if (p.alive && !insideZone(game.zone.current, p.x, p.y)) {
+      if (p.alive && !p.deploying && !insideZone(game.zone.current, p.x, p.y)) {
         damagePlayer(game, p, dps * dt, null, ZONE_INDEX, { ignoreArmor: true });
       }
     }

@@ -13,6 +13,7 @@ export const EVENTS = {
   ROOM_INFO: 'room:info',
   ROOM_KICKED: 'room:kicked', // S → C: { reason } (la sesión se abrió en otra pestaña)
   ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
+  ROOM_DEPLOY: 'room:deploy', // C → S (solo host, en el lobby): 'bus' | 'punto'
   ROOM_WEATHER: 'room:weather', // C → S (solo host, en el lobby): 'aleatorio' o un clima de WEATHERS
   // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby
   PLAYER_SKIN: 'player:skin',
@@ -50,6 +51,10 @@ export const EVENTS = {
   RADIO_MESSAGE: 'radio:message',
   // Fin de la partida (a todos): { winnerId, ranking: [{ id, name, color, place, kills, correct, answered, score }] }
   GAME_OVER: 'game:over',
+  // Despliegue al iniciar (a todos): { mode, route?: [x0, y0, x1, y1], departInMs?, durationMs?, pickMs? }
+  MATCH_DEPLOY: 'match:deploy',
+  // Modo elegir punto: dónde quiero caer (C → S): { x, y }
+  DEPLOY_POINT: 'deploy:point',
   // Duelo final (a todos, al quedar 2 vivos): { ids: [a, b], introMs }
   MATCH_DUEL: 'match:duel',
   // Repetición de la mejor jugada (a todos, justo antes de game:over): { kind, title, focusId, keyTick, frames: [snapshot…] }
@@ -76,6 +81,7 @@ export const BUTTONS = {
   RELOAD: 4,
   GRENADE: 8, // lanzar granada
   AIM: 16, // apuntando con el francotirador: camina más lento
+  JUMP: 32, // saltar del bus
 };
 
 // Banderas de cada jugador en el snapshot
@@ -85,6 +91,9 @@ export const PLAYER_FLAGS = {
   ANSWERING: 4, // abriendo una caja: está quieto y expuesto
   IN_VEHICLE: 8, // va en un jeep (su posición es la del asiento)
   LEADER: 16, // líder con recompensa: corona y marca en el minimapa
+  IN_BUS: 32, // va en el bus de despliegue (no se dibuja)
+  FALLING: 64, // caída libre (la altura va en el índice 9 de su entrada)
+  PARACHUTE: 128, // bajando en paracaídas
 };
 
 // Estado de cada caja en el snapshot

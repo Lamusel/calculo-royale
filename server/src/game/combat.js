@@ -22,7 +22,7 @@ export function targetsAt(game, shooter, viewTick) {
   const tick = clamp(viewTick, game.tick - MAX_REWIND_TICKS, game.tick);
   const targets = [];
   for (const p of game.room.players.values()) {
-    if (p === shooter || !p.alive) continue;
+    if (p === shooter || !p.alive || p.deploying) continue;
     const pos = p.positionAt(tick);
     targets.push({ id: p.id, x: pos.x, y: pos.y, player: p });
   }
@@ -197,7 +197,7 @@ function explode(game, g) {
     if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, [target.id, amount, x, y, killed ? 1 : 0]);
   };
   for (const p of game.room.players.values()) {
-    if (p.alive) hurt({ id: p.id, player: p }, p.x, p.y);
+    if (p.alive && !p.deploying) hurt({ id: p.id, player: p }, p.x, p.y);
   }
   if (game.room.phase === 'lobby') {
     game.dummies.forEach((d, i) => hurt({ id: dummyTargetId(i), dummy: d }, d.x, d.y));

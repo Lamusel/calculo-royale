@@ -20,7 +20,7 @@ export class SnapshotBuffer {
     this.lastEventTick = 0;
   }
 
-  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = [], vehicles = []) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = [], vehicles = [], bus = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -31,7 +31,7 @@ export class SnapshotBuffer {
     for (const p of players) byId.set(p[0], p);
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles: new Map(vehicles.map((v) => [v[0], v])) });
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
@@ -79,6 +79,7 @@ export class SnapshotBuffer {
         armorLevel: pb[6],
         weapon: pb[7],
         flags: pb[8],
+        z: lerp(pa[9] ?? 0, pb[9] ?? 0, alpha), // altura en el despliegue (0 en el suelo)
       });
     }
     for (const [id, gb] of b.grenades) {
@@ -101,6 +102,10 @@ export class SnapshotBuffer {
         state: vb[8],
       });
     }
+    // Bus de despliegue: [x, y, rumbo, ms para arrancar]
+    frame.bus = b.bus.length
+      ? { x: lerp(a.bus[0] ?? b.bus[0], b.bus[0], alpha), y: lerp(a.bus[1] ?? b.bus[1], b.bus[1], alpha), heading: b.bus[2], waitMs: b.bus[3] }
+      : null;
     frame.dummies = b.dummies;
     frame.crates = b.crates;
     frame.alarms = b.alarms;

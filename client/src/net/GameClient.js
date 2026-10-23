@@ -5,7 +5,7 @@ import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
 import { seatPosition } from '@calculo-royale/shared/vehicle';
-import { actions, currentAim, inputState, readInput, resetInput } from '../input/inputState.js';
+import { actions, currentAim, inputState, press, readInput, resetInput } from '../input/inputState.js';
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
@@ -97,13 +97,16 @@ export class GameClient {
     this.seat = null; // 'driver' | 'passenger'
     this.duel = null; // { ids, introMs, at } duelo final
     this.ammoQuestion = null; // "Obtener balas" pendiente
+    this.deploying = null; // 'bus' | 'fall' | 'chute' mientras dura el despliegue
+    this.altitude = 0;
+    this.deployInfo = null; // { mode, route, departAt, durationMs, pickUntil } de la partida
     this.ammoResult = null;
     this.replay = null; // repetición de la mejor jugada (llega justo antes de los resultados)
     this.effectViews = new EffectViews();
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = []]) => {
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles);
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = [], bus = []]) => {
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles, bus);
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
         const riding = vehicles.find((v) => v[7] === this.myId);
@@ -111,8 +114,13 @@ export class GameClient {
         this.seat = driving ? 'driver' : riding ? 'passenger' : null;
         const me = players.find((p) => p[0] === this.myId);
         if (me) {
+          const flags = me[8];
+          // Despliegue: en el bus (o eligiendo punto), en caída libre o con paracaídas
+          this.deploying = flags & PLAYER_FLAGS.IN_BUS ? 'bus' : flags & PLAYER_FLAGS.FALLING ? 'fall' : flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
+          this.altitude = me[9] ?? 0;
           const jeep = driving && { x: driving[1], y: driving[2], heading: driving[3], speed: driving[4] };
-          this.predictor.reconcile(me[1], me[2], me[4], jeep);
+          const air = this.deploying === 'fall' || this.deploying === 'chute' ? this.deploying : null;
+          this.predictor.reconcile(me[1], me[2], me[4], jeep, air);
         }
       },
       [EVENTS.PONG]: ({ clientTime }) => {
@@ -179,6 +187,15 @@ export class GameClient {
         if (r.correct) this.achieve('correct');
         if (!r.cancelled) vibrate(r.correct ? [20, 30, 20] : 120);
       },
+      [EVENTS.MATCH_DEPLOY]: (info) => {
+        const now = performance.now();
+        this.deployInfo = {
+          ...info,
+          departAt: info.departInMs !== undefined ? now + info.departInMs : null,
+          pickUntil: info.pickMs !== undefined ? now + info.pickMs : null,
+          myPick: null,
+        };
+      },
       [EVENTS.MATCH_DUEL]: (duel) => {
         this.duel = { ...duel, at: performance.now() };
         vibrate([40, 60, 40]);
@@ -202,6 +219,7 @@ export class GameClient {
     actions.switchWeapon = (slot) => socket.emit(EVENTS.WEAPON_SWITCH, slot);
     actions.interact = () => socket.emit(EVENTS.INTERACT);
     actions.requestAmmo = () => this.requestAmmo();
+    actions.jump = () => this.deploying === 'bus' && press(BUTTONS.JUMP);
 
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
     socket.emit(EVENTS.PING, Date.now());
@@ -265,6 +283,14 @@ export class GameClient {
       input.my = 0;
       input.buttons = 0;
     }
+    // En el bus no se camina; en el aire no se dispara (el servidor tampoco lo permite)
+    if (this.deploying === 'bus') {
+      input.mx = 0;
+      input.my = 0;
+      input.buttons &= BUTTONS.JUMP;
+    } else if (this.deploying) {
+      input.buttons = 0;
+    }
     // El pasajero no camina: solo apunta y dispara
     if (this.seat === 'passenger') {
       input.mx = 0;
@@ -285,6 +311,10 @@ export class GameClient {
     const moving = input.mx !== 0 || input.my !== 0;
     const aimChanged = this.lastSentAim === null || Math.abs(angleDiff(input.aim, this.lastSentAim)) > 0.02;
     // Quieto, sin girar y sin botones: no hace falta enviar nada (salvo al manejar: el jeep frena con inputs)
+    if (this.deploying === 'bus' && !input.buttons) {
+      this.predictor.idle(now);
+      return;
+    }
     if (!moving && !aimChanged && !input.buttons && this.seat !== 'driver') {
       this.predictor.idle(now);
       return;
@@ -303,7 +333,7 @@ export class GameClient {
     const me = this.predictor.state;
     if (!me || !this.self || !(input.buttons & BUTTONS.FIRE) || input.buttons & BUTTONS.GRENADE) return;
     if (this.seat === 'driver') return; // el conductor no dispara
-    if (this.ammoQuestion) return; // respondiendo "Obtener balas"
+    if (this.ammoQuestion || this.deploying) return; // respondiendo "Obtener balas" o en el aire
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
     const w = WEAPONS[id];
@@ -333,6 +363,10 @@ export class GameClient {
     if (ride && frame.me) Object.assign(frame.me, seatPosition(ride, 'passenger'));
     frame.myVehicleId = this.vehicleId;
     frame.mySeat = this.seat;
+    // En el bus voy donde va el bus (interpolado)
+    frame.deploying = this.deploying;
+    if (this.deploying === 'bus' && frame.bus && frame.me) Object.assign(frame.me, { x: frame.bus.x, y: frame.bus.y });
+    frame.altitude = frame.meInfo?.z ?? 0;
     // Caído (o en el proyector): la cámara sigue a quien te eliminó o a otro vivo
     const dead = this.self && !this.self.alive && this.phase === 'playing';
     if (dead || (this.spectator && this.followId !== null)) {
@@ -408,6 +442,12 @@ export class GameClient {
     if (this.ammoQuestion) this.socket.emit(EVENTS.AMMO_ANSWER, { id: this.ammoQuestion.id, index });
   }
 
+  chooseDeployPoint(x, y) {
+    if (!this.deployInfo || this.deployInfo.mode !== 'punto') return;
+    this.deployInfo.myPick = { x, y };
+    this.socket.emit(EVENTS.DEPLOY_POINT, { x, y });
+  }
+
   answer(index) {
     if (this.question) this.socket.emit(EVENTS.CRATE_ANSWER, { crateId: this.question.crateId, index });
   }
@@ -423,6 +463,7 @@ export class GameClient {
       this.duel = null;
       this.replay = null;
     }
+    if (phase !== 'playing') this.deployInfo = null;
     this.ammoQuestion = null;
   }
 
@@ -433,5 +474,6 @@ export class GameClient {
     actions.switchWeapon = () => {};
     actions.interact = () => {};
     actions.requestAmmo = () => {};
+    actions.jump = () => {};
   }
 }

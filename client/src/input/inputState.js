@@ -37,6 +37,7 @@ export const actions = {
   switchWeapon: () => {},
   interact: () => {},
   requestAmmo: () => {},
+  jump: () => {},
 };
 
 function movement() {

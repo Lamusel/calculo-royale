@@ -1,8 +1,9 @@
-import { BOMBING, CLASS_STATS_MS, INTERCEPT, OPERATOR, TOPICS, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { BOMBING, CLASS_STATS_MS, INTERCEPT, OPERATOR, TOPICS, WEAPON_IDS, DEPLOY } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { sectorBounds, sectorOf } from '@calculo-royale/shared/zone';
 import { drawQuestion } from '../questions/QuestionBank.js';
 import { aliveCount, damagePlayer } from './combat.js';
+import { dropWithChute } from './deploy.js';
 import { recordStats } from './crates.js';
 import { airdropSpot, radio, TIME_SCALE } from './match.js';
 
@@ -68,7 +69,8 @@ function revive(game, player) {
   player.hp = OPERATOR.reviveHp;
   player.revived = true;
   player.place = null;
-  player.teleport(spot.x, spot.y);
+  // Vuelve en paracaídas sobre la zona
+  dropWithChute(player, spot.x, spot.y, DEPLOY.reviveAltitude);
   radio(game, 'revive', 'Reanimación', `${player.name} vuelve al combate en paracaídas.`, 5000);
 }
 
@@ -128,7 +130,7 @@ function updateBombing(game) {
     const { sector } = game.bombing;
     const b = sectorBounds(sector);
     for (const p of game.room.players.values()) {
-      if (p.alive && p.x >= b.minX && p.x < b.maxX && p.y >= b.minY && p.y < b.maxY) {
+      if (p.alive && !p.deploying && p.x >= b.minX && p.x < b.maxX && p.y >= b.minY && p.y < b.maxY) {
         damagePlayer(game, p, BOMBING.damage, null, BOMB_INDEX);
       }
     }

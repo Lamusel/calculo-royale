@@ -80,7 +80,7 @@ export function useClientView(client, frameRef, phase) {
         damageFlashAt: client.damageFlashAt,
         deathAt,
         interact:
-          me && self?.alive && !client.question
+          me && self?.alive && !client.question && !client.deploying
             ? nearestInteractable(me, phase, crates ?? [], airdrop, vehicles, client.vehicleId !== null)
             : null,
         vehicle: client.vehicleId !== null ? { ...vehicles?.get(client.vehicleId), seat: client.seat } : null,

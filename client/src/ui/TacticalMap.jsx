@@ -13,7 +13,7 @@ import MathText from './MathText.jsx';
 
 const CONTAINERS = OBSTACLES.filter((o) => o.kind === 'container');
 
-function draw(ctx, size, data, detailed) {
+export function draw(ctx, size, data, detailed) {
   const s = size / MAP_SIZE;
   const X = (x) => (x + MAP_HALF) * s;
   const Y = (y) => (MAP_HALF - y) * s;
@@ -197,6 +197,43 @@ function draw(ctx, size, data, detailed) {
     ctx.stroke();
   }
 
+  // Ruta del bus de despliegue (punteada) y el bus
+  if (data.deployRoute) {
+    const [x0, y0, x1, y1] = data.deployRoute;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(X(x0), Y(y0));
+    ctx.lineTo(X(x1), Y(y1));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (data.bus) {
+      ctx.fillStyle = '#facc15';
+      ctx.strokeStyle = '#166534';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(X(data.bus.x), Y(data.bus.y), 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // Punto elegido para caer (modo elegir punto)
+  if (data.pick) {
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 2.5;
+    const px = X(data.pick.x);
+    const py = Y(data.pick.y);
+    ctx.beginPath();
+    ctx.arc(px, py, 8, 0, Math.PI * 2);
+    ctx.moveTo(px - 12, py);
+    ctx.lineTo(px + 12, py);
+    ctx.moveTo(px, py - 12);
+    ctx.lineTo(px, py + 12);
+    ctx.stroke();
+  }
+
   // Tú: flecha amarilla hacia donde apuntas
   if (data.me) {
     const { x, y, aim } = data.me;
@@ -284,10 +321,10 @@ function BigMap({ frameRef, extra, onClose, radio }) {
 export const minimapSize = (isTouch) => (isTouch ? 104 : 140);
 
 // Minimapa en la esquina; al tocarlo se abre el mapa grande
-export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, intel, night = false, lastShot = null }) {
+export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, intel, night = false, lastShot = null, deployRoute = null }) {
   const [open, setOpen] = useState(false);
   const extra = useRef({});
-  extra.current = { myId, radar, intel, night, lastShot };
+  extra.current = { myId, radar, intel, night, lastShot, deployRoute };
   const size = minimapSize(isTouch);
   const ref = useMapCanvas(frameRef, extra, size, false);
   return (

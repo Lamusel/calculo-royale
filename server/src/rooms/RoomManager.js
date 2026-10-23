@@ -1,4 +1,4 @@
-import { NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { canUseSkin } from '@calculo-royale/shared/skins';
@@ -125,6 +125,19 @@ export class RoomManager {
     if (valid.length === 0) return;
     room.topics = valid;
     room.broadcastInfo();
+  }
+
+  // Despliegue de la próxima partida (solo el host, en el lobby)
+  setDeploy(socket, mode) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby' || !DEPLOY_MODES[mode]) return;
+    room.deployMode = mode;
+    room.broadcastInfo();
+  }
+
+  deployPoint(socket, data) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.chooseDeployPoint(player, Number(data?.x), Number(data?.y));
   }
 
   // Clima de la próxima partida (solo el host, en el lobby)

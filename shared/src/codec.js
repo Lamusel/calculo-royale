@@ -40,8 +40,11 @@ export function decodeInput(data) {
   };
 }
 
+// En el aire se agrega la altura (índice 9)
 export function encodePlayerState(p, weaponIndex, flags) {
-  return [p.id, round2(p.x), round2(p.y), round2(p.aim), p.lastSeq, Math.ceil(p.hp), p.armorLevel, weaponIndex, flags];
+  const entry = [p.id, round2(p.x), round2(p.y), round2(p.aim), p.lastSeq, Math.ceil(p.hp), p.armorLevel, weaponIndex, flags];
+  if (p.deploy) entry.push(Math.round(p.deploy.z * 10) / 10);
+  return entry;
 }
 
 export function encodeShot(shooterId, weaponIndex, x, y, pellets) {

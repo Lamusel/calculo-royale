@@ -240,3 +240,21 @@ export const REPLAY = {
   multiKillMs: 5_000,
   sniperDistance: 30,
 };
+
+// Despliegue al iniciar la partida: bus volador o elegir punto (lo decide el anfitrión)
+export const DEPLOY_MODES = { bus: 'Bus', punto: 'Elegir punto' };
+export const DEPLOY = {
+  busSpeed: 12, // m/s
+  busAltitude: 45, // m sobre el suelo
+  busWaitMs: 4_000, // la ruta se ve antes de que el bus arranque
+  routeMargin: 8, // el bus empieza y termina fuera del mapa
+  routeCenterJitter: 0.3, // la ruta pasa a lo sumo a este tanto del semiancho del centro
+  fallSpeed: 13, // caída libre (m/s)
+  airSpeed: 11, // desplazamiento horizontal en caída libre
+  chuteAltitude: 14, // se abre el paracaídas
+  chuteSpeed: 4.5, // bajada con paracaídas
+  chuteAirSpeed: 6,
+  pickMs: 10_000, // modo elegir punto: tiempo para tocar el mapa
+  pointAltitude: 30, // desde dónde se cae en paracaídas al elegir punto
+  reviveAltitude: 24, // reanimación de operador: cae en paracaídas
+};

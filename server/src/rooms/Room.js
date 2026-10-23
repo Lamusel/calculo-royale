@@ -23,6 +23,7 @@ export class Room {
     this.hostId = null;
     this.topics = [...ALL_TOPICS]; // temas de las preguntas (los elige el host en el lobby)
     this.weatherChoice = 'aleatorio'; // lo elige el host; se resuelve al iniciar
+    this.deployMode = 'bus'; // despliegue: 'bus' | 'punto' (lo elige el host)
     this.weather = 'despejado';
     this.windAngle = 0;
     this.players = new Map(); // id → Player
@@ -125,6 +126,7 @@ export class Room {
     this.results = null;
     Object.assign(this, pickWeather(this.weatherChoice));
     this.game.startMatch();
+    this.game.startDeploy(this.deployMode);
     this.broadcastInfo();
   }
 
@@ -203,6 +205,7 @@ export class Room {
       topics: this.topics,
       weather: this.weather,
       weatherChoice: this.weatherChoice,
+      deployMode: this.deployMode,
       windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),
     };

@@ -67,7 +67,19 @@ export class Player {
     this.seat = null; // 'driver' | 'passenger'
     this.engineQuestion = null; // código del motor pendiente
     this.ammoQuestion = null; // "Obtener balas" pendiente
+    this.deploy = null; // { phase: 'bus' | 'pick' | 'fall' | 'chute', z } durante el despliegue
     this.ammoCooldownUntil = 0;
+  }
+
+  // Cayendo del bus: el movimiento compartido usa otra velocidad y no choca
+  get air() {
+    const phase = this.deploy?.phase;
+    return phase === 'fall' || phase === 'chute' ? phase : null;
+  }
+
+  // En el aire o todavía en el bus: no dispara, no recibe daño, no interactúa
+  get deploying() {
+    return this.deploy !== null;
   }
 
   get weaponId() {

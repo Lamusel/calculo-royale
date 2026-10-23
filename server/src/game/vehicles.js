@@ -203,7 +203,7 @@ export function updateVehicles(game, dt) {
     // Atropello: daño según la velocidad y empujón
     if (Math.abs(v.speed) < JEEP.runOverMinSpeed) continue;
     for (const p of game.room.players.values()) {
-      if (!p.alive || p.vehicleId !== null) continue;
+      if (!p.alive || p.vehicleId !== null || p.deploying) continue;
       const dx = p.x - v.x;
       const dy = p.y - v.y;
       const d = Math.hypot(dx, dy);

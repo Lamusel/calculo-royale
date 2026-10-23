@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AIM_CANCEL_ZONE, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
+import { AIM_CANCEL_ZONE, DEPLOY, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, currentAim, inputState } from '../input/inputState.js';
 import { isTouchDevice } from '../input/TouchControls.jsx';
@@ -10,6 +10,7 @@ import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
 import BombingMesh from './BombingMesh.jsx';
 import Buildings from './Buildings.jsx';
+import Bus from './Bus.jsx';
 import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
@@ -65,9 +66,9 @@ function CameraRig({ client, frameRef, sun, overview }) {
     () => ({ target: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3(), lookGoal: new THREE.Vector3(), zoom: 1 }),
     [],
   );
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, scene }, delta) => {
     const dt = Math.min(delta, 0.1);
-    const { me, follow } = frameRef.current;
+    const { me, follow, deploying, altitude = 0 } = frameRef.current;
     // Cine (presentación del duelo, repetición): la cámara gira alrededor de alguien
     const cine = client.cinematic?.(performance.now(), frameRef.current);
     if (cine) {
@@ -97,7 +98,11 @@ function CameraRig({ client, frameRef, sun, overview }) {
     }
     // Caído: la cámara sigue al jugador observado
     const focusOn = follow ?? me;
-    if (focusOn) s.goal.set(focusOn.x, terrainHeight(focusOn.x, focusOn.y), -focusOn.y);
+    // Despliegue: en el bus, el bus y el mapa desde arriba; cayendo, más lejos cuanto más alto
+    const air = follow ? null : deploying;
+    const lift = air === 'bus' ? DEPLOY.busAltitude : air ? altitude : 0;
+    const deployZoom = air === 'bus' ? 3 : air ? 1 + altitude / 28 : 1;
+    if (focusOn) s.goal.set(focusOn.x, terrainHeight(focusOn.x, focusOn.y) + lift * 0.6, -focusOn.y);
     s.target.lerp(s.goal, 1 - Math.exp(-12 * dt));
 
     const aim = follow ? follow.aim : currentAim();
@@ -105,7 +110,14 @@ function CameraRig({ client, frameRef, sun, overview }) {
     const amount = LOOK_AHEAD + extra;
     s.lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount);
     s.look.lerp(s.lookGoal, 1 - Math.exp(-5 * dt));
-    s.zoom += ((extra > 0 ? SNIPER_ZOOM : 1) - s.zoom) * (1 - Math.exp(-4 * dt));
+    s.zoom += ((extra > 0 ? SNIPER_ZOOM : 1) * deployZoom - s.zoom) * (1 - Math.exp(-3 * dt));
+    // La niebla se aleja con la cámara (desde el bus se ve el mapa)
+    if (scene.fog) {
+      // THREE.Fog no tiene userData: la distancia base se guarda aquí (y se renueva si cambia la niebla)
+      if (s.fog?.fog !== scene.fog) s.fog = { fog: scene.fog, near: scene.fog.near, far: scene.fog.far };
+      scene.fog.near = s.fog.near * Math.max(1, s.zoom);
+      scene.fog.far = s.fog.far * Math.max(1, s.zoom);
+    }
 
     const focus = s.target.clone().add(s.look);
     camera.position.copy(focus).addScaledVector(CAMERA_OFFSET, s.zoom);
@@ -241,6 +253,7 @@ export default function Scene({
       <ZoneMesh frameRef={frameRef} />
       <BombingMesh frameRef={frameRef} />
       <Vehicles client={client} frameRef={frameRef} quality={quality} />
+      <Bus frameRef={frameRef} />
       <Weather weather={active} windAngle={windAngle} client={client} frameRef={frameRef} quality={quality} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} night={active === 'noche'} />
       <Grenades frameRef={frameRef} />

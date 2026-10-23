@@ -1,4 +1,4 @@
-import { AIM_MOVE_FACTOR, MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED, SLOPE_SPEED } from './constants.js';
+import { AIM_MOVE_FACTOR, DEPLOY, MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED, SLOPE_SPEED } from './constants.js';
 import { resolveCircle } from './collision.js';
 import { BUTTONS } from './protocol.js';
 import { terrainGradient } from './terrain.js';
@@ -16,8 +16,9 @@ export function slopeFactor(x, y, ux, uy) {
   return clamp(1 - SLOPE_SPEED.k * (fx * ux + fy * uy), SLOPE_SPEED.min, SLOPE_SPEED.max);
 }
 
-// player: { x, y, aim } — se modifica en el lugar
+// player: { x, y, aim, air? } — se modifica en el lugar
 // input: { mx, my, aim, buttons } con mx, my en [-1, 1]
+// air: 'fall' | 'chute' mientras cae del bus (sin colisiones ni pendiente, otra velocidad)
 export function applyInput(player, input, dt) {
   player.aim = input.aim;
   const len = Math.hypot(input.mx, input.my);
@@ -25,6 +26,12 @@ export function applyInput(player, input, dt) {
 
   const ux = input.mx / len;
   const uy = input.my / len;
+  if (player.air) {
+    const step = (player.air === 'chute' ? DEPLOY.chuteAirSpeed : DEPLOY.airSpeed) * Math.min(len, 1) * dt;
+    player.x = clamp(player.x + ux * step, -LIMIT, LIMIT);
+    player.y = clamp(player.y + uy * step, -LIMIT, LIMIT);
+    return;
+  }
   const aiming = input.buttons & BUTTONS.AIM ? AIM_MOVE_FACTOR : 1;
   const step = PLAYER_SPEED * Math.min(len, 1) * aiming * slopeFactor(player.x, player.y, ux, uy) * dt;
   player.x = clamp(player.x + ux * step, -LIMIT, LIMIT);

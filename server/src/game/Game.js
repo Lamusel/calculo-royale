@@ -11,6 +11,7 @@ import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
+import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
   answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
@@ -38,6 +39,7 @@ export class Game {
     this.leaderId = null;
     this.wind = null;
     this.duel = null; // { ids, introEndsAt } al quedar 2 vivos
+    this.deploy = null; // bus de despliegue o elegir punto (deploy.js)
     this.killTimes = new Map(); // id → momentos de sus bajas recientes (multi-baja)
     this.recorder = new Recorder();
     resetRadio(this);
@@ -64,6 +66,7 @@ export class Game {
     this.grenades = [];
     this.leaderId = null;
     this.duel = null;
+    this.deploy = null;
     this.killTimes?.clear();
     this.recorder?.reset();
     if (this.vehicles) resetVehicles(this);
@@ -73,6 +76,11 @@ export class Game {
   }
 
   handleInput(player, input) {
+    // En el bus o cayendo: solo se puede saltar
+    if (player.deploying) {
+      if (input.buttons & BUTTONS.JUMP) jump(this, player);
+      return;
+    }
     // Respondiendo el código del motor: moverse cancela
     if (player.engineQuestion) {
       if (input.mx !== 0 || input.my !== 0) cancelEngine(this, player, 'Te moviste');
@@ -98,7 +106,7 @@ export class Game {
 
   // Dentro de un jeep: bajarse. Si no, lo más cercano entre armeros (lobby), cajas y jeeps.
   interact(player) {
-    if (!player.alive || player.question || player.engineQuestion) return;
+    if (!player.alive || player.question || player.engineQuestion || player.deploying) return;
     if (player.vehicleId !== null) {
       exitVehicle(this, player);
       return;
@@ -150,7 +158,16 @@ export class Game {
   }
 
   requestAmmo(player) {
-    requestAmmo(this, player);
+    if (!player.deploying) requestAmmo(this, player);
+  }
+
+  // Despliegue al iniciar (lo pide la sala; las pruebas que arman escenarios lo omiten)
+  startDeploy(mode) {
+    startDeploy(this, mode);
+  }
+
+  chooseDeployPoint(player, x, y) {
+    choosePoint(this, player, x, y);
   }
 
   answerAmmo(player, id, index) {
@@ -178,11 +195,17 @@ export class Game {
       p.processInputs(
         DT,
         (input) => this.handleInput(p, input),
-        (pl, input, dt) => (pl.vehicleId !== null ? driveInput(this, pl, input, dt) : applyInput(pl, input, dt)),
+        (pl, input, dt) => {
+          // En el bus (o eligiendo punto) no se mueve por su cuenta: solo apunta
+          if (pl.deploy && !pl.air) pl.aim = input.aim;
+          else if (pl.vehicleId !== null) driveInput(this, pl, input, dt);
+          else applyInput(pl, input, dt);
+        },
       );
       p.recordHistory(this.tick);
       if (p.reloadUntil && this.now >= p.reloadUntil) finishReload(p);
     }
+    updateDeploy(this, DT);
     updateGrenades(this, DT);
     updateCrates(this);
     updateMatch(this, DT);
@@ -216,7 +239,10 @@ export class Game {
         (p.reloadUntil ? PLAYER_FLAGS.RELOADING : 0) |
         (p.question || p.engineQuestion ? PLAYER_FLAGS.ANSWERING : 0) |
         (p.vehicleId !== null ? PLAYER_FLAGS.IN_VEHICLE : 0) |
-        (p.id === this.leaderId ? PLAYER_FLAGS.LEADER : 0);
+        (p.id === this.leaderId ? PLAYER_FLAGS.LEADER : 0) |
+        (p.deploy && !p.air ? PLAYER_FLAGS.IN_BUS : 0) |
+        (p.air === 'fall' ? PLAYER_FLAGS.FALLING : 0) |
+        (p.air === 'chute' ? PLAYER_FLAGS.PARACHUTE : 0);
       return encodePlayerState(p, WEAPON_IDS.indexOf(p.weaponId), flags);
     });
     return [
@@ -232,6 +258,7 @@ export class Game {
       encodeAirdrop(this),
       encodeBombing(this),
       encodeVehicles(this),
+      encodeBus(this),
     ];
   }
 

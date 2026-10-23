@@ -9,6 +9,7 @@ import { Character } from './character/Character.js';
 import { characterStats, CharacterDebug, debugSkinsEnabled } from './character/debug.js';
 import { textTexture } from './labels.js';
 import { modelMaterial } from './models/build.js';
+import { parachuteGeometry } from './models/parachute.js';
 
 // Cada jugador: raíz de juego (posición, anillo, nombre, vida, chaleco, corona: siempre
 // visibles) + parte visual (Character: Master Rig y skin). La skin nunca tapa la información.
@@ -34,6 +35,9 @@ const crownTips = Array.from({ length: 5 }, (_, i) => {
   return new THREE.ConeGeometry(0.08, 0.22, 4).translate(Math.cos(a) * 0.28, 0.18, Math.sin(a) * 0.28);
 });
 const crownMaterial = new THREE.MeshLambertMaterial({ color: '#facc15', emissive: '#a16207', side: THREE.DoubleSide });
+
+// Paracaídas del despliegue y la reanimación (el mismo modelo del lanzamiento aéreo)
+const chuteGeometry = parachuteGeometry({ radius: 1.9, height: 4.6, hook: 1.9, colors: ['#e9d77a', '#2f7d4a'] });
 
 // Icono de "expuesto" sobre quien está abriendo una caja
 const exposedLabel = textTexture('⚠ ABRIENDO', { color: '#fb923c', size: 44 });
@@ -92,6 +96,7 @@ function SoldierAvatar({ player, isMe, register, blobShadow }) {
       </group>
       {isMe && <mesh ref={set('silhouette')} geometry={silhouetteGeometry} material={silhouetteMaterial} renderOrder={1} />}
       <primitive object={character.visualRoot} />
+      <mesh ref={set('chute')} geometry={chuteGeometry} material={modelMaterial} visible={false} />
       <sprite position-y={2.6} scale={[label.aspect * 0.6, 0.6, 1]}>
         <spriteMaterial map={label.texture} depthWrite={false} transparent />
       </sprite>
@@ -162,8 +167,17 @@ export default function Players({ client, roster, myId, frameRef, quality, night
         a.group.visible = false;
         continue;
       }
+      // En el bus (o eligiendo punto) no se dibuja; en el aire, a su altura
+      if (info.flags & PLAYER_FLAGS.IN_BUS) {
+        a.group.visible = false;
+        continue;
+      }
+      const z = info.z ?? 0;
+      const air = info.flags & PLAYER_FLAGS.FALLING ? 'fall' : info.flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
       a.group.visible = true;
-      a.group.position.set(pos.x, terrainHeight(pos.x, pos.y), -pos.y);
+      a.group.position.set(pos.x, terrainHeight(pos.x, pos.y) + z, -pos.y);
+      a.chute.visible = air === 'chute';
+      if (a.chute.visible) a.chute.rotation.z = Math.sin(now / 700 + id) * 0.08;
 
       // Normal de z = f(x, y) en coordenadas de Three.js: (−fx, 1, fy)
       const [fx, fy] = terrainGradient(pos.x, pos.y);
@@ -194,6 +208,7 @@ export default function Players({ client, roster, myId, frameRef, quality, night
           seat: ride?.seat ?? null,
           seatYaw: ride?.heading,
           victory: (duelists?.includes(id) ?? false) || winnerId === id,
+          air,
         },
         now,
         dt,
@@ -203,7 +218,7 @@ export default function Players({ client, roster, myId, frameRef, quality, night
       );
 
       // Información de juego (nunca la tapa la skin)
-      a.ground.visible = !ride;
+      a.ground.visible = !ride && !air;
       if (a.silhouette) a.silhouette.visible = !dead;
       a.crown.visible = Boolean(info.flags & PLAYER_FLAGS.LEADER) && !dead;
       if (a.crown.visible) {

@@ -5,7 +5,8 @@ import { AIRDROP, RARITIES } from '@calculo-royale/shared/constants';
 import { CRATE_STATE } from '@calculo-royale/shared/protocol';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { CRATES, cratePosition } from './crateList.js';
-import { box, cylinder, limb, merge, modelMaterial, piece } from './models/build.js';
+import { box, merge, modelMaterial, piece } from './models/build.js';
+import { parachuteGeometry } from './models/parachute.js';
 
 // Cajas de suministro militares: franja del color de la rareza y candado al frente.
 // Abierta: tapa levantada. Bloqueada: luz roja intermitente. Alguien respondiendo: luz amarilla.
@@ -42,18 +43,8 @@ const beamGeometry = new THREE.CylinderGeometry(0.5, 0.7, 14, 12, 1, true);
 const ringGeometry = new THREE.RingGeometry(1.1, 1.5, 32).rotateX(-Math.PI / 2);
 const FALL_HEIGHT = 40;
 
-// Paracaídas del lanzamiento aéreo: cúpula de gajos y cuerdas hasta la caja
-const parachuteGeometry = (() => {
-  const canopy = new THREE.SphereGeometry(2.4, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2.6);
-  const colors = ['#c9b37a', '#a8442e'];
-  const pieces = [piece(canopy, colors[0], { position: [0, 4.2, 0], scale: [1, 0.55, 1] })];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    pieces.push(limb([Math.cos(a) * 1.8, 4.3, Math.sin(a) * 1.8], [Math.cos(a) * 0.4, H, Math.sin(a) * 0.3], 0.03, '#ddd8c4'));
-  }
-  pieces.push(piece(cylinder(2.42, 2.42, 0.1, 10, true), colors[1], { position: [0, 4.25, 0] }));
-  return merge(pieces);
-})();
+// Paracaídas del lanzamiento aéreo (el mismo modelo del despliegue y la reanimación)
+const cratechute = parachuteGeometry({ hook: H });
 
 export default function Crates({ frameRef }) {
   const bodies = useRef([]);
@@ -166,7 +157,7 @@ export default function Crates({ frameRef }) {
       <group ref={falling} visible={false}>
         <mesh geometry={geometries[AIRDROP.rarity]} material={modelMaterial} castShadow />
         <mesh geometry={lidGeometry} material={modelMaterial} position={[0, H, -D / 2 - 0.03]} />
-        <mesh geometry={parachuteGeometry} material={modelMaterial} />
+        <mesh geometry={cratechute} material={modelMaterial} />
       </group>
       <instancedMesh ref={lids} args={[lidGeometry, modelMaterial, CRATES.length]} castShadow frustumCulled={false} />
       <instancedMesh ref={lights} args={[lightGeometry, lightMaterial, CRATES.length]} frustumCulled={false} />

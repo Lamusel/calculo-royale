@@ -13,6 +13,7 @@ import { GameClient } from '../net/GameClient.js';
 import { resetGame } from '../net/session.js';
 import { socket } from '../net/socket.js';
 import CombatHUD from '../ui/CombatHUD.jsx';
+import DeployHUD from '../ui/Deploy.jsx';
 import MathText from '../ui/MathText.jsx';
 import { AmmoCard, AmmoToast } from '../ui/AmmoCard.jsx';
 import HUD from '../ui/HUD.jsx';
@@ -130,6 +131,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         intel={view.self?.intel}
         night={room.phase === 'playing' && room.weather === 'noche'}
         lastShot={client.lastShot}
+        deployRoute={client.deploying === 'bus' && client.deployInfo?.route ? client.deployInfo.route : null}
       />
       {room.phase === 'playing' && <WeatherChip weather={room.weather} windAngle={room.windAngle} />}
       <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
@@ -150,6 +152,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       )}
       {view.crateResult && <CrateResult result={view.crateResult} onClose={() => (client.crateResult = null)} />}
       {room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
+      {room.phase === 'playing' && <DeployHUD client={client} frameRef={frameRef} isTouch={isTouch} />}
       {room.phase === 'results' && !replaying && (
         <Results results={client.results} mine={client.privateResults} myId={myId} isHost={isHost} onReset={resetGame} />
       )}

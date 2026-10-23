@@ -25,7 +25,8 @@ export const isTyping = (target) =>
 
 // PC: WASD mueve, mouse apunta, clic izquierdo dispara, clic derecho mantenido = mira,
 // G mantenida muestra el arco de la granada y al soltarla la lanza (o clic en el botón de
-// granada y luego clic donde lanzar), R recarga, B pide balas, E toma o abre, 1/2 cambian de arma.
+// granada y luego clic donde lanzar), R recarga, B pide balas, E toma o abre, 1/2 cambian de arma,
+// Espacio salta del bus.
 export function attachKeyboardMouse() {
   const pressed = new Set();
 
@@ -56,7 +57,10 @@ export function attachKeyboardMouse() {
       return;
     }
     if (e.repeat) return;
-    if (isKey(e, 'R')) press(BUTTONS.RELOAD);
+    if (e.code === 'Space') {
+      e.preventDefault();
+      actions.jump();
+    } else if (isKey(e, 'R')) press(BUTTONS.RELOAD);
     else if (isKey(e, 'B')) actions.requestAmmo();
     else if (isKey(e, 'E')) actions.interact();
     else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);

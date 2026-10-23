@@ -54,16 +54,17 @@ export class Predictor {
   }
 
   // vehicle: el jeep que manejo según el servidor (o null si voy a pie)
-  reconcile(x, y, lastSeq, vehicle = null) {
+  // air: 'fall' | 'chute' cayendo del bus (movimiento sin colisiones), o null
+  reconcile(x, y, lastSeq, vehicle = null, air = null) {
     if (!this.state) {
       this.state = { x, y, aim: 0 };
       this.prev = { ...this.state };
       return;
     }
-    // Subir o bajar del jeep cambia el modo: sin suavizar
-    if (Boolean(vehicle) !== Boolean(this.drive)) this.snapNext = true;
+    // Subir o bajar del jeep, saltar o aterrizar cambia el modo: sin suavizar
+    if (Boolean(vehicle) !== Boolean(this.drive) || Boolean(air) !== Boolean(this.state.air)) this.snapNext = true;
     this.pending = this.pending.filter((i) => i.seq > lastSeq);
-    const next = { x, y, aim: this.state.aim };
+    const next = { x, y, aim: this.state.aim, air };
     let dx;
     let dy;
     if (vehicle) {

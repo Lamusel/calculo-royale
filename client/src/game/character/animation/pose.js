@@ -8,15 +8,15 @@ import * as THREE from 'three';
 const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 const approach = (value, target, rate, dt) => value + (target - value) * (1 - Math.exp(-rate * dt));
 
-export const ANIM_STATES = ['idle', 'walk', 'run', 'aim', 'shoot', 'reload', 'death', 'victory', 'drive', 'passenger'];
+export const ANIM_STATES = ['idle', 'walk', 'run', 'aim', 'shoot', 'reload', 'death', 'victory', 'drive', 'passenger', 'fall', 'chute'];
 const RUN_SPEED = 6;
 const SEATED_LEG = 1.45;
 
 export function createAnimState(x, y, aim) {
-  return { x, y, speed: 0, phase: 0, legsYaw: aim, aimYaw: aim, pitch: -0.45, swing: 0, bob: 0, recoil: 0, kick: 0.14, deadSince: 0, deathYaw: 0, fall: 0, seat: null, victory: false, victoryT: 0, state: 'idle' };
+  return { x, y, speed: 0, phase: 0, legsYaw: aim, aimYaw: aim, pitch: -0.45, swing: 0, bob: 0, recoil: 0, kick: 0.14, deadSince: 0, deathYaw: 0, fall: 0, seat: null, air: null, airT: 0, victory: false, victoryT: 0, state: 'idle' };
 }
 
-// input: { x, y, aim, dead, reloading, aiming, shotAgo, weapon, seat ('driver'|'passenger'|null), seatYaw, victory }
+// input: { x, y, aim, dead, reloading, aiming, shotAgo, weapon, seat ('driver'|'passenger'|null), seatYaw, victory, air ('fall'|'chute'|null) }
 // onStep(x, y) se llama en cada pisada (polvo)
 export function updateAnim(st, input, now, dt, onStep) {
   const dx = input.x - st.x;
@@ -25,13 +25,17 @@ export function updateAnim(st, input, now, dt, onStep) {
   st.x = input.x;
   st.y = input.y;
   st.seat = input.dead ? null : input.seat;
-  // En el jeep la velocidad es la del jeep: no se camina
-  st.speed = st.seat ? 0 : approach(st.speed, dt > 0 ? Math.min(moved / dt, 12) : 0, 10, dt);
+  st.air = input.dead ? null : (input.air ?? null);
+  st.airT = st.air ? st.airT + dt : 0;
+  // En el jeep o en el aire no se camina
+  st.speed = st.seat || st.air ? 0 : approach(st.speed, dt > 0 ? Math.min(moved / dt, 12) : 0, 10, dt);
   st.aimYaw = input.aim;
 
   if (!input.dead) {
     if (st.seat) {
       st.legsYaw = input.seatYaw ?? st.legsYaw;
+    } else if (st.air) {
+      st.legsYaw = input.aim;
     } else {
       // Las piernas giran hacia donde camina; si la mira se aleja demasiado, los pies la siguen
       let legsGoal = st.speed > 0.5 ? Math.atan2(dy, dx) : st.legsYaw;
@@ -73,6 +77,7 @@ export function updateAnim(st, input, now, dt, onStep) {
 export function semanticState(st, input = {}) {
   if (st.fall > 0) return 'death';
   if (st.victory) return 'victory';
+  if (st.air) return st.air;
   if (st.seat === 'driver') return 'drive';
   if (st.seat === 'passenger') return 'passenger';
   if (input.reloading) return 'reload';
@@ -106,10 +111,18 @@ export function poseDeltas(st, out = createDeltas()) {
 
   let arm = st.pitch + st.recoil * st.kick;
   if (st.victory) arm = 1.15 + Math.sin(st.victoryT * 8) * 0.15;
+  // Caída libre: brazos al frente; paracaídas: brazos arriba agarrando las cuerdas
+  if (st.air === 'fall') arm = 1.1 + Math.sin(st.airT * 5) * 0.08;
+  if (st.air === 'chute') arm = 2.5;
   q.upperArmR.setFromAxisAngle(Z, arm);
   q.upperArmL.setFromAxisAngle(Z, arm);
 
-  if (st.seat) {
+  if (st.air) {
+    // Piernas: hacia atrás en caída libre, colgando y meciéndose con el paracaídas
+    const legs = st.air === 'fall' ? -0.35 : 0.15 + Math.sin(st.airT * 2) * 0.12;
+    q.upperLegR.setFromAxisAngle(Z, legs);
+    q.upperLegL.setFromAxisAngle(Z, st.air === 'fall' ? legs : legs * 0.4);
+  } else if (st.seat) {
     q.upperLegR.setFromAxisAngle(Z, SEATED_LEG);
     q.upperLegL.setFromAxisAngle(Z, SEATED_LEG);
     q.lowerLegR.setFromAxisAngle(Z, -SEATED_LEG);
@@ -122,6 +135,8 @@ export function poseDeltas(st, out = createDeltas()) {
   // Caída de espaldas sobre el eje perpendicular a la mira
   fallAxis.set(Math.sin(st.deathYaw), 0, Math.cos(st.deathYaw));
   q.root.setFromAxisAngle(fallAxis, st.fall * Math.PI * 0.48);
+  // Caída libre: boca abajo hacia donde mira (el eje es el de la caída, con el signo al revés)
+  if (st.air === 'fall') q.root.setFromAxisAngle(fallAxis.set(Math.sin(st.aimYaw), 0, Math.cos(st.aimYaw)), -1.15);
   out.rootY = st.fall * 0.22 + (st.seat && !dead ? 0.12 : 0) + (st.victory ? Math.abs(Math.sin(st.victoryT * 6)) * 0.22 : 0);
   out.spineY = st.bob;
   out.shoulderX = -st.recoil * 0.1;

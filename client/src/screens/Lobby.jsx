@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -108,6 +108,26 @@ function WeatherPicker({ room, isHost }) {
   );
 }
 
+// Despliegue de la próxima partida: bus o elegir punto (el host lo elige, los demás lo ven)
+function DeployPicker({ room, isHost }) {
+  const mode = room.deployMode ?? 'bus';
+  if (!isHost) return <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">{mode === 'bus' ? '🚌' : '📍'} {DEPLOY_MODES[mode]}</span>;
+  return (
+    <select
+      value={mode}
+      onChange={(e) => socket.emit(EVENTS.ROOM_DEPLOY, e.target.value)}
+      className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100"
+      title="Despliegue"
+    >
+      {Object.entries(DEPLOY_MODES).map(([id, name]) => (
+        <option key={id} value={id} className="bg-olive-900">
+          {id === 'bus' ? '🚌' : '📍'} Despliegue: {name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
@@ -143,6 +163,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
             Temas {topicCount}/{Object.keys(TOPICS).length}
           </button>
           <WeatherPicker room={room} isHost={isHost} />
+          <DeployPicker room={room} isHost={isHost} />
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">
               Iniciar

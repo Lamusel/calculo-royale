@@ -91,6 +91,11 @@ function spawnBot(n) {
       viewTick = tick - 2;
     }
 
+    // En el bus: saltan en un momento al azar después de que arranca
+    const meNow = snapshot?.[1].find((p) => p[0] === myId);
+    const bus = snapshot?.[12];
+    if (meNow && meNow[8] & PLAYER_FLAGS.IN_BUS && bus?.length && bus[3] === 0 && Math.random() < 0.02) buttons |= BUTTONS.JUMP;
+
     socket.emit(
       EVENTS.INPUT,
       encodeInput({
