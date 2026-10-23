@@ -11,6 +11,7 @@ import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
+import { recordTick } from '../metrics.js';
 import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
@@ -53,7 +54,11 @@ export class Game {
 
   start() {
     if (this.timer) return;
-    this.timer = setInterval(() => this.update(), TICK_MS);
+    this.timer = setInterval(() => {
+      const t0 = performance.now();
+      this.update();
+      recordTick(performance.now() - t0);
+    }, TICK_MS);
   }
 
   stop() {

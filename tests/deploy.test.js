@@ -31,3 +31,16 @@ test('vercel.json: /skins y /espectador van a la app; los GLB se cachean y un /a
   assert.match(header('/assets/skins/external/externa_01/character.glb'), /max-age=86400/);
   assert.match(header('/assets/index-abc123.js'), /immutable/);
 });
+
+test('/health informa CPU, memoria, tick y jugadores conectados', async () => {
+  const { readMetrics, recordTick } = await import('../server/src/metrics.js');
+  recordTick(2);
+  recordTick(4);
+  const rooms = new Map([['ABCD', { players: new Map([[1, { connected: true }], [2, { connected: false }]]) }]]);
+  const m = readMetrics(rooms);
+  assert.equal(m.players, 1);
+  assert.equal(m.tick.avgMs, 3);
+  assert.equal(m.tick.maxMs, 4);
+  assert.ok(m.memoryMb.rss > 0 && m.cpuPercent >= 0);
+  assert.equal(readMetrics(rooms).tick.count, 0, 'la ventana se reinicia');
+});

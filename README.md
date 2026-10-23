@@ -361,6 +361,14 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Pruebas:** ruta dentro de los límites y que cruza el mapa, salto manual y automático, caída y paracaídas hasta aterrizar, nada de daño ni disparos en el aire, reanimación en paracaídas, modo elegir punto, movimiento en el aire compartido.
 
 
+#### Fase 15: pulido y carga
+- **Sonidos sintetizados** con Web Audio (sin archivos): disparo por arma, recarga, lanzar granada, explosión, motor del jeep (según la velocidad), pasos, candado abierto y fallado, sirena del bombardeo, radio del mando (estática y pitido), salto del bus y paracaídas. Volumen y paneo según la distancia al jugador. Deslizador de **Volumen** en Opciones (guardado en el navegador). El audio arranca con el primer toque o clic (regla de los navegadores).
+- **Bot acostado:** reproducirlo con bots caminando de lado y corregirlo si aparece.
+- **Prueba de carga contra Render:** script que crea una sala y conecta 40 clientes (39 bots y el anfitrión) a \`calculo-royale-server.onrender.com\`, inicia la partida y mide latencia (ping) durante unos minutos. \`/health\` agrega memoria y uso de CPU del proceso para leerlos desde afuera. Reporte en la bitácora.
+- **Rendimiento con el mapa grande:** llamadas de dibujo y triángulos en \`?calidad=baja\`, \`media\` y \`alta\` en distintos lugares del mapa; si algo se dispara, ajustar distancia de muebles, niebla, matorrales o sombras.
+- **Pruebas:** mezcla de sonidos (volumen y distancia) sin navegador, métricas de \`/health\`.
+
+
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
 

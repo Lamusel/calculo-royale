@@ -9,6 +9,7 @@ import { SERVER_PORT } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { parseOrigins } from './origins.js';
 import { RoomManager } from './rooms/RoomManager.js';
+import { readMetrics } from './metrics.js';
 
 const PORT = Number(process.env.PORT) || SERVER_PORT;
 // Vacío = cualquier origen (desarrollo y celular en la red local); en producción, la URL de Vercel
@@ -18,7 +19,7 @@ const app = express();
 app.use(cors({ origin }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, uptime: process.uptime(), rooms: rooms.rooms.size });
+  res.json({ ok: true, uptime: process.uptime(), rooms: rooms.rooms.size, ...readMetrics(rooms.rooms) });
 });
 
 // URL del túnel (si npm run tunnel está activo) e IPs de la red local:
