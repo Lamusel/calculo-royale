@@ -256,6 +256,16 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Calidad automática** (`quality.js`): alta, media o baja según FPS; `?calidad=baja` la fuerza y `?debug=1` muestra FPS, llamadas de dibujo y triángulos.
 - **Pruebas:** controlador de calidad, oclusión y distancia a caminos. Sin cambios en la lógica del servidor.
 
+#### Fase 4: cajas de suministro
+- **Banco provisional** (`server/src/questions/bank/*.json`): ~40 preguntas ABCD en 9 temas (integrales dobles y triples, cambio de orden, polares, cilíndricas y esféricas, jacobiano, máximos y mínimos, Lagrange, gradiente y derivada direccional), dificultades 1 a 4. Una prueba recalcula numéricamente cada respuesta correcta.
+- **4 generadores paramétricos** (`generators/`): integral doble sobre rectángulo, gradiente en un punto, derivada direccional, polar a cartesiano; distractores con errores típicos.
+- **`QuestionBank`:** elige por temas de la sala y dificultad (la más cercana si falta), mezcla generadores, baraja opciones por jugador; la respuesta correcta queda solo en el servidor.
+- **Cajas** en posiciones fijas de `mapLayout` (`SUPPLY_CRATES`) con rareza fija por lugar (más valiosas dentro de casas y contenedores); una caja de práctica en el campo de entrenamiento.
+- **Flujo:** E / botón Abrir → modal de candado con KaTeX (rareza, tema, tiempo, 4 opciones grandes, botín posible). Mientras respondes: quieto e icono de expuesto sobre tu soldado; moverte o morir cancela. Acierto: botín y explicación. Fallo o tiempo agotado: caja bloqueada 15 s y alarma visible 3 s para todos (baliza roja; el minimapa llega en la fase 5).
+- **Botín:** venda (+25), botiquín (vida completa), munición, granada (máx. 2), armas y chaleco por rareza. Racha de 3 aciertos = radar 10 s (flechas en el borde hacia todos los enemigos). Doradas = Todo o nada (botín doble o pierdes el chaleco).
+- **Host:** elige en el lobby qué temas entran en la sala.
+- **Pruebas:** banco (formato y cálculo), generadores, flujo de cajas en el servidor (acierto, fallo, bloqueo, cancelar al moverse, Todo o nada, racha), que la respuesta correcta nunca se envía.
+
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
 

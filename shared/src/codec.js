@@ -4,12 +4,14 @@
 //   viewTick: tick del servidor que el cliente estaba viendo (compensación de lag)
 //   aimDist:  distancia al punto apuntado (alcance de la granada)
 //
-// Snapshot (S → C): [tick, players, grenades, dummies, shots, explosions]
+// Snapshot (S → C): [tick, players, grenades, dummies, shots, explosions, crates, alarms]
 //   players:    [[id, x, y, aim, lastSeq, hp, armorLevel, weaponIndex, flags], ...]
 //   grenades:   [[id, x, y], ...]
 //   dummies:    [hp, ...] (solo en el lobby)
 //   shots:      [[shooterId, weaponIndex, ox, oy, a1, d1, a2, d2, ...], ...] ángulo y distancia por bala
 //   explosions: [[x, y], ...]
+//   crates:     [estado, ...] en el orden de SUPPLY_CRATES (+ la de práctica al final), ver CRATE_STATE
+//   alarms:     [[x, y], ...] cajas que alguien acaba de fallar (visibles para todos 3 s)
 
 const round2 = (v) => Math.round(v * 100) / 100;
 

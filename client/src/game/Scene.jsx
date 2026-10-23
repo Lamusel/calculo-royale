@@ -7,6 +7,7 @@ import { aimPreview, currentAim, inputState } from '../input/inputState.js';
 import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
 import Buildings from './Buildings.jsx';
+import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
 import MapMesh from './MapMesh.jsx';
@@ -173,6 +174,7 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       <Scenery quality={quality} />
       <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
       {phase === 'lobby' && <Training frameRef={frameRef} />}
+      <Crates frameRef={frameRef} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} />
       <Grenades frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />

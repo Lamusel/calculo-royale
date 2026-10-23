@@ -54,6 +54,9 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.WEAPON_SWITCH, (slot) => rooms.switchWeapon(socket, slot));
   socket.on(EVENTS.INTERACT, () => rooms.interact(socket));
   socket.on(EVENTS.PLAYER_SELF, () => rooms.requestSelf(socket));
+  socket.on(EVENTS.ROOM_TOPICS, (topics) => rooms.setTopics(socket, topics));
+  socket.on(EVENTS.CRATE_ANSWER, (data) => rooms.crateAnswer(socket, data));
+  socket.on(EVENTS.CRATE_CANCEL, () => rooms.crateCancel(socket));
 
   socket.on('disconnect', () => rooms.disconnect(socket));
 });

@@ -11,6 +11,7 @@ export const EVENTS = {
   ROOM_LEAVE: 'room:leave',
   ROOM_INFO: 'room:info', // S → C: { code, phase, hostId, players: [{ id, name, color, connected }] }
   ROOM_KICKED: 'room:kicked', // S → C: { reason } (la sesión se abrió en otra pestaña)
+  ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
 
   // Partida
   GAME_START: 'game:start', // C → S (solo host), con ack
@@ -26,6 +27,14 @@ export const EVENTS = {
   PLAYER_SELF: 'player:self',
   COMBAT_HIT: 'combat:hit', // S → C (solo a quien disparó): [objetivo, daño, x, y, mató]
   COMBAT_KILL: 'combat:kill', // S → C (a todos): [asesino, víctima, índice del arma]
+
+  // Cajas de suministro (se abren con INTERACT)
+  // S → C: { crateId, rarity, tema, enunciado, opciones, timeLimitMs } — nunca la respuesta correcta
+  CRATE_QUESTION: 'crate:question',
+  CRATE_ANSWER: 'crate:answer', // C → S: { crateId, index }
+  CRATE_CANCEL: 'crate:cancel', // C → S
+  // S → C: { crateId, outcome: 'correct'|'wrong'|'timeout'|'cancelled', loot: [nombres], explicacion?, reason? }
+  CRATE_RESULT: 'crate:result',
 };
 
 // Botones dentro del input (máscara de bits)
@@ -41,6 +50,16 @@ export const BUTTONS = {
 export const PLAYER_FLAGS = {
   DEAD: 1,
   RELOADING: 2,
+  ANSWERING: 4, // abriendo una caja: está quieto y expuesto
+};
+
+// Estado de cada caja en el snapshot
+export const CRATE_STATE = {
+  CLOSED: 0,
+  BUSY: 1, // alguien está respondiendo
+  LOCKED: 2, // bloqueada tras un fallo
+  OPEN: 3, // ya saqueada
+  HIDDEN: 4, // no existe en esta fase (de práctica en partida, del mapa en el lobby)
 };
 
 // En COMBAT_HIT, los blancos de práctica se identifican con números negativos: −(índice + 1)

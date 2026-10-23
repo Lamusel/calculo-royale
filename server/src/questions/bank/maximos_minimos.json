@@ -1,0 +1,58 @@
+[
+  {
+    "id": "max-01",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "El punto crítico de $f(x,y) = x^2 + y^2$ es",
+    "opciones": [
+      "$(0, 0)$",
+      "$(1, 1)$",
+      "$(0, 1)$",
+      "No tiene"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2x, 2y) = (0,0)$ solo en el origen."
+  },
+  {
+    "id": "max-02",
+    "tema": "maximos_minimos",
+    "dificultad": 2,
+    "enunciado": "Para $f(x,y) = x^2 - y^2$, el punto $(0,0)$ es",
+    "opciones": [
+      "Un mínimo local",
+      "Un punto de silla",
+      "Un máximo local",
+      "No es crítico"
+    ],
+    "correcta": 1,
+    "explicacion": "$D = f_{xx}f_{yy} - f_{xy}^2 = (2)(-2) - 0 = -4 < 0$: punto de silla."
+  },
+  {
+    "id": "max-03",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "Para $f(x,y) = x^3 - 3x + y^2$, el punto crítico $(1, 0)$ es",
+    "opciones": [
+      "Un máximo local",
+      "Un punto de silla",
+      "Un mínimo local",
+      "No es crítico"
+    ],
+    "correcta": 2,
+    "explicacion": "$D = (6x)(2) - 0 = 12 > 0$ y $f_{xx} = 6 > 0$ en $(1,0)$: mínimo local."
+  },
+  {
+    "id": "max-04",
+    "tema": "maximos_minimos",
+    "dificultad": 4,
+    "enunciado": "El valor mínimo local de $f(x,y) = 4 + x^3 + y^3 - 3xy$ es",
+    "opciones": [
+      "$4$",
+      "$1$",
+      "$5$",
+      "$3$"
+    ],
+    "correcta": 3,
+    "explicacion": "Puntos críticos: $(0,0)$ (silla, $D = -9$) y $(1,1)$ ($D = 27 > 0$, $f_{xx} = 6 > 0$). $f(1,1) = 4 + 1 + 1 - 3 = 3$."
+  }
+]

@@ -109,3 +109,32 @@ export const ITEM_NAMES = {
 // Campo de entrenamiento: los blancos se regeneran tras este tiempo sin recibir daño
 export const DUMMY_HP = 200;
 export const DUMMY_REGEN_MS = 2000;
+
+// --- Cajas de suministro y preguntas ---
+// Temas del banco (slug → nombre). Provisionales hasta tener los temas del corte 3.
+export const TOPICS = {
+  integrales_dobles: 'Integrales dobles',
+  integrales_triples: 'Integrales triples',
+  cambio_orden: 'Cambio de orden de integración',
+  polares: 'Coordenadas polares',
+  cilindricas_esfericas: 'Coordenadas cilíndricas y esféricas',
+  jacobiano: 'Jacobiano y cambio de variables',
+  maximos_minimos: 'Máximos y mínimos',
+  lagrange: 'Multiplicadores de Lagrange',
+  gradiente_direccional: 'Gradiente y derivada direccional',
+};
+
+// Rareza = dificultad de la pregunta = calidad del botín. El índice es la dificultad − 1.
+export const RARITIES = [
+  { id: 'comun', name: 'Común', color: '#9ca3af', difficulty: 1, timeMs: 25_000, loot: ['Munición', 'Venda', 'Granada'] },
+  { id: 'raro', name: 'Raro', color: '#3b82f6', difficulty: 2, timeMs: 35_000, loot: ['Escopeta', 'Rifle de asalto', 'Chaleco 1–2', 'Munición'] },
+  { id: 'epico', name: 'Épico', color: '#a855f7', difficulty: 3, timeMs: 45_000, loot: ['Francotirador', 'Chaleco 3', 'Botiquín'] },
+  { id: 'legendario', name: 'Legendario', color: '#eab308', difficulty: 4, timeMs: 60_000, loot: ['Todo o nada: botín épico doble', 'Si fallas pierdes el chaleco'] },
+];
+
+export const CRATE_LOCK_MS = 15_000; // caja bloqueada tras fallar
+export const ALARM_MS = 3_000; // alarma visible para todos tras un fallo
+export const PRACTICE_CRATE_RESET_MS = 4_000; // la caja de práctica se vuelve a cerrar
+export const STREAK_FOR_RADAR = 3;
+export const RADAR_MS = 10_000;
+export const BANDAGE_HEAL = 25;

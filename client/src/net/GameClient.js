@@ -1,10 +1,10 @@
-import { GRENADE, PLAYER_RADIUS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { GRENADE, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/codec';
 import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
-import { actions, currentAim, inputState, readInput } from '../input/inputState.js';
+import { actions, currentAim, inputState, readInput, resetInput } from '../input/inputState.js';
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 
@@ -38,12 +38,15 @@ export class GameClient {
     this.effects = []; // la escena los consume cada cuadro
     this.killfeed = [];
     this.damageFlashAt = 0;
+    this.question = null; // pregunta de la caja que se está abriendo
+    this.crateResult = null; // último resultado (se muestra unos segundos)
+    this.radarEndsAt = 0;
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions]) => {
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions);
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms]) => {
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms);
         const me = players.find((p) => p[0] === this.myId);
         if (me) this.predictor.reconcile(me[1], me[2], me[4]);
       },
@@ -54,6 +57,18 @@ export class GameClient {
       [EVENTS.COMBAT_HIT]: ([, amount, x, y, killed]) => {
         this.effects.push({ type: 'damage', x, y, amount, killed: Boolean(killed) });
         vibrate(killed ? [30, 40, 30] : 12);
+      },
+      [EVENTS.CRATE_QUESTION]: (question) => {
+        this.question = { ...question, receivedAt: performance.now() };
+        this.crateResult = null;
+        resetInput();
+        vibrate(20);
+      },
+      [EVENTS.CRATE_RESULT]: (result) => {
+        this.question = null;
+        this.crateResult = { ...result, at: performance.now() };
+        if (result.outcome === 'correct') vibrate([20, 40, 20]);
+        else if (result.outcome !== 'cancelled') vibrate(150);
       },
       [EVENTS.COMBAT_KILL]: ([killer, victim, weapon]) => {
         this.killfeed.push({ killer, victim, weapon, at: performance.now() });
@@ -85,6 +100,8 @@ export class GameClient {
       if (prev.alive && !self.alive) vibrate([80, 60, 220]);
       if (!prev.alive && self.alive) this.predictor.forceSnap();
     }
+    if (self.radar && !prev?.radar) this.radarEndsAt = now + RADAR_MS;
+    if (!self.radar) this.radarEndsAt = 0;
     this.self = self;
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
     this.predictedMag = selfMag(self);
@@ -186,6 +203,14 @@ export class GameClient {
     });
     this.lastFrame = frame;
     this.killfeed = this.killfeed.filter((k) => now - k.at < KILLFEED_MS);
+  }
+
+  answer(index) {
+    if (this.question) this.socket.emit(EVENTS.CRATE_ANSWER, { crateId: this.question.crateId, index });
+  }
+
+  cancelQuestion() {
+    this.socket.emit(EVENTS.CRATE_CANCEL);
   }
 
   setPhase(phase) {

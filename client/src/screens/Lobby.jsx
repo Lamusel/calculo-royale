@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { MAX_PLAYERS } from '@calculo-royale/shared/constants';
-import { SERVER_URL } from '../net/socket.js';
+import { MAX_PLAYERS, TOPICS } from '@calculo-royale/shared/constants';
+import { EVENTS } from '@calculo-royale/shared/protocol';
+import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
 
 const isLocalhost = () => ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -48,9 +49,40 @@ function BigInvite({ room, url, onClose }) {
   );
 }
 
+// El host elige qué temas entran en las preguntas de la sala (al menos uno)
+function TopicPicker({ room, isHost, onClose }) {
+  const selected = new Set(room.topics ?? Object.keys(TOPICS));
+  const toggle = (slug) => {
+    const next = new Set(selected);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    if (next.size > 0) socket.emit(EVENTS.ROOM_TOPICS, [...next]);
+  };
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-3" onPointerUp={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-lg border border-khaki-dark bg-olive-900 p-4 text-stone-100">
+        <p className="mb-2 font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">Temas de la sala</p>
+        <div className="flex flex-col gap-1.5">
+          {Object.entries(TOPICS).map(([slug, name]) => (
+            <label key={slug} className={`flex items-center gap-3 rounded px-2 py-1.5 ${isHost ? 'cursor-pointer bg-black/25' : 'bg-black/15'}`}>
+              <input type="checkbox" className="h-5 w-5 accent-khaki" checked={selected.has(slug)} disabled={!isHost} onChange={() => toggle(slug)} />
+              <span className="text-sm">{name}</span>
+            </label>
+          ))}
+        </div>
+        <button onClick={onClose} className="mt-3 w-full rounded bg-khaki py-2 font-bold text-olive-950">
+          Listo
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch }) {
   const [showInvite, setShowInvite] = useState(false);
+  const [showTopics, setShowTopics] = useState(false);
+  const topicCount = room.topics?.length ?? Object.keys(TOPICS).length;
   const [error, setError] = useState('');
   const url = useJoinUrl(room.code);
   const isHost = room.hostId === myId;
@@ -63,7 +95,7 @@ export default function Lobby({ room, myId, isTouch }) {
 
   return (
     <>
-      <div className="absolute left-1/2 top-3 z-20 flex max-w-[60vw] -transtone-x-1/2 flex-col items-center gap-2">
+      <div className="absolute left-1/2 top-3 z-20 flex max-w-[60vw] -translate-x-1/2 flex-col items-center gap-2">
         <div className="flex items-center gap-3 rounded-lg bg-black/60 px-4 py-2 text-stone-100 backdrop-blur">
           <button onClick={() => setShowInvite(true)} className="flex items-center gap-3" title="Mostrar código y QR">
             <span className="font-mono text-2xl font-black tracking-[0.2em] text-khaki">{room.code}</span>
@@ -72,6 +104,9 @@ export default function Lobby({ room, myId, isTouch }) {
           <span className="text-sm text-stone-300">
             {room.players.length}/{MAX_PLAYERS}
           </span>
+          <button onClick={() => setShowTopics(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">
+            Temas {topicCount}/{Object.keys(TOPICS).length}
+          </button>
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">
               Iniciar
@@ -79,7 +114,7 @@ export default function Lobby({ room, myId, isTouch }) {
           )}
         </div>
         <p className="rounded bg-black/45 px-3 py-1 text-center text-[11px] text-stone-200">
-          {isHost ? 'Campo de entrenamiento' : 'Esperando a que el profe inicie…'}
+          {isHost ? 'Campo de entrenamiento · prueba la caja de práctica' : 'Esperando a que el profe inicie…'}
         </p>
         {error && <p className="rounded-lg bg-red-950/80 px-3 py-1 text-xs text-red-300">{error}</p>}
       </div>
@@ -101,6 +136,7 @@ export default function Lobby({ room, myId, isTouch }) {
       </div>
 
       {showInvite && <BigInvite room={room} url={url} onClose={() => setShowInvite(false)} />}
+      {showTopics && <TopicPicker room={room} isHost={isHost} onClose={() => setShowTopics(false)} />}
     </>
   );
 }

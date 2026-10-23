@@ -3,6 +3,9 @@ import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodePlayerState } from '@calculo-royale/shared/codec';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
+import {
+  answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates,
+} from './crates.js';
 
 const DT = TICK_MS / 1000;
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -17,6 +20,8 @@ export class Game {
     this.grenades = [];
     this.nextGrenadeId = 1;
     this.dummies = [];
+    this.crates = createCrates();
+    this.alarms = [];
     this.selfCache = new Map(); // id → último estado privado enviado
     this.resetWorld();
   }
@@ -34,10 +39,17 @@ export class Game {
   // Al pasar del lobby a la partida (o volver)
   resetWorld() {
     this.grenades = [];
+    for (const p of this.room.players.values()) p.question = null;
+    resetCrates(this);
     this.dummies = TRAINING.dummies.map((d) => ({ ...d, hp: DUMMY_HP, lastHitAt: 0 }));
   }
 
   handleInput(player, input) {
+    // Abriendo una caja: quieto; moverse cancela y no se puede disparar
+    if (player.question) {
+      if (input.mx !== 0 || input.my !== 0) cancelQuestion(this, player, 'Te moviste');
+      return;
+    }
     if (input.buttons & BUTTONS.RELOAD) startReload(this, player);
     if (input.buttons & BUTTONS.GRENADE) throwGrenade(this, player, input);
     else if (input.buttons & BUTTONS.FIRE) fire(this, player, input);
@@ -47,11 +59,22 @@ export class Game {
     if (player.alive) switchWeapon(this, player, slot);
   }
 
-  // Armeros del campo de entrenamiento (en la fase 4 también las cajas)
+  // Lo más cercano entre armeros (solo en el lobby) y cajas de suministro
   interact(player) {
-    if (!player.alive || this.room.phase !== 'lobby') return;
-    const rack = nearestRack(player.x, player.y, INTERACT_RADIUS);
-    if (rack) player.giveItem(rack.item);
+    if (!player.alive || player.question) return;
+    const rack = this.room.phase === 'lobby' ? nearestRack(player.x, player.y, INTERACT_RADIUS) : null;
+    const crate = nearestCrate(this, player.x, player.y);
+    const rackDist = rack ? Math.hypot(rack.x - player.x, rack.y - player.y) : Infinity;
+    if (crate && crate.dist < rackDist) openCrate(this, player, crate.crate);
+    else if (rack) player.giveItem(rack.item);
+  }
+
+  answerCrate(player, crateId, index) {
+    answerCrate(this, player, crateId, index);
+  }
+
+  cancelQuestion(player) {
+    cancelQuestion(this, player, 'Cancelaste');
   }
 
   update() {
@@ -68,6 +91,7 @@ export class Game {
       if (p.reloadUntil && this.now >= p.reloadUntil) finishReload(p);
     }
     updateGrenades(this, DT);
+    updateCrates(this);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -85,7 +109,10 @@ export class Game {
 
   snapshot(players) {
     const encoded = players.map((p) => {
-      const flags = (p.alive ? 0 : PLAYER_FLAGS.DEAD) | (p.reloadUntil ? PLAYER_FLAGS.RELOADING : 0);
+      const flags =
+        (p.alive ? 0 : PLAYER_FLAGS.DEAD) |
+        (p.reloadUntil ? PLAYER_FLAGS.RELOADING : 0) |
+        (p.question ? PLAYER_FLAGS.ANSWERING : 0);
       return encodePlayerState(p, WEAPON_IDS.indexOf(p.weaponId), flags);
     });
     return [
@@ -95,6 +122,8 @@ export class Game {
       this.room.phase === 'lobby' ? this.dummies.map((d) => Math.ceil(d.hp)) : [],
       this.shots,
       this.explosions,
+      crateStates(this),
+      this.alarms.map((a) => [a.x, a.y]),
     ];
   }
 

@@ -25,8 +25,15 @@ export class Player {
     this.connected = false;
     this.removeTimer = null;
 
-    this.kills = 0;
+    this.resetStats();
     this.resetCombat();
+  }
+
+  // Estadísticas de la partida (bajas y aciertos por tema); se reinician al iniciar
+  resetStats() {
+    this.kills = 0;
+    this.stats = { byTopic: {}, failed: [], correct: 0, answered: 0 };
+    this.seenQuestions = new Set();
   }
 
   resetCombat() {
@@ -44,6 +51,9 @@ export class Player {
     this.deathAt = 0;
     this.killedBy = null;
     this.killedWith = null;
+    this.question = null; // { crateId, q, expiresAt } mientras abre una caja
+    this.streak = 0;
+    this.radarUntil = 0;
   }
 
   get weaponId() {
@@ -147,6 +157,9 @@ export class Player {
       primary: this.primary && { ...this.primary },
       grenades: this.grenades,
       reloadLeft: this.reloadUntil ? Math.max(0, this.reloadUntil - now) : 0,
+      streak: this.streak,
+      radar: this.radarUntil > now,
+      answering: this.question ? this.question.crateId : null,
       killedBy: this.killedBy,
       killedWith: this.killedWith,
     };

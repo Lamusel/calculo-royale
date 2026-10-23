@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
+import { ALL_TOPICS } from '../questions/QuestionBank.js';
 import { Game } from '../game/Game.js';
 import { Player } from '../game/Player.js';
 import { World } from '../game/World.js';
@@ -12,6 +13,7 @@ export class Room {
     this.onEmpty = onEmpty;
     this.phase = 'lobby'; // 'lobby' | 'playing'
     this.hostId = null;
+    this.topics = [...ALL_TOPICS]; // temas de las preguntas (los elige el host en el lobby)
     this.players = new Map(); // id → Player
     this.nextId = 1;
     this.world = new World();
@@ -100,6 +102,7 @@ export class Room {
     const players = [...this.players.values()];
     const spawns = this.world.gameSpawns(players.length);
     players.forEach((p, i) => {
+      p.resetStats();
       p.resetCombat();
       p.teleport(spawns[i].x, spawns[i].y);
     });
@@ -130,6 +133,7 @@ export class Room {
       code: this.code,
       phase: this.phase,
       hostId: this.hostId,
+      topics: this.topics,
       players: [...this.players.values()].map((p) => p.info()),
     };
   }

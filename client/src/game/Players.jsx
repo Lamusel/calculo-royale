@@ -23,6 +23,9 @@ const ghostMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, transp
 const silhouetteGeometry = new THREE.CapsuleGeometry(0.4, 1.0, 3, 8).translate(0, 1.15, 0);
 const silhouetteMaterial = new THREE.MeshBasicMaterial({ color: '#fde047', depthFunc: THREE.GreaterDepth, depthWrite: false });
 
+// Icono de "expuesto" sobre quien está abriendo una caja
+const exposedLabel = textTexture('⚠ ABRIENDO', { color: '#fb923c', size: 44 });
+
 const UP = new THREE.Vector3(0, 1, 0);
 const normal = new THREE.Vector3();
 const fallAxis = new THREE.Vector3();
@@ -94,6 +97,9 @@ function SoldierAvatar({ player, isMe, vestLevel, register, blobShadow }) {
       </group>
       <sprite position-y={2.6} scale={[label.aspect * 0.6, 0.6, 1]}>
         <spriteMaterial map={label.texture} depthWrite={false} transparent />
+      </sprite>
+      <sprite ref={set('exposed')} position-y={BAR_Y + 0.55} scale={[exposedLabel.aspect * 0.5, 0.5, 1]} visible={false} renderOrder={3}>
+        <spriteMaterial map={exposedLabel.texture} depthWrite={false} depthTest={false} transparent />
       </sprite>
       <Bar barRef={set('bg')} color="#111827" y={BAR_Y} height={0.16} order={1} />
       <Bar barRef={set('hp')} color="#4ade80" y={BAR_Y} height={0.16} order={2} />
@@ -194,6 +200,8 @@ export default function Players({ client, roster, myId, frameRef, quality }) {
 
       const dead = Boolean(info.flags & PLAYER_FLAGS.DEAD);
       if (a.silhouette) a.silhouette.visible = !dead;
+      a.exposed.visible = Boolean(info.flags & PLAYER_FLAGS.ANSWERING);
+      if (a.exposed.visible) a.exposed.material.opacity = 0.65 + 0.35 * Math.sin(now / 120);
       const hpRatio = Math.max(0, info.hp / MAX_HP);
       a.bg.visible = !dead;
       a.hp.visible = !dead;

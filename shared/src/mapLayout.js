@@ -150,8 +150,46 @@ export const PATHS = [
   [[0, 0], [-8, -20], [-20, -40], [-30, -58]],
 ];
 
+// Cajas de suministro (sin colisión). Rareza fija por lugar: más valiosas dentro de las casas
+// y entre los contenedores; doradas (Todo o nada) en la plaza del pueblo y el patio.
+// rarity: 0 común, 1 raro, 2 épico, 3 legendario (índice en RARITIES)
+export const SUPPLY_CRATES = [
+  // Campo abierto
+  { x: 12, y: 20, rarity: 0 },
+  { x: 20, y: 8, rarity: 0 },
+  { x: -22, y: -18, rarity: 0 },
+  { x: 10, y: -30, rarity: 0 },
+  { x: -40, y: -30, rarity: 1 },
+  { x: 40, y: 10, rarity: 0 },
+  { x: 25, y: 40, rarity: 1 },
+  { x: -5, y: 40, rarity: 0 },
+  { x: 45, y: 35, rarity: 0 },
+  { x: -50, y: 0, rarity: 1 },
+  { x: 0, y: -45, rarity: 0 },
+  { x: 50, y: -10, rarity: 1 },
+  { x: -25, y: -45, rarity: 0 },
+  { x: 30, y: -50, rarity: 0 },
+  { x: -52, y: 50, rarity: 1 },
+  { x: 52, y: 52, rarity: 1 },
+  // Dentro de cada casa
+  { x: -44, y: 42, rarity: 2 },
+  { x: -30, y: 44, rarity: 1 },
+  { x: -46, y: 26, rarity: 2 },
+  { x: -32, y: 28, rarity: 1 },
+  { x: -20, y: 38, rarity: 1 },
+  { x: -38, y: 14, rarity: 2 },
+  // Patio de contenedores
+  { x: 26, y: -24, rarity: 1 },
+  { x: 34, y: -32, rarity: 2 },
+  { x: 44, y: -41, rarity: 3 },
+  // Plaza del pueblo
+  { x: -33, y: 36, rarity: 3 },
+];
+
 // Campo de entrenamiento (solo existe en el lobby): armeros y blancos de práctica
 export const TRAINING = {
+  // Caja de práctica: va al final de la lista de cajas del snapshot
+  crate: { x: 11, y: 3, rarity: 0 },
   racks: [
     { item: 'shotgun', x: -8, y: 10 },
     { item: 'rifle', x: -4, y: 10 },

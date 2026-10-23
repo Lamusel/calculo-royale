@@ -10,6 +10,8 @@ import { socket } from '../net/socket.js';
 import CombatHUD from '../ui/CombatHUD.jsx';
 import HUD from '../ui/HUD.jsx';
 import Killfeed from '../ui/Killfeed.jsx';
+import { CrateResult, LockModal } from '../ui/LockModal.jsx';
+import RadarOverlay from '../ui/RadarOverlay.jsx';
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
 import Lobby from './Lobby.jsx';
@@ -52,6 +54,11 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
       />
       <Killfeed killfeed={view.killfeed} roster={room.players} myId={myId} />
       <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} />
+      {view.radarLeft > 0 && <RadarOverlay me={view.me} others={view.others} myId={myId} secondsLeft={view.radarLeft} />}
+      {view.question && (
+        <LockModal question={view.question} onAnswer={(i) => client.answer(i)} onCancel={() => client.cancelQuestion()} />
+      )}
+      {view.crateResult && <CrateResult result={view.crateResult} onClose={() => (client.crateResult = null)} />}
     </>
   );
 }
@@ -60,7 +67,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
 export default function Game({ room, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
-  const frameRef = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [] });
+  const frameRef = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [] });
   const isTouch = isTouchDevice();
 
   // Calidad automática: el controlador mide FPS cada cuadro y cambia el nivel si hace falta

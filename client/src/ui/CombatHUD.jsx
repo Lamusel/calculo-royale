@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ARMOR_ABSORB, GRENADE, ITEM_NAMES, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { ARMOR_ABSORB, GRENADE, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
 import WeaponIcon from './WeaponIcon.jsx';
@@ -34,7 +34,7 @@ function HealthBar({ self }) {
 
 // Botón que reacciona al tocar (pointerdown): en el celular un `click` no llega
 // si hay otro dedo en la pantalla (por ejemplo, en el joystick de movimiento)
-export function TouchButton({ onPress, className, children }) {
+export function TouchButton({ onPress, className, style, children }) {
   return (
     <button
       onPointerDown={(e) => {
@@ -42,6 +42,7 @@ export function TouchButton({ onPress, className, children }) {
         onPress();
       }}
       className={className}
+      style={style}
     >
       {children}
     </button>
@@ -135,7 +136,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
 
 // Interfaz de combate: vida, armas, botones táctiles, aviso para tomar armas y pantalla de muerte
 export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
-  const { self, reloadProgress, rack, damageFlashAt, deathAt } = view;
+  const { self, reloadProgress, interact, damageFlashAt, deathAt } = view;
   if (!self) return null;
 
   return (
@@ -154,18 +155,32 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
         </div>
       )}
 
-      {rack && (
+      {interact && (
         <div className="absolute bottom-28 left-1/2 z-20 -translate-x-1/2">
-          {isTouch ? (
-            <TouchButton onPress={actions.interact} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
-              Tomar {ITEM_NAMES[rack.item]}
+          {interact.enabled && isTouch ? (
+            <TouchButton
+              onPress={actions.interact}
+              className="rounded border-2 bg-khaki px-4 py-2 font-bold text-olive-950"
+              style={{ borderColor: interact.color ?? 'transparent' }}
+            >
+              {interact.label}
             </TouchButton>
           ) : (
-            <p className="rounded bg-black/60 px-3 py-1.5 text-sm text-khaki-light">
-              <kbd className="mr-1 rounded bg-khaki px-1.5 font-bold text-olive-950">E</kbd> Tomar {ITEM_NAMES[rack.item]}
+            <p
+              className={`rounded border-l-4 bg-black/65 px-3 py-1.5 text-sm ${interact.enabled ? 'text-khaki-light' : 'text-stone-400'}`}
+              style={{ borderColor: interact.color ?? 'transparent' }}
+            >
+              {interact.enabled && <kbd className="mr-1 rounded bg-khaki px-1.5 font-bold text-olive-950">E</kbd>}
+              {interact.label}
             </p>
           )}
         </div>
+      )}
+
+      {self.alive && self.streak > 0 && (
+        <p className="pointer-events-none absolute bottom-[7.5rem] right-3 z-20 rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-sky-200 sm:bottom-24">
+          Racha {self.streak % 3 === 0 ? 3 : self.streak % 3}/3
+        </p>
       )}
 
       {isTouch && self.alive && (

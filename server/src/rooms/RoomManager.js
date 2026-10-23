@@ -1,4 +1,4 @@
-import { NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@calculo-royale/shared/constants';
+import { NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { Room } from './Room.js';
 
@@ -113,6 +113,26 @@ export class RoomManager {
   interact(socket) {
     const player = this.playerOf(socket);
     if (player) this.roomOf(socket).game.interact(player);
+  }
+
+  // El host elige los temas en el lobby (al menos uno)
+  setTopics(socket, topics) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby' || !Array.isArray(topics)) return;
+    const valid = [...new Set(topics.filter((t) => TOPICS[t]))];
+    if (valid.length === 0) return;
+    room.topics = valid;
+    room.broadcastInfo();
+  }
+
+  crateAnswer(socket, data) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.answerCrate(player, data?.crateId, data?.index);
+  }
+
+  crateCancel(socket) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.cancelQuestion(player);
   }
 
   requestSelf(socket) {

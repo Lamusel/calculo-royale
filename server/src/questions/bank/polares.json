@@ -1,0 +1,58 @@
+[
+  {
+    "id": "pol-01",
+    "tema": "polares",
+    "dificultad": 1,
+    "enunciado": "En coordenadas polares, el elemento de área $dA$ es",
+    "opciones": [
+      "$r \\, dr \\, d\\theta$",
+      "$dr \\, d\\theta$",
+      "$r^2 \\, dr \\, d\\theta$",
+      "$\\theta \\, dr \\, d\\theta$"
+    ],
+    "correcta": 0,
+    "explicacion": "El jacobiano de $x = r\\cos\\theta$, $y = r\\sin\\theta$ es $r$, así que $dA = r\\,dr\\,d\\theta$."
+  },
+  {
+    "id": "pol-02",
+    "tema": "polares",
+    "dificultad": 2,
+    "enunciado": "Evalúe $\\int_0^{2\\pi} \\int_0^2 r \\, dr \\, d\\theta$",
+    "opciones": [
+      "$2\\pi$",
+      "$4\\pi$",
+      "$8\\pi$",
+      "$4$"
+    ],
+    "correcta": 1,
+    "explicacion": "$\\int_0^2 r\\,dr = 2$; por $2\\pi$: $4\\pi$ (el área del disco de radio $2$)."
+  },
+  {
+    "id": "pol-03",
+    "tema": "polares",
+    "dificultad": 3,
+    "enunciado": "Evalúe $\\iint_D (x^2 + y^2) \\, dA$ con $D: x^2 + y^2 \\le 1$",
+    "opciones": [
+      "$\\pi$",
+      "$\\frac{\\pi}{4}$",
+      "$\\frac{\\pi}{2}$",
+      "$2\\pi$"
+    ],
+    "correcta": 2,
+    "explicacion": "En polares: $\\int_0^{2\\pi}\\int_0^1 r^2 \\cdot r\\,dr\\,d\\theta = 2\\pi \\cdot \\frac{1}{4} = \\frac{\\pi}{2}$."
+  },
+  {
+    "id": "pol-04",
+    "tema": "polares",
+    "dificultad": 4,
+    "enunciado": "Evalúe $\\iint_D e^{-(x^2 + y^2)} \\, dA$ con $D: x^2 + y^2 \\le 1$",
+    "opciones": [
+      "$2\\pi\\left(1 - e^{-1}\\right)$",
+      "$\\pi\\left(1 - e\\right)$",
+      "$\\pi e^{-1}$",
+      "$\\pi\\left(1 - e^{-1}\\right)$"
+    ],
+    "correcta": 3,
+    "explicacion": "$\\int_0^{2\\pi}\\int_0^1 e^{-r^2} r\\,dr\\,d\\theta = 2\\pi \\cdot \\frac{1 - e^{-1}}{2} = \\pi(1 - e^{-1})$."
+  }
+]
