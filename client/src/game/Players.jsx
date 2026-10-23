@@ -39,6 +39,9 @@ const exposedLabel = textTexture('⚠ ABRIENDO', { color: '#fb923c', size: 44 })
 // Nivel del chaleco junto a la barra
 const vestLabels = [null, 1, 2, 3].map((n) => n && textTexture(`Ch${n}`, { color: '#93c5fd', size: 40 }));
 
+// LOD de las skins externas por distancia al foco de la cámara (ajustables)
+export const LOD_DISTANCES = [12, 30];
+
 const UP = new THREE.Vector3(0, 1, 0);
 const normal = new THREE.Vector3();
 
@@ -121,7 +124,13 @@ function seatOf(id, frame) {
   return null;
 }
 
-export default function Players({ client, roster, myId, frameRef, quality }) {
+// Nivel de detalle: en calidad baja y de noche (linternas), siempre el más bajo y sin sombras
+export function lodFor(distance, quality, night) {
+  if (quality.name === 'baja' || night) return 2;
+  return distance > LOD_DISTANCES[1] ? 2 : distance > LOD_DISTANCES[0] ? 1 : 0;
+}
+
+export default function Players({ client, roster, myId, frameRef, quality, night = false }) {
   const avatars = useRef(new Map());
   const register = useMemo(
     () => (id, parts) => (parts ? avatars.current.set(id, parts) : avatars.current.delete(id)),
@@ -135,6 +144,7 @@ export default function Players({ client, roster, myId, frameRef, quality }) {
     const { me, meInfo, others } = frame;
     const duelists = client.duelIntro?.(now) ? client.duel.ids : null;
     const winnerId = client.phase === 'results' ? client.results?.winnerId : null;
+    const focus = frame.follow ?? me;
     for (const [id, a] of avatars.current) {
       const info = id === myId ? meInfo : others.get(id);
       const pos = id === myId ? me : info;
@@ -155,7 +165,11 @@ export default function Players({ client, roster, myId, frameRef, quality }) {
       const ch = a.character;
       ch.setVest(info.armorLevel);
       ch.setWeapon(info.weapon < 4 ? info.weapon : -1);
-      ch.setShadows(quality.shadows);
+      const external = Boolean(ch.external);
+      const lod = lodFor(focus ? Math.hypot(pos.x - focus.x, pos.y - focus.y) : 0, quality, night);
+      if (ch.lod !== lod) ch.setLod(lod);
+      const shadows = quality.shadows && !(external && (night || lod === 2));
+      if (ch.shadows !== shadows) ch.setShadows(shadows);
       const shotAt = client.lastShot.get(id);
       ch.update(
         {

@@ -3,6 +3,8 @@ import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
 import { createQualityController, initialQuality, QUALITY } from '../game/quality.js';
 import Scene from '../game/Scene.jsx';
+import { loadSkinSystem } from '../game/character/Character.js';
+import { isExternalSkin } from '../game/character/skins/index.js';
 import { attachKeyboardMouse } from '../input/KeyboardMouse.js';
 import { resetInput } from '../input/inputState.js';
 import TouchControls, { isTouchDevice } from '../input/TouchControls.jsx';
@@ -170,6 +172,15 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
       resetInput();
     };
   }, []);
+
+  // Al iniciar la partida se descargan las skins externas elegidas (mientras, se ve el soldado gris)
+  useEffect(() => {
+    if (room.phase !== 'playing') return;
+    const skins = room.players.map((p) => p.skin);
+    if (skins.some(isExternalSkin)) loadSkinSystem().then((m) => m.preloadMatchSkins(skins));
+    // Solo al cambiar de fase
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.phase]);
 
   useEffect(() => {
     if (room.phase !== 'playing') return;

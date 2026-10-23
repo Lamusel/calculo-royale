@@ -36,6 +36,8 @@ const mustache = (color = BLACK) => [B(0.03, 0.04, 0.2, color, [0.16, 1.76, 0])]
 
 export const SKIN_STYLES = {
   soldado: {},
+  // Soldado gris: se muestra mientras carga una skin externa o si su archivo falla
+  fallback: { uniform: '#7c7f83', sleeve: '#7c7f83', pants: '#6b6e72', pantsDark: '#5d6064', vest: ['#7c7f83', '#8a8d91', '#94979b', '#9ea1a5'] },
 
   // --- Leyendas de las Matemáticas ---
   newton: {

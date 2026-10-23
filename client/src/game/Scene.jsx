@@ -226,7 +226,7 @@ export default function Scene({
       <BombingMesh frameRef={frameRef} />
       <Vehicles client={client} frameRef={frameRef} quality={quality} />
       <Weather weather={active} windAngle={windAngle} client={client} frameRef={frameRef} quality={quality} />
-      <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} />
+      <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} night={active === 'noche'} />
       <Grenades frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />
       <Effects client={client} quality={quality} />

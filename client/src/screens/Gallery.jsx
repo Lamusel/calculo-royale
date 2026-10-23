@@ -5,6 +5,9 @@ import { SKIN_RARITIES, SKINS } from '@calculo-royale/shared/skins';
 import { textTexture } from '../game/labels.js';
 import SoldierModel from '../game/SoldierModel.jsx';
 
+// Solo las procedurales (las externas tienen su galería en /skins)
+const PROCEDURAL = SKINS.filter((s) => s.type !== 'external');
+
 const COLS = 6;
 const GAP_X = 2.2;
 const GAP_Z = 3.6;
@@ -20,14 +23,14 @@ function Label({ text, color, position }) {
 
 // Galería de todas las skins (/galeria): para revisarlas de un vistazo desde la cámara 3/4
 export default function Gallery() {
-  const rows = Math.ceil(SKINS.length / COLS);
+  const rows = Math.ceil(PROCEDURAL.length / COLS);
   return (
     <div className="h-full w-full bg-olive-950">
       <Canvas dpr={[1, 1.5]} camera={{ fov: 40, position: [0, 13, 13] }} onCreated={({ camera }) => camera.lookAt(0, 0, 0)}>
         <color attach="background" args={['#2a3220']} />
         <hemisphereLight args={['#e8eef2', '#3a3628', 1.5]} />
         <directionalLight position={[-6, 12, 8]} intensity={1.9} />
-        {SKINS.map((s, i) => {
+        {PROCEDURAL.map((s, i) => {
           const x = ((i % COLS) - (COLS - 1) / 2) * GAP_X;
           const z = (Math.floor(i / COLS) - (rows - 1) / 2) * GAP_Z;
           return (

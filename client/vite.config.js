@@ -7,6 +7,15 @@ const server = process.env.CR_SERVER_URL || `http://localhost:${SERVER_PORT}`;
 
 export default defineConfig({
   plugins: [react()],
+  // El cargador de skins externas se importa recién cuando hace falta: se preempaqueta desde el
+  // inicio para que Vite no recargue la página al descubrirlo en medio de una partida
+  optimizeDeps: {
+    include: [
+      'three/examples/jsm/loaders/GLTFLoader.js',
+      'three/examples/jsm/loaders/DRACOLoader.js',
+      'three/examples/jsm/utils/SkeletonUtils.js',
+    ],
+  },
   server: {
     port: 5173,
     // Sin saltar a otro puerto: el túnel y el QR apuntan al 5173

@@ -1,5 +1,6 @@
-// Catálogo de skins (todas propias y procedurales). El servidor valida contra esta lista;
-// los modelos viven en el cliente (client/src/game/models/skins.js).
+// Catálogo de skins. El servidor valida contra esta lista; los modelos viven en el cliente:
+// las procedurales en client/src/game/models/skins.js y las externas (GLB) se configuran en
+// client/src/game/character/skins/registry.js (aquí solo van sus IDs genéricos).
 
 export const SKIN_RARITIES = {
   comun: { name: 'Común', color: '#9ca3af' },
@@ -49,7 +50,18 @@ export const SKINS = [
   { id: 'invicto', name: 'El Invicto', collection: 'De honor', rarity: 'honor', achievement: 'invicto' },
   { id: 'operador', name: 'Operador de Oro', collection: 'De honor', rarity: 'honor', achievement: 'operador' },
   { id: 'centurion', name: 'Centurión del Cálculo', collection: 'De honor', rarity: 'honor', achievement: 'aciertos' },
+
+  // Espacios para skins externas (GLB). Nombre, rareza y ajustes: client/src/game/character/skins/registry.js
+  ...[1, 2, 3, 4, 5].map((n) => ({
+    id: `externa_0${n}`,
+    name: `Skin externa ${n}`,
+    collection: 'Skins externas',
+    rarity: 'legendario',
+    type: 'external',
+  })),
 ];
+
+export const EXTERNAL_SKIN_IDS = SKINS.filter((s) => s.type === 'external').map((s) => s.id);
 
 export const SKIN_IDS = new Set(SKINS.map((s) => s.id));
 export const skinById = (id) => SKINS.find((s) => s.id === id) ?? SKINS[0];

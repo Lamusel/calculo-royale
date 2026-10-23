@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { ACHIEVEMENTS, SKIN_RARITIES, SKINS, skinById } from '@calculo-royale/shared/skins';
+import { ACHIEVEMENTS, SKIN_RARITIES } from '@calculo-royale/shared/skins';
+import { loadSkinSystem } from '../game/character/Character.js';
+import { externalSkins, getSkinEntry, listSkins } from '../game/character/skins/index.js';
 import { loadProgress, loadSkin, saveSkin, unlockedSkins } from '../achievements.js';
 import SoldierModel from '../game/SoldierModel.jsx';
 
@@ -29,7 +31,24 @@ export function SkinPreview({ skin, color, className }) {
   );
 }
 
+const SKINS = listSkins();
 const COLLECTIONS = [...new Set(SKINS.map((s) => s.collection))];
+
+// Qué skins externas tienen su archivo (las demás dicen "Asset pendiente")
+function useExternalStatus() {
+  const [status, setStatus] = useState({});
+  useEffect(() => {
+    let alive = true;
+    loadSkinSystem().then(async (m) => {
+      const entries = await Promise.all(externalSkins().map(async (e) => [e.id, await m.assetStatus(e)]));
+      if (alive) setStatus(Object.fromEntries(entries));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return status;
+}
 
 // Selector del lobby: colecciones, rareza, candado de las de honor con su logro
 export default function SkinPicker({ color, onChoose, onClose }) {
@@ -37,7 +56,9 @@ export default function SkinPicker({ color, onChoose, onClose }) {
   const unlocked = new Set(unlockedSkins(progress));
   const [current] = useState(loadSkin);
   const [selected, setSelected] = useState(current);
-  const skin = skinById(selected);
+  const external = useExternalStatus();
+  const skin = getSkinEntry(selected);
+  const pending = skin.type === 'external' && external[skin.id] === 'missing';
   const rarity = SKIN_RARITIES[skin.rarity];
   const locked = skin.rarity === 'honor' && !unlocked.has(skin.id);
   const achievement = skin.achievement && ACHIEVEMENTS[skin.achievement];
@@ -52,6 +73,7 @@ export default function SkinPicker({ color, onChoose, onClose }) {
             <p className="text-xs text-stone-400">
               {skin.collection} · <b style={{ color: rarity.color }}>{rarity.name}</b>
             </p>
+            {pending && <p className="mt-1 text-xs text-orange-300">Asset pendiente: se verá el soldado gris hasta que pongas su archivo</p>}
             {achievement && (
               <p className={`mt-1 text-xs ${locked ? 'text-orange-300' : 'text-green-300'}`}>
                 {locked ? '🔒 ' : '✓ '}
@@ -94,6 +116,7 @@ export default function SkinPicker({ color, onChoose, onClose }) {
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SKIN_RARITIES[s.rarity].color }} />
                       <span className={`truncate ${isLocked ? 'text-stone-500' : ''}`}>{s.name}</span>
                       {isLocked && <span className="ml-auto text-xs">🔒</span>}
+                      {s.type === 'external' && external[s.id] === 'missing' && <span className="ml-auto text-[10px] text-orange-300">pendiente</span>}
                       {s.id === current && <span className="ml-auto text-[10px] text-khaki-light">en uso</span>}
                     </button>
                   );

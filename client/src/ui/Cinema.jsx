@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { skinById } from '@calculo-royale/shared/skins';
+import { getSkinEntry } from '../game/character/skins/index.js';
 
 // Barras de cine arriba y abajo (entran deslizándose)
 export function Letterbox({ visible = true }) {
@@ -33,7 +33,7 @@ export function DuelIntro({ client, roster }) {
   }
   const id = client.duel.ids[elapsed < client.duel.introMs / 2 ? 0 : 1];
   const player = roster.find((p) => p.id === id);
-  const skin = skinById(player?.skin);
+  const skin = getSkinEntry(player?.skin);
   return (
     <>
       <Letterbox />

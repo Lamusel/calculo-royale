@@ -31,7 +31,7 @@ test('catálogo: 24 skins en 5 colecciones más la básica, ids únicos, de hono
 
 test('cada skin construye su modelo y muestra el color del jugador', () => {
   const accent = '#ec4899';
-  for (const s of SKINS) {
+  for (const s of SKINS.filter((x) => x.type !== 'external')) {
     assert.ok(SKIN_STYLES[s.id], `falta el estilo de ${s.id}`);
     for (const vest of [0, 3]) {
       const torso = torsoGeometry(accent, vest, s.id);
