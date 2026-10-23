@@ -153,3 +153,17 @@ export const TRAINING = {
     { x: 8, y: -11 },
   ],
 };
+
+// Armero más cercano dentro del radio (o null). Servidor y cliente usan la misma regla.
+export function nearestRack(x, y, radius) {
+  let best = null;
+  let bestDist = radius;
+  for (const rack of TRAINING.racks) {
+    const d = Math.hypot(rack.x - x, rack.y - y);
+    if (d <= bestDist) {
+      best = rack;
+      bestDist = d;
+    }
+  }
+  return best;
+}

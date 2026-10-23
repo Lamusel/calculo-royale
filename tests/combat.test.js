@@ -232,3 +232,10 @@ test('la compensación de lag acierta donde el tirador veía al objetivo', () =>
     assert.equal(target.hp < MAX_HP, shouldHit, label);
   }
 });
+
+test('el armero que se toma es el más cercano', () => {
+  const room = makeRoom('lobby');
+  const p = addPlayer(room, 1, -6.5, 9); // entre la escopeta (-8, 10) y el rifle (-4, 10)
+  room.game.interact(p);
+  assert.equal(p.primary.id, 'shotgun');
+});

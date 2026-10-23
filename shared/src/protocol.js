@@ -34,6 +34,7 @@ export const BUTTONS = {
   AUTO: 2, // con FIRE o GRENADE: el servidor apunta solo al enemigo visible más cercano
   RELOAD: 4,
   GRENADE: 8, // lanzar granada
+  AIM: 16, // apuntando con el francotirador: camina más lento
 };
 
 // Banderas de cada jugador en el snapshot

@@ -58,6 +58,13 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => rooms.disconnect(socket));
 });
 
+// Con node --watch, el proceso anterior a veces aún tiene el puerto: se reintenta unos segundos
+let listenAttempts = 0;
+httpServer.on('error', (err) => {
+  if (err.code !== 'EADDRINUSE' || ++listenAttempts > 20) throw err;
+  setTimeout(() => httpServer.listen(PORT), 250);
+});
+
 httpServer.listen(PORT, () => {
   console.log(`[server] escuchando en http://localhost:${PORT}`);
 });

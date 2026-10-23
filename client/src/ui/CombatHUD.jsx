@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { ARMOR_ABSORB, GRENADE, ITEM_NAMES, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
-import { actions, inputState, press } from '../input/inputState.js';
+import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
 import WeaponIcon from './WeaponIcon.jsx';
 
 const ammoText = (mag, reserve) => `${mag} / ${reserve === null || reserve === undefined ? '∞' : reserve}`;
@@ -31,29 +32,56 @@ function HealthBar({ self }) {
   );
 }
 
-function Slot({ active, label, children, onClick }) {
+// Botón que reacciona al tocar (pointerdown): en el celular un `click` no llega
+// si hay otro dedo en la pantalla (por ejemplo, en el joystick de movimiento)
+export function TouchButton({ onPress, className, children }) {
   return (
     <button
-      onClick={onClick}
-      className={`flex min-w-[5.5rem] flex-col items-center rounded border px-2 py-1 text-[11px] leading-tight ${
-        active ? 'border-khaki bg-black/70 text-khaki-light' : 'border-white/10 bg-black/45 text-stone-400'
-      }`}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        onPress();
+      }}
+      className={className}
     >
-      <span className="self-start font-mono text-[9px] opacity-60">{label}</span>
       {children}
     </button>
   );
 }
 
+function Slot({ active, alert, label, children, onPress }) {
+  const tone = alert
+    ? 'border-red-400 bg-red-900/70 text-red-100'
+    : active
+      ? 'border-khaki bg-black/70 text-khaki-light'
+      : 'border-white/10 bg-black/45 text-stone-400';
+  return (
+    <TouchButton
+      onPress={onPress}
+      className={`flex min-w-[5.5rem] flex-col items-center rounded border px-2 py-1 text-[11px] leading-tight ${tone}`}
+    >
+      <span className="self-start font-mono text-[9px] opacity-60">{label}</span>
+      {children}
+    </TouchButton>
+  );
+}
+
 function WeaponBar({ self, reloadProgress, isTouch }) {
   const primary = self.primary;
+  const [noGrenadesAt, setNoGrenadesAt] = useState(0);
+  const noGrenades = performance.now() - noGrenadesAt < 1500;
+
+  // Celular: entra o sale del modo granada. PC: se usa G (mantener para ver el arco)
+  const onGrenade = () => {
+    if (self.grenades === 0) setNoGrenadesAt(performance.now());
+    else if (isTouch) toggleGrenadeMode(true);
+  };
   return (
     <div className="relative flex items-end gap-1.5">
-      <Slot active={self.slot === 1} label="1" onClick={() => actions.switchWeapon(1)}>
+      <Slot active={self.slot === 1} label="1" onPress={() => actions.switchWeapon(1)}>
         <WeaponIcon weapon="pistol" className="h-4 w-10" />
         <span className="font-mono">{ammoText(self.pistolMag, null)}</span>
       </Slot>
-      <Slot active={self.slot === 2} label="2" onClick={() => actions.switchWeapon(2)}>
+      <Slot active={self.slot === 2} label="2" onPress={() => actions.switchWeapon(2)}>
         {primary ? (
           <>
             <WeaponIcon weapon={primary.id} className="h-4 w-12" />
@@ -63,19 +91,17 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
           <span className="py-1.5 text-stone-500">vacío</span>
         )}
       </Slot>
-      <Slot
-        active={inputState.grenadeMode}
-        label={isTouch ? '' : 'G'}
-        onClick={() => {
-          if (isTouch) inputState.grenadeMode = !inputState.grenadeMode && self.grenades > 0;
-          else press(BUTTONS.GRENADE);
-        }}
-      >
+      <Slot active={inputState.grenadeMode} alert={noGrenades} label={isTouch ? '' : 'G'} onPress={onGrenade}>
         <WeaponIcon weapon="grenade" className="h-4 w-8" />
         <span className="font-mono">
           {self.grenades}/{GRENADE.max}
         </span>
       </Slot>
+      {(inputState.grenadeMode || noGrenades) && (
+        <p className="absolute -top-6 right-0 whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-[10px] uppercase tracking-wider text-khaki-light">
+          {noGrenades ? 'Sin granadas' : 'Arrastra a la derecha y suelta · toca otra vez para salir'}
+        </p>
+      )}
       {reloadProgress !== null && (
         <div className="absolute -top-5 left-1/2 w-40 -translate-x-1/2">
           <p className="text-center text-[10px] uppercase tracking-widest text-khaki-light">Recargando</p>
@@ -131,9 +157,9 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
       {rack && (
         <div className="absolute bottom-28 left-1/2 z-20 -translate-x-1/2">
           {isTouch ? (
-            <button onClick={actions.interact} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
+            <TouchButton onPress={actions.interact} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
               Tomar {ITEM_NAMES[rack.item]}
-            </button>
+            </TouchButton>
           ) : (
             <p className="rounded bg-black/60 px-3 py-1.5 text-sm text-khaki-light">
               <kbd className="mr-1 rounded bg-khaki px-1.5 font-bold text-olive-950">E</kbd> Tomar {ITEM_NAMES[rack.item]}
@@ -144,12 +170,12 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
 
       {isTouch && self.alive && (
         <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-3">
-          <button
-            onClick={() => press(BUTTONS.RELOAD)}
+          <TouchButton
+            onPress={() => press(BUTTONS.RELOAD)}
             className="h-12 w-12 rounded-full bg-black/55 text-[10px] font-bold uppercase text-khaki-light"
           >
             Rec.
-          </button>
+          </TouchButton>
         </div>
       )}
 

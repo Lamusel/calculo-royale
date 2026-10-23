@@ -44,6 +44,8 @@ export const GAME_SPAWN_RADIUS = 40;
 // --- Jugador ---
 export const PLAYER_RADIUS = 0.6;
 export const PLAYER_SPEED = 8; // unidades por segundo
+// Factor de velocidad mientras apunta con el francotirador
+export const AIM_MOVE_FACTOR = 0.5;
 export const MAX_HP = 100;
 // Daño que absorbe el chaleco según su nivel (0 = sin chaleco)
 export const ARMOR_ABSORB = [0, 25, 50, 75];
@@ -79,6 +81,11 @@ export const WEAPONS = {
     reloadMs: 2600, spread: 0, pellets: 1, range: 55, auto: false, releaseToFire: true,
   },
 };
+
+// Apuntado (cliente): zona de cancelación del joystick derecho (fracción del radio)
+// y cuánto se desplaza la cámara hacia la mira del francotirador
+export const AIM_CANCEL_ZONE = 0.3;
+export const SNIPER_LOOK_AHEAD = 16;
 
 export const GRENADE = {
   name: 'Granada',

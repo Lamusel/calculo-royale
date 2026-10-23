@@ -1,78 +1,69 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import nipplejs from 'nipplejs';
-import { GRENADE } from '@calculo-royale/shared/constants';
-import { BUTTONS } from '@calculo-royale/shared/protocol';
-import { currentAim, inputState, press } from './inputState.js';
+import { AIM_CANCEL_ZONE, WEAPONS } from '@calculo-royale/shared/constants';
+import { createAimGesture } from './aimGesture.js';
+import { inputState } from './inputState.js';
 
-// Por debajo de esto el joystick se considera suelto
-const DEAD_ZONE = 0.2;
-// Arrastrar más allá de esto empieza a disparar (armas de mantener)
-const FIRE_THRESHOLD = 0.45;
-// Un toque más corto que esto y sin arrastrar = disparo con auto apuntado
-const TAP_MS = 250;
+const STICK_SIZE = 120;
+// Zona muerta del joystick de movimiento
+const MOVE_DEAD_ZONE = 0.2;
 
 export const isTouchDevice = () => matchMedia('(pointer: coarse)').matches;
 
-// Twin-stick: mitad izquierda mueve, mitad derecha apunta y dispara. El joystick aparece donde tocas.
-//  - Toque rápido sin arrastrar: dispara solo al enemigo visible más cercano (decide el servidor).
-//  - Arrastrar: apuntado manual. Pistola, escopeta y rifle disparan mientras arrastras;
-//    francotirador y granada disparan al soltar (volver al centro antes de soltar cancela).
+// Anillo de la zona de cancelación sobre el joystick derecho
+function CancelRing({ ring }) {
+  const size = STICK_SIZE * AIM_CANCEL_ZONE;
+  const releases = inputState.grenadeMode || WEAPONS[inputState.weapon]?.releaseToFire;
+  return (
+    <div
+      className={`pointer-events-none absolute z-20 flex items-center justify-center rounded-full border-2 text-xs font-bold transition-colors ${
+        ring.cancelling ? 'border-red-400 bg-red-500/40 text-white' : releases ? 'border-white/70' : 'border-white/30'
+      }`}
+      style={{ left: ring.x - size, top: ring.y - size, width: size * 2, height: size * 2 }}
+    >
+      {ring.cancelling && '✕'}
+    </div>
+  );
+}
+
+// Twin-stick: mitad izquierda mueve, mitad derecha apunta y dispara (ver aimGesture.js).
+// El joystick aparece donde tocas.
 export default function TouchControls() {
   const leftRef = useRef(null);
   const rightRef = useRef(null);
+  const [ring, setRing] = useState(null);
 
   useEffect(() => {
-    const options = { mode: 'dynamic', color: 'white', size: 120, fadeTime: 80 };
+    const options = { mode: 'dynamic', color: 'white', size: STICK_SIZE, fadeTime: 80 };
     const move = nipplejs.create({ ...options, zone: leftRef.current });
     const aim = nipplejs.create({ ...options, zone: rightRef.current });
+    const gesture = createAimGesture();
 
     // Fuera de la zona muerta se camina a velocidad completa: más fácil en pantalla táctil
     move.on('move', (_e, data) => {
       const { x, y } = data.vector;
       const len = Math.hypot(x, y);
-      inputState.stickX = len > DEAD_ZONE ? x / len : 0;
-      inputState.stickY = len > DEAD_ZONE ? y / len : 0;
+      inputState.stickX = len > MOVE_DEAD_ZONE ? x / len : 0;
+      inputState.stickY = len > MOVE_DEAD_ZONE ? y / len : 0;
     });
     move.on('end', () => {
       inputState.stickX = 0;
       inputState.stickY = 0;
     });
 
-    let gesture = null;
-    aim.on('start', () => {
-      gesture = { startedAt: performance.now(), maxForce: 0, force: 0 };
+    aim.on('start', (_e, data) => {
+      gesture.start(performance.now());
+      const rect = rightRef.current.parentElement.getBoundingClientRect();
+      setRing({ x: data.position.x - rect.left, y: data.position.y - rect.top, cancelling: false });
     });
     aim.on('move', (_e, data) => {
-      if (!gesture) return;
-      const { x, y } = data.vector;
-      const force = Math.min(Math.hypot(x, y), 1);
-      gesture.force = force;
-      gesture.maxForce = Math.max(gesture.maxForce, force);
-      if (force > DEAD_ZONE) inputState.stickAim = Math.atan2(y, x);
-      const holdFire = inputState.weaponMode === 'hold' && !inputState.grenadeMode;
-      inputState.fireHeld = holdFire && force > FIRE_THRESHOLD;
+      gesture.move(data.vector.x, data.vector.y);
+      const cancelling = gesture.cancelling;
+      setRing((r) => (r && r.cancelling !== cancelling ? { ...r, cancelling } : r));
     });
     aim.on('end', () => {
-      inputState.fireHeld = false;
-      if (gesture) {
-        const isTap = gesture.maxForce < DEAD_ZONE && performance.now() - gesture.startedAt < TAP_MS;
-        const releaseFires = inputState.grenadeMode || inputState.weaponMode === 'release';
-        if (isTap) {
-          press((inputState.grenadeMode ? BUTTONS.GRENADE : BUTTONS.FIRE) | BUTTONS.AUTO, currentAim());
-          inputState.grenadeMode = false;
-        } else if (releaseFires && gesture.force > FIRE_THRESHOLD) {
-          const angle = currentAim();
-          if (inputState.grenadeMode) {
-            const dist = GRENADE.minRange + gesture.force * (GRENADE.maxRange - GRENADE.minRange);
-            press(BUTTONS.GRENADE, angle, dist);
-            inputState.grenadeMode = false;
-          } else {
-            press(BUTTONS.FIRE, angle);
-          }
-        }
-      }
-      gesture = null;
-      inputState.stickAim = null;
+      gesture.end(performance.now());
+      setRing(null);
     });
 
     return () => {
@@ -89,6 +80,7 @@ export default function TouchControls() {
     <>
       <div ref={leftRef} className="absolute inset-y-0 left-0 z-10 w-1/2 touch-none" />
       <div ref={rightRef} className="absolute inset-y-0 right-0 z-10 w-1/2 touch-none" />
+      {ring && <CancelRing ring={ring} />}
     </>
   );
 }

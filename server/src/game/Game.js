@@ -1,7 +1,7 @@
 import { DUMMY_HP, DUMMY_REGEN_MS, INTERACT_RADIUS, RESPAWN_MS, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodePlayerState } from '@calculo-royale/shared/codec';
-import { TRAINING } from '@calculo-royale/shared/mapLayout';
+import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 
 const DT = TICK_MS / 1000;
@@ -50,7 +50,7 @@ export class Game {
   // Armeros del campo de entrenamiento (en la fase 4 también las cajas)
   interact(player) {
     if (!player.alive || this.room.phase !== 'lobby') return;
-    const rack = TRAINING.racks.find((r) => Math.hypot(r.x - player.x, r.y - player.y) <= INTERACT_RADIUS);
+    const rack = nearestRack(player.x, player.y, INTERACT_RADIUS);
     if (rack) player.giveItem(rack.item);
   }
 

@@ -85,7 +85,8 @@ export class GameClient {
     this.self = self;
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
     this.predictedMag = selfMag(self);
-    inputState.weaponMode = WEAPONS[selfWeaponId(self)].releaseToFire ? 'release' : 'hold';
+    inputState.weapon = selfWeaponId(self);
+    if (self.grenades === 0) inputState.grenadeMode = false;
   }
 
   get alive() {

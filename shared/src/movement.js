@@ -1,5 +1,6 @@
-import { MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED, SLOPE_SPEED } from './constants.js';
+import { AIM_MOVE_FACTOR, MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED, SLOPE_SPEED } from './constants.js';
 import { resolveCircle } from './collision.js';
+import { BUTTONS } from './protocol.js';
 import { terrainGradient } from './terrain.js';
 
 // Movimiento compartido: el servidor lo usa como verdad y el cliente para predecir.
@@ -16,7 +17,7 @@ export function slopeFactor(x, y, ux, uy) {
 }
 
 // player: { x, y, aim } — se modifica en el lugar
-// input: { mx, my, aim } con mx, my en [-1, 1]
+// input: { mx, my, aim, buttons } con mx, my en [-1, 1]
 export function applyInput(player, input, dt) {
   player.aim = input.aim;
   const len = Math.hypot(input.mx, input.my);
@@ -24,7 +25,8 @@ export function applyInput(player, input, dt) {
 
   const ux = input.mx / len;
   const uy = input.my / len;
-  const step = PLAYER_SPEED * Math.min(len, 1) * slopeFactor(player.x, player.y, ux, uy) * dt;
+  const aiming = input.buttons & BUTTONS.AIM ? AIM_MOVE_FACTOR : 1;
+  const step = PLAYER_SPEED * Math.min(len, 1) * aiming * slopeFactor(player.x, player.y, ux, uy) * dt;
   player.x = clamp(player.x + ux * step, -LIMIT, LIMIT);
   player.y = clamp(player.y + uy * step, -LIMIT, LIMIT);
   resolveCircle(player, PLAYER_RADIUS);
