@@ -182,6 +182,29 @@ test('fallback: si falta el archivo (404 o index.html) queda el soldado gris y s
   }
 });
 
+test('modo A (sin esqueleto): mira hacia donde apunta, se balancea al caminar y usa sus LOD', async () => {
+  const model = new THREE.Group();
+  ['LOD0', 'LOD1', 'LOD2'].forEach((name, i) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5 - i * 0.1).translate(0, 1, 0), new THREE.MeshBasicMaterial());
+    m.name = name;
+    model.add(m);
+  });
+  setLoaderDeps(fakeLoader(model));
+  const ch = new Character({ skin: 'externa_05', color: '#00f' });
+  await until(() => ch.status !== 'loading');
+  assert.equal(ch.external.mode, 'A');
+  const lods = ['LOD0', 'LOD1', 'LOD2'].map((n) => ch.external.model.getObjectByName(n));
+  assert.deepEqual(lods.map((o) => o.visible), [true, false, false]);
+  ch.setLod(2);
+  assert.deepEqual(lods.map((o) => o.visible), [false, false, true]);
+  for (let i = 0; i < 20; i++) ch.update({ x: i * 0.3, y: 0, aim: 1.1, dead: false, shotAgo: 1e9, weapon: 0, seat: null }, i * 50, 0.05);
+  assert.ok(Math.abs(ch.external.object.rotation.y - 1.1) < 1e-9, 'mira a la mira');
+  assert.ok(ch.external.object.rotation.z < 0, 'se inclina al caminar');
+  ch.setShadows(false);
+  assert.equal(lods[2].castShadow, false);
+  ch.dispose();
+});
+
 test('clips por significado y avisos de límites para celular', () => {
   const clips = ['mixamo.com|Idle_01', 'Armature|Walking', 'Running', 'Dance'].map((name) => new THREE.AnimationClip(name, 1, []));
   assert.equal(findAnimationBySemantic(clips, 'idle').name, 'mixamo.com|Idle_01');

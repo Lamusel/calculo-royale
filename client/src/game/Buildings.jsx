@@ -153,7 +153,7 @@ const barrelModel = () =>
     piece(cylinder(0.9, 0.9, 0.02, 12), '#3a4428', { position: [0, 1.0, 0] }),
   ]);
 const rockModel = () => {
-  const g = new THREE.DodecahedronGeometry(1, 0).toNonIndexed();
+  const g = new THREE.DodecahedronGeometry(1, 0); // ya viene sin índices
   const colors = new Float32Array(g.attributes.position.count * 3);
   const c = new THREE.Color();
   for (let i = 0; i < colors.length / 9; i++) {

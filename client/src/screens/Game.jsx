@@ -5,6 +5,7 @@ import { createQualityController, initialQuality, QUALITY } from '../game/qualit
 import Scene from '../game/Scene.jsx';
 import { loadSkinSystem } from '../game/character/Character.js';
 import { isExternalSkin } from '../game/character/skins/index.js';
+import { debugSkinsEnabled } from '../game/character/debug.js';
 import { attachKeyboardMouse } from '../input/KeyboardMouse.js';
 import { resetInput } from '../input/inputState.js';
 import TouchControls, { isTouchDevice } from '../input/TouchControls.jsx';
@@ -61,6 +62,29 @@ function WeatherChip({ weather, windAngle }) {
           ➜
         </span>
       )}
+    </div>
+  );
+}
+
+// ?debugSkins=1: skin, modo, LOD y triángulos de cada jugador (los llena Players)
+function SkinDebugOverlay({ roster }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(id);
+  }, []);
+  const d = globalThis.__skinDebug;
+  if (!d) return null;
+  return (
+    <div className="pointer-events-none absolute bottom-24 right-3 z-30 max-h-[50vh] overflow-hidden rounded bg-black/75 px-2 py-1 font-mono text-[10px] text-cyan-200">
+      <p className="text-white">
+        Skins · {d.calls} llamadas · {(d.triangles / 1000).toFixed(0)}k tris
+      </p>
+      {d.players.map((p) => (
+        <p key={p.id}>
+          {roster.find((r) => r.id === p.id)?.name ?? p.id}: {p.skin} · {p.mode} · {p.status} · LOD{p.lod} · {p.triangles} tris · {p.meshes} mallas · {p.materials} mat · {p.textures} tex
+        </p>
+      ))}
     </div>
   );
 }
@@ -145,6 +169,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
     if (changed) setLevel(changed);
   }, [quality]);
   const stats = useMemo(() => (new URLSearchParams(location.search).has('debug') ? { frames: [] } : null), []);
+  const skinDebug = useMemo(() => debugSkinsEnabled(), []);
 
   useEffect(() => {
     const c = new GameClient(socket, myId, room.phase);
@@ -207,6 +232,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
         />
       )}
       {stats && <DebugOverlay stats={stats} quality={QUALITY[level]} />}
+      {skinDebug && <SkinDebugOverlay roster={room.players} />}
       {isTouch && <TouchControls />}
       {client && (
         <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} replaying={replaying} />

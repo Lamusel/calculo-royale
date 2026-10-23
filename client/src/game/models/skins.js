@@ -404,6 +404,84 @@ export const SKIN_STYLES = {
       ...[-0.24, -0.08, 0.08, 0.24].map((z) => B(0.36, 0.3, 0.12, '#a87a3a', [0, 0.85, z])),
     ],
   },
+
+  // --- Leyendas del Cálculo ---
+  mecha: {
+    uniform: '#3d4a5c', sleeve: '#2f3a48', pants: '#2a3340', pantsDark: '#222a35', boots: '#1c222b', face: '#20262f', gloves: '#1c222b',
+    vest: ['#3d4a5c', '#4a5a70', '#566a84', '#627a98'], helmet: false, goggles: false, backpack: false,
+    extra: (accent) => [
+      // Casco de mecha con visor brillante y aleta en V dorada
+      B(0.36, 0.3, 0.38, '#4a5a70', [0, 1.86, 0]),
+      B(0.04, 0.08, 0.3, accent, [0.19, 1.88, 0]),
+      ...[-1, 1].map((side) => B(0.03, 0.2, 0.05, GOLD, [0.17, 2.06, side * 0.08], [side * 0.6, 0, 0])),
+      // Hombreras grandes y reactor del pecho del color del jugador
+      ...[-1, 1].map((side) => B(0.38, 0.16, 0.24, '#566a84', [0, 1.6, side * 0.44], [side * 0.2, 0, 0])),
+      C(0.09, 0.09, 0.04, '#1c222b', [0.23, 1.4, 0], [0, 0, Math.PI / 2], 12),
+      S(0.07, accent, [0.25, 1.4, 0], [0.6, 1, 1]),
+      // Propulsores en la espalda
+      ...[-1, 1].map((side) => C(0.08, 0.1, 0.42, STEEL, [-0.34, 1.32, side * 0.15], [0, 0, 0], 8)),
+      ...[-1, 1].map((side) => C(0.09, 0.06, 0.08, accent, [-0.34, 1.07, side * 0.15], [0, 0, 0], 8)),
+    ],
+  },
+  dragon: {
+    uniform: '#1f7a5c', sleeve: '#1b6b51', pants: '#1a6650', pantsDark: '#155442', boots: '#0f3d30', face: '#2a8f6a', gloves: '#2a8f6a',
+    vest: ['#1f7a5c', '#2a8a6a', '#359a78', '#40aa86'], helmet: false, goggles: false, backpack: false,
+    extra: (accent) => [
+      // Cabeza de dragón: hocico largo, ojos dorados, cuernos y bigotes
+      B(0.32, 0.28, 0.32, '#2a8f6a', [0.02, 1.86, 0]),
+      B(0.26, 0.16, 0.24, '#2a8f6a', [0.26, 1.8, 0]),
+      ...[-1, 1].flatMap((side) => [
+        S(0.04, GOLD, [0.16, 1.93, side * 0.12]),
+        K(0.04, 0.26, '#e8d9a0', [-0.08, 2.08, side * 0.1], [side * -0.4, 0, 0.5], 5),
+        B(0.3, 0.015, 0.015, '#e8d9a0', [0.42, 1.76, side * 0.12], [side * 0.3, 0, -0.3]),
+      ]),
+      // Alas plegadas en la espalda y cresta del color del jugador
+      ...[-1, 1].map((side) => B(0.05, 0.75, 0.5, '#145a44', [-0.34, 1.45, side * 0.3], [side * 0.5, 0, -0.15])),
+      ...[1.8, 1.6, 1.4, 1.2, 1.0].map((y) => K(0.05, 0.14, accent, [-0.24, y, 0], [0, 0, 1.2], 4)),
+      // Cola de jade
+      K(0.14, 1.0, '#1f7a5c', [-0.6, 0.75, 0], [0, 0, 1.3], 8),
+    ],
+  },
+  pirata: {
+    uniform: '#2b3a4a', sleeve: '#2b3a4a', pants: '#1f2933', pantsDark: '#18212a', boots: '#111820', face: '#9fd8e0', gloves: '#9fd8e0',
+    vest: ['#2b3a4a', '#384a5c', '#45596e', '#526880'], helmet: false, goggles: false, backpack: false,
+    extra: (accent) => [
+      // Tricornio negro con ribete dorado, corona y pluma del color del jugador
+      C(0.3, 0.3, 0.04, BLACK, [0, 1.98, 0], [0, 0, 0], 3),
+      C(0.2, 0.22, 0.14, BLACK, [0, 2.06, 0], [0, 0, 0], 10),
+      T(0.27, 0.012, GOLD, [0, 2.0, 0], [Math.PI / 2, 0, 0]),
+      ...[0, 1, 2, 3, 4].map((i) => K(0.025, 0.08, GOLD, [Math.cos((i / 5) * Math.PI * 2) * 0.15, 2.16, Math.sin((i / 5) * Math.PI * 2) * 0.15], [0, 0, 0], 4)),
+      B(0.03, 0.35, 0.08, accent, [-0.12, 2.18, -0.16], [0.3, 0, 0.5]),
+      // Ojos fantasmales, parche y barba espectral
+      S(0.03, '#7df9ff', [0.17, 1.86, 0.07]),
+      B(0.02, 0.07, 0.08, BLACK, [0.17, 1.86, -0.07]),
+      K(0.13, 0.26, '#b6eef3', [0.12, 1.62, 0], [Math.PI, 0, 0], 8),
+      // Faldones largos del abrigo y alfanje al cinto
+      B(0.06, 0.6, 0.62, '#22303e', [-0.18, 0.75, 0]),
+      B(0.7, 0.03, 0.06, STEEL, [0.05, 0.92, 0.36], [0, 0, -0.5]),
+      C(0.05, 0.05, 0.05, GOLD, [-0.22, 1.08, 0.36], [0, 0, 0], 8),
+    ],
+  },
+  hechicero: {
+    uniform: '#3a1d5c', sleeve: '#4a2470', pants: '#3a1d5c', pantsDark: '#2e174a', boots: '#24123a', face: '#c49a72',
+    vest: ['#3a1d5c', '#4a2470', '#5a2c84', '#6a3498'], helmet: false, goggles: false, backpack: false,
+    extra: (accent) => [
+      // Sombrero puntiagudo con el símbolo ∇ (nabla) del color del jugador
+      C(0.32, 0.32, 0.03, '#2e174a', [0, 1.98, 0], [0, 0, 0], 16),
+      K(0.2, 0.62, '#4a2470', [-0.04, 2.3, 0], [0, 0, 0.15], 10),
+      K(0.07, 0.1, accent, [0.17, 2.1, 0], [Math.PI, 0, Math.PI / 2], 3),
+      // Barba blanca larga
+      K(0.12, 0.42, WHITE, [0.12, 1.58, 0], [Math.PI, 0, 0], 8),
+      // Túnica con degradado (de violeta a naranja hacia abajo)
+      C(0.36, 0.42, 0.26, '#6a3498', [0, 0.84, 0], [0, 0, 0], 10),
+      C(0.42, 0.48, 0.24, '#b0477a', [0, 0.6, 0], [0, 0, 0], 10),
+      C(0.48, 0.52, 0.2, '#e07a3a', [0, 0.38, 0], [0, 0, 0], 10),
+      // Esferas flotantes del gradiente
+      S(0.06, '#6a3498', [-0.1, 2.0, 0.45]),
+      S(0.06, '#b0477a', [-0.25, 1.75, 0.45]),
+      S(0.06, '#e07a3a', [-0.35, 1.5, 0.45]),
+    ],
+  },
 };
 
 export const styleOf = (id) => SKIN_STYLES[id] ?? SKIN_STYLES.soldado;

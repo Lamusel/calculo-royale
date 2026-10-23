@@ -51,6 +51,11 @@ export const SKINS = [
   { id: 'operador', name: 'Operador de Oro', collection: 'De honor', rarity: 'honor', achievement: 'operador' },
   { id: 'centurion', name: 'Centurión del Cálculo', collection: 'De honor', rarity: 'honor', achievement: 'aciertos' },
 
+  { id: 'mecha', name: 'Mecha Integral', collection: 'Leyendas del Cálculo', rarity: 'legendario' },
+  { id: 'dragon', name: 'Dragón de Jade', collection: 'Leyendas del Cálculo', rarity: 'legendario' },
+  { id: 'pirata', name: 'Rey Pirata Fantasma', collection: 'Leyendas del Cálculo', rarity: 'legendario' },
+  { id: 'hechicero', name: 'Hechicero del Gradiente', collection: 'Leyendas del Cálculo', rarity: 'legendario' },
+
   // Espacios para skins externas (GLB). Nombre, rareza y ajustes: client/src/game/character/skins/registry.js
   ...[1, 2, 3, 4, 5].map((n) => ({
     id: `externa_0${n}`,

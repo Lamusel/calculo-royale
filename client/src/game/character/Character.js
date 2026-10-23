@@ -11,6 +11,7 @@ let loaderModule = null;
 export const loadSkinSystem = () => (loaderModule ??= import('./loaders/skinLoader.js'));
 
 const handWorld = new THREE.Vector3();
+const warned = new Set(); // un solo aviso por skin que falla
 
 // Parte visual de un jugador:
 //   visualRoot
@@ -69,7 +70,8 @@ export class Character {
         })
         .catch((err) => {
           if (this.skinId !== wanted) return;
-          console.warn('Skin asset missing:', skinId, err?.message ?? err);
+          if (!warned.has(skinId)) console.warn('Skin asset missing:', skinId, err?.message ?? err);
+          warned.add(skinId);
           this.status = 'fallback';
         });
     } else {

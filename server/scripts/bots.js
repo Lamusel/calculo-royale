@@ -2,17 +2,21 @@
 // Uso: npm run bots -- <CÓDIGO> [cantidad] [--armados | --cazar]   (ej. npm run bots -- ABCD 5 --armados)
 // Con --armados disparan con pistola al jugador visible más cercano.
 // Con --cazar además caminan hacia el jugador vivo más cercano (para probar combate solo).
+// Con --skin=<id> usan esa skin; --skin=externas reparte las 5 externas (para probar skins).
 // Variable opcional SERVER_URL (por defecto http://localhost:3001)
 import { io } from 'socket.io-client';
 import { SERVER_PORT, TICK_MS } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodeInput } from '@calculo-royale/shared/codec';
 import { findAutoTarget } from '@calculo-royale/shared/combat';
+import { EXTERNAL_SKIN_IDS } from '@calculo-royale/shared/skins';
 
 const args = process.argv.slice(2);
 const hunt = args.includes('--cazar');
 const armed = hunt || args.includes('--armados');
 const [code, countArg] = args.filter((a) => !a.startsWith('--'));
+const skinArg = args.find((a) => a.startsWith('--skin='))?.slice(7) ?? null;
+const skinFor = (n) => (skinArg === 'externas' ? EXTERNAL_SKIN_IDS[(n - 1) % EXTERNAL_SKIN_IDS.length] : skinArg);
 const count = Number(countArg) || 5;
 const url = process.env.SERVER_URL || `http://localhost:${SERVER_PORT}`;
 
@@ -95,6 +99,7 @@ function spawnBot(n) {
         return;
       }
       myId = res.playerId;
+      if (skinFor(n)) socket.emit(EVENTS.PLAYER_SKIN, { skin: skinFor(n), unlocked: [] });
       console.log(`Bot ${n} dentro de ${res.code} (id ${res.playerId})${armed ? ' · armado' : ''}`);
       clearInterval(timer);
       timer = setInterval(step, TICK_MS);

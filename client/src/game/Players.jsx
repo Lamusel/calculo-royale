@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ARMOR_ABSORB, MAX_HP, PLAYER_RADIUS } from '@calculo-royale/shared/constants';
 import { PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { terrainGradient, terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, inputState } from '../input/inputState.js';
 import { Character } from './character/Character.js';
+import { characterStats, CharacterDebug, debugSkinsEnabled } from './character/debug.js';
 import { textTexture } from './labels.js';
 import { modelMaterial } from './models/build.js';
 
@@ -133,9 +134,18 @@ export function lodFor(distance, quality, night) {
 export default function Players({ client, roster, myId, frameRef, quality, night = false }) {
   const avatars = useRef(new Map());
   const register = useMemo(
-    () => (id, parts) => (parts ? avatars.current.set(id, parts) : avatars.current.delete(id)),
+    () => (id, parts) => {
+      if (parts) avatars.current.set(id, parts);
+      else {
+        avatars.current.get(id)?.debug?.dispose();
+        avatars.current.delete(id);
+      }
+    },
     [],
   );
+  // ?debugSkins=1: esqueleto, caja y sockets de cada personaje, y datos para el panel
+  const { scene, gl } = useThree();
+  const debug = useMemo(() => (debugSkinsEnabled() ? { at: 0 } : null), []);
 
   useFrame((_, delta) => {
     const now = performance.now();
@@ -210,12 +220,31 @@ export default function Players({ client, roster, myId, frameRef, quality, night
       a.armor.visible = !dead && info.armorLevel > 0;
       a.armor.scale.x = (BAR_WIDTH * ARMOR_ABSORB[info.armorLevel]) / ARMOR_ABSORB[3];
       a.vest.visible = a.armor.visible;
+      if (debug) {
+        a.debug ??= new CharacterDebug(ch, scene);
+        a.debug.update();
+      }
       const vestLabel = vestLabels[info.armorLevel];
       if (vestLabel && a.vestMaterial.map !== vestLabel.texture) {
         a.vestMaterial.map = vestLabel.texture;
         a.vestMaterial.needsUpdate = true;
         a.vest.scale.set(vestLabel.aspect * 0.27, 0.27, 1);
       }
+    }
+    if (debug && now - debug.at > 500) {
+      debug.at = now;
+      globalThis.__skinDebug = {
+        calls: gl.info.render.calls,
+        triangles: gl.info.render.triangles,
+        players: [...avatars.current].map(([id, a]) => ({
+          id,
+          skin: a.character.skinId,
+          status: a.character.status,
+          mode: a.character.external?.mode ?? 'procedural',
+          lod: a.character.lod,
+          ...characterStats(a.character),
+        })),
+      };
     }
   });
 

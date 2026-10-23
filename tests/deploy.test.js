@@ -17,3 +17,17 @@ test('CLIENT_ORIGIN con varias URLs y comodín para las vistas previas de Vercel
   assert.ok(!allowed(origins, 'https://evil.com'));
   assert.ok(!allowed(origins, 'https://a.b.vercel.app.evil.com'));
 });
+
+test('vercel.json: /skins y /espectador van a la app; los GLB se cachean y un /assets faltante no da index.html', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  // Vercel usa la sintaxis de path-to-regexp; estas fuentes son expresiones regulares válidas tal cual
+  const matches = (source, path) => new RegExp(`^${source}$`).test(path);
+  const rewrite = config.rewrites[0];
+  assert.equal(rewrite.destination, '/index.html');
+  for (const path of ['/skins', '/skins/stress', '/espectador', '/galeria', '/']) assert.ok(matches(rewrite.source, path), path);
+  assert.ok(!matches(rewrite.source, '/assets/skins/external/externa_01/character.glb'));
+  const header = (path) => config.headers.find((h) => matches(h.source, path))?.headers[0].value;
+  assert.match(header('/assets/skins/external/externa_01/character.glb'), /max-age=86400/);
+  assert.match(header('/assets/index-abc123.js'), /immutable/);
+});

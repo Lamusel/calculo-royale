@@ -17,7 +17,8 @@ export const USE_DRACO = false;
 // Avisos para celular
 export const LIMITS = { bytes: 3 * 1024 * 1024, triangles: 15_000, texture: 1024 };
 
-const cache = new Map(); // ruta → { promise, asset, refs }
+const cache = new Map(); // ruta → { promise, asset, refs, failedAt }
+const RETRY_MS = 30_000; // tras un error, no se vuelve a pedir el archivo durante 30 s
 let loader = null;
 
 function getLoader() {
@@ -115,11 +116,15 @@ async function fetchAsset(entry) {
 
 function record(entry) {
   let rec = cache.get(entry.source);
+  // Si falló hace rato, se puede reintentar (por ejemplo, ya pusieron el archivo)
+  if (rec?.failedAt && Date.now() - rec.failedAt > RETRY_MS) {
+    cache.delete(entry.source);
+    rec = null;
+  }
   if (!rec) {
-    rec = { refs: 0, asset: null, promise: null };
+    rec = { refs: 0, asset: null, promise: null, failedAt: 0 };
     rec.promise = fetchAsset(entry).then((asset) => (rec.asset = asset));
-    // Si falla, se puede reintentar más tarde
-    rec.promise.catch(() => cache.get(entry.source) === rec && cache.delete(entry.source));
+    rec.promise.catch(() => (rec.failedAt = Date.now()));
     cache.set(entry.source, rec);
   }
   return rec;
