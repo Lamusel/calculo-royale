@@ -12,6 +12,15 @@ export const HIP = 0.95;
 export const SHOULDER = 1.47;
 // Mano derecha relativa al pivote de los hombros: ahí se coloca el arma
 export const HAND = [0.5, -0.18, 0.12];
+// Articulaciones de los brazos relativas al pivote de los hombros (también las usa el Master Rig)
+export const ARM_JOINTS = {
+  shoulderR: [0, 0, 0.38],
+  elbowR: [0.22, -0.22, 0.33],
+  handR: HAND,
+  shoulderL: [0, 0, -0.38],
+  elbowL: [0.3, -0.2, -0.28],
+  handL: [0.8, -0.14, -0.02],
+};
 
 const OLIVE = '#56602f';
 const OLIVE_DARK = '#434b25';
@@ -87,27 +96,24 @@ export const torsoGeometry = (color, vestLevel, skin = 'soldado') =>
     return merge(pieces);
   });
 
-// Brazos sosteniendo el arma, relativos al pivote de los hombros
-export const armsGeometry = (color, skin = 'soldado') =>
-  cached(`arms|${skin}|${color}`, () => {
+// Un brazo sosteniendo el arma, relativo al pivote de los hombros. El derecho lleva el
+// brazalete del color del jugador (en todas las skins) y las piezas extra de la skin.
+export const armGeometry = (side, color, skin = 'soldado') =>
+  cached(`arm${side}|${skin}|${color}`, () => {
     const s = styleOf(skin);
     const sleeve = s.sleeve ?? s.uniform ?? OLIVE;
     const hand = s.gloves ?? s.face ?? SKIN;
-    const rShoulder = [0, 0, 0.38];
-    const rElbow = [0.22, -0.22, 0.33];
-    const lShoulder = [0, 0, -0.38];
-    const lElbow = [0.3, -0.2, -0.28];
-    const lHand = [0.8, -0.14, -0.02];
     const mid = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+    if (side === 'L') {
+      const { shoulderL, elbowL, handL } = ARM_JOINTS;
+      return merge([limb(shoulderL, elbowL, 0.16, sleeve), limb(elbowL, handL, 0.14, sleeve), piece(box(0.12, 0.12, 0.12), hand, { position: handL })]);
+    }
+    const { shoulderR, elbowR, handR } = ARM_JOINTS;
     return merge([
-      limb(rShoulder, rElbow, 0.16, sleeve),
-      limb(rElbow, HAND, 0.14, sleeve),
-      // Brazalete del color del jugador (en todas las skins)
-      limb(mid(rShoulder, rElbow, 0.3), mid(rShoulder, rElbow, 0.7), 0.18, color),
-      piece(box(0.12, 0.12, 0.12), hand, { position: HAND }),
-      limb(lShoulder, lElbow, 0.16, sleeve),
-      limb(lElbow, lHand, 0.14, sleeve),
-      piece(box(0.12, 0.12, 0.12), hand, { position: lHand }),
+      limb(shoulderR, elbowR, 0.16, sleeve),
+      limb(elbowR, handR, 0.14, sleeve),
+      limb(mid(shoulderR, elbowR, 0.3), mid(shoulderR, elbowR, 0.7), 0.18, color),
+      piece(box(0.12, 0.12, 0.12), hand, { position: handR }),
       ...(s.armExtra?.(color) ?? []),
     ]);
   });

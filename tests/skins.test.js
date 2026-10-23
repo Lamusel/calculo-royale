@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { ACHIEVEMENTS, canUseSkin, DEFAULT_SKIN, SKINS } from '@calculo-royale/shared/skins';
 import { loadProgress, recordEvent, unlockedSkins } from '../client/src/achievements.js';
 import { SKIN_STYLES } from '../client/src/game/models/skins.js';
-import { armsGeometry, legGeometry, torsoGeometry } from '../client/src/game/models/soldier.js';
+import { armGeometry, legGeometry, torsoGeometry } from '../client/src/game/models/soldier.js';
 
 // Almacenamiento falso (como localStorage)
 const memory = () => {
@@ -37,7 +37,8 @@ test('cada skin construye su modelo y muestra el color del jugador', () => {
       const torso = torsoGeometry(accent, vest, s.id);
       assert.ok(torso.attributes.position.count > 0, s.id);
     }
-    assert.ok(hasColor(armsGeometry(accent, s.id), accent), `${s.id}: brazalete`);
+    assert.ok(hasColor(armGeometry('R', accent, s.id), accent), `${s.id}: brazalete`);
+    assert.ok(armGeometry('L', accent, s.id).attributes.position.count > 0, s.id);
     assert.ok(legGeometry(s.id).attributes.position.count > 0);
     // Además del brazalete, cada skin muestra el acento en su torso o accesorios
     assert.ok(hasColor(torsoGeometry(accent, 0, s.id), accent), `${s.id}: acento en el torso o accesorios`);

@@ -234,7 +234,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 
 ## 6. Plan por fases
 
-**Prioridad si el tiempo aprieta:** 1) combate, 2) cajas con preguntas, 3) zona. El arte nunca bloquea esas tres: lo que no quepa pasa a la fase 11 (pulido).
+**Prioridad si el tiempo aprieta:** 1) combate, 2) cajas con preguntas, 3) zona. El arte nunca bloquea esas tres: lo que no quepa pasa a la fase 12 (pulido).
 
 | Fase | Objetivo | Resultado verificable |
 |---|---|---|
@@ -249,7 +249,8 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **8. Skins propias** ✅ | Skins 100 % procedurales en colecciones (Leyendas de las Matemáticas, Santander, Fantasía, Locuras, De honor por logros de cálculo), selector 3D en el lobby, color del jugador como acento | Elegir skin y verla en partida sin perder rendimiento |
 | **9. Mecánicas épicas** ✅ | Recompensa al líder (corona y botín épico), clima por partida (lluvia, niebla, tormenta de arena, atardecer/noche con linternas), jeeps con "código del motor" | Partida con líder, clima y vehículos |
 | **10. Cine** ✅ | Duelo final con cinemática y zona final; repetición de la mejor jugada antes de los resultados | Final de dos y repetición |
-| **11. Pulido y carga** | Base militar, bosque y trincheras; sonidos (con la sirena del bombardeo); animación de paracaídas al reanimar; revisar el bot que salió acostado en una captura; división del bundle; prueba de carga con 40 bots; ajuste en celulares de gama baja; lo pendiente de arte | Prueba de carga estable con 40 conexiones |
+| **11. Master Rig y skins externas** | Esqueleto común con huesos y sockets para todas las skins (las animaciones operan sobre huesos), 5 espacios para skins externas en GLB (cargador con caché, normalización, animación por alias de huesos incluido Mixamo, fallback), información de juego siempre visible, galería `/skins`, `?debugSkins=1` y stress test de 40, carga diferida. 4 skins nuevas | Montar un GLB propio y verlo animar en partida |
+| **12. Pulido y carga** | Base militar, bosque y trincheras; sonidos (con la sirena del bombardeo); animación de paracaídas al reanimar; revisar el bot que salió acostado en una captura; división del bundle; prueba de carga con 40 bots; ajuste en celulares de gama baja; lo pendiente de arte | Prueba de carga estable con 40 conexiones |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
 
 ### Planes por fase (modo maratón: el plan se escribe aquí antes de ejecutar cada fase)
@@ -322,6 +323,15 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Proyector:** durante el duelo la vista `/espectador` se parte en dos (una cámara siguiendo a cada finalista, con su nombre).
 - **Repetición:** el servidor guarda en memoria los últimos ~10 s de snapshots (los mismos que ya envía). Cada baja se puntúa como jugada candidata: multi-baja (2+ del mismo en 5 s), francotirador de larga distancia (más de 30 m), atropello con jeep y baja final (la que gana la partida). Al elegir una mejor, se guarda su clip (4,5 s antes y 1,5 s después). Al terminar la partida, antes de los resultados, todos ven la repetición: ~8 s con cámara lenta en el momento clave, barras de cine, título de la jugada ("Atropello de Ana a Luis") y botón **Saltar**. El clip va a 10 Hz (los disparos y explosiones del snapshot omitido se suman al siguiente) para que pese poco.
 - **Pruebas:** detección del duelo (una sola vez, congelado y zona final), puntaje de jugadas (multi-baja, francotirador, atropello, final), clip con el rango correcto de ticks y eventos conservados al reducir a 10 Hz, y reproductor del cliente (cámara lenta y fin).
+
+#### Fase 11: Master Rig y skins externas
+- **Inspección:** el soldado está en `client/src/game/models/soldier.js` (geometrías fusionadas por pieza: piernas con pivote en la cadera, torso con cabeza/casco/chaleco/mochila, brazos con el arma, en caché por skin, color y chaleco); los estilos de la fase 8 en `models/skins.js` (`styleOf`, `extra` y `armExtra`). Cada jugador se crea en `game/Players.jsx` (`SoldierAvatar`) y se anima ahí (`animate`: grupos `lower`, `upper`, `shoulders`, `legL/legR`, `body`; el arma se elige entre 4 mallas). La hitbox vive solo en el servidor (`PLAYER_RADIUS` 0,6 en `shared/constants.js`); el cliente no la toca. La skin viaja en `room:info` (`player:skin` validado contra `shared/skins.js`), nunca en los snapshots. Calidad en `game/quality.js`. Pose de jeep: `IN_VEHICLE` esconde las piernas; duelo: `client.duel` y la cámara de cine. `SoldierModel.jsx` repite el soldado quieto para el selector y `/galeria`.
+- **Master Rig** (`client/src/game/character/`): jerarquía de huesos con nombre (Root, Hips, Spine, Chest, Neck, Head, hombros, brazos, piernas, pies) y sockets (`WeaponSocket_R` y los demás). Las piezas procedurales de la fase 8 se montan sobre los huesos (los brazos se separan en derecho e izquierdo; el resto igual) y `animate` pasa a escribir rotaciones de huesos: caminar, apuntar, retroceso, recarga, caída, conducir, pasajero y victoria (finalistas en la presentación del duelo y ganador en los resultados). La animación se calcula como rotaciones en el espacio del personaje, relativas a la pose de reposo, para poder aplicarla igual a otros esqueletos.
+- **Skins externas** (`character/skins/registry.js`, `character/loaders/skinLoader.js`): 5 espacios `externa_01`…`externa_05` (legendarias, una línea cada uno), archivos en `client/public/assets/skins/external/<id>/character.glb`. GLTFLoader + SkeletonUtils de `three/examples/jsm`, caché con conteo de referencias, normalización a 1,8 m con pies en 0, modos A (estático con balanceo), B (esqueleto propio, clips si los trae) y C (alias de huesos, incluido Mixamo: mismas animaciones procedurales sobre sus huesos). El arma queda en el socket del Master Rig. Fallback (soldado gris) ante cualquier error. `preloadMatchSkins` al iniciar la partida; mientras carga se ve el fallback. Sombras y LOD según calidad (de noche y en baja, el LOD más bajo sin sombras); avisos si un GLB pasa de 3 MB, 15 000 triángulos o texturas de 1024.
+- **Siempre visible** sobre cualquier skin: anillo del color del jugador, nombre, vida, chaleco con su nivel y corona del líder.
+- **Galería `/skins`, `?debugSkins=1` y `/skins/stress`** (40 personajes, noche y lluvia, FPS con `renderer.info`), cargados con `import()` dinámico junto con el sistema GLB. `vercel.json` con caché para los GLB. Sección "Cómo agregar skins externas".
+- **Skins nuevas:** Mecha Integral, Dragón de Jade, Rey Pirata Fantasma y Hechicero del Gradiente (procedurales).
+- **Pruebas:** Master Rig (huesos, sockets, misma pose que antes en reposo), animación relativa al reposo sobre un esqueleto tipo Mixamo, registro y validación en el servidor, normalización, caché y conteo de referencias, fallback ante 404.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -515,6 +525,7 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | 9 | ✅ Completa | Líder con corona y botín, 5 climas (el host elige o al azar), 4 jeeps con código del motor, reversa, pasajero que dispara, atropellos y explosión. Falta probar en celular (sobre todo manejar con el joystick y la noche en gama baja) |
 | 10 | ✅ Completa | Duelo final con presentación de cine, último círculo y pantalla partida en el proyector; repetición de la mejor jugada (~8 s, cámara lenta, Saltar) antes de los resultados. Falta verlo en celular |
 | 11 | Pendiente | |
+| 12 | Pendiente | |
 
 ### Bitácora
 
