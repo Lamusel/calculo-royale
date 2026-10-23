@@ -34,6 +34,7 @@ export class Player {
     this.kills = 0;
     this.stats = { byTopic: {}, failed: [], correct: 0, answered: 0 };
     this.seenQuestions = new Set();
+    this.place = null; // posición final (1 = ganador)
   }
 
   resetCombat() {

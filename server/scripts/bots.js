@@ -40,6 +40,16 @@ function spawnBot(n) {
     let buttons = 0;
     let viewTick = 0;
 
+    // Si quedó fuera de la zona, camina hacia su centro
+    const zone = snapshot?.[8];
+    const self = snapshot?.[1].find((p) => p[0] === myId);
+    if (zone?.length && self) {
+      const [cx, cy, p, q] = zone;
+      const dx = (self[1] - cx) / p;
+      const dy = (self[2] - cy) / q;
+      if (dx * dx + dy * dy > 0.7) dir = Math.atan2(cy - self[2], cx - self[1]);
+    }
+
     if (armed && snapshot) {
       const [tick, players] = snapshot;
       const me = players.find((p) => p[0] === myId);

@@ -7,6 +7,9 @@ const PATHS = {
   rifle: 'M2 6h8l2-2h26v2h8v2H30l-2 6h-4l1-6h-7l-1 3h-5l1-3H2z',
   sniper: 'M1 7h9l2-2h34v2H26l-2 5h-4l1-5h-9l-1 3H6l1-3H1zM18 2h10v2H18z',
   grenade: 'M24 4a6 6 0 1 1-0.1 0zM22 1h6v3h-6zM28 2l5-1v2l-5 1z',
+  // Zona: anillo con una onda; bombardeo: bomba con aletas
+  zone: 'M24 1a7 7 0 1 1-0.1 0zm0 3a4 4 0 1 0 0.1 0zM12 8h4v1h-4zM32 8h4v1h-4z',
+  bomb: 'M14 5h18l6 3-6 3H14l-3 2V3zM8 6h3v4H8z',
 };
 
 export default function WeaponIcon({ weapon, className = 'h-4 w-12' }) {

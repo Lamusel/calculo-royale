@@ -11,7 +11,7 @@ export class Room {
     this.code = code;
     this.io = io;
     this.onEmpty = onEmpty;
-    this.phase = 'lobby'; // 'lobby' | 'playing'
+    this.phase = 'lobby'; // 'lobby' | 'playing' | 'results'
     this.hostId = null;
     this.topics = [...ALL_TOPICS]; // temas de las preguntas (los elige el host en el lobby)
     this.players = new Map(); // id → Player
@@ -68,6 +68,11 @@ export class Room {
     socket.data.playerId = player.id;
     socket.join(this.code);
     this.broadcastInfo();
+    // Reconexión durante los resultados: se los vuelve a mandar
+    if (this.phase === 'results' && this.results) {
+      socket.emit(EVENTS.GAME_OVER, this.results);
+      this.sendPrivateResults(player);
+    }
   }
 
   // Desconexión involuntaria: se guarda el jugador un rato por si vuelve
@@ -106,12 +111,43 @@ export class Room {
       p.resetCombat();
       p.teleport(spawns[i].x, spawns[i].y);
     });
+    this.results = null;
+    this.game.startMatch();
     this.broadcastInfo();
+  }
+
+  // Último en pie: ranking para todos y resultados privados (preguntas falladas) a cada uno
+  finishMatch(winnerId) {
+    this.phase = 'results';
+    const players = [...this.players.values()];
+    const winner = this.players.get(winnerId);
+    if (winner) winner.place = 1;
+    const ranking = players
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        color: p.color,
+        place: p.place ?? players.length,
+        kills: p.kills,
+        correct: p.stats.correct,
+        answered: p.stats.answered,
+      }))
+      .sort((a, b) => a.place - b.place || b.kills - a.kills);
+    this.results = { winnerId, ranking };
+    this.broadcast(EVENTS.GAME_OVER, this.results);
+    for (const p of players) this.sendPrivateResults(p);
+    this.broadcastInfo();
+  }
+
+  sendPrivateResults(player) {
+    this.emitTo(player, EVENTS.RESULTS_SELF, { byTopic: player.stats.byTopic, failed: player.stats.failed });
   }
 
   // El host devuelve a todos al campo de entrenamiento
   reset() {
     this.phase = 'lobby';
+    this.results = null;
+    this.game.stopMatch();
     this.game.resetWorld();
     for (const p of this.players.values()) this.respawnInLobby(p);
     this.broadcastInfo();

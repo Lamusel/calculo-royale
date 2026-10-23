@@ -20,7 +20,7 @@ export class SnapshotBuffer {
     this.lastEventTick = 0;
   }
 
-  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = []) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -31,7 +31,7 @@ export class SnapshotBuffer {
     for (const p of players) byId.set(p[0], p);
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms });
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
@@ -45,7 +45,7 @@ export class SnapshotBuffer {
     return (now - this.offset - INTERP_DELAY_MS) / TICK_MS;
   }
 
-  // Llena frame.others, frame.grenades, frame.dummies, frame.crates y frame.alarms
+  // Llena frame.others, frame.grenades, frame.dummies, frame.crates, frame.alarms, frame.zone y frame.airdrop
   sample(now, frame) {
     frame.others.clear();
     frame.grenades.clear();
@@ -87,6 +87,13 @@ export class SnapshotBuffer {
     frame.dummies = b.dummies;
     frame.crates = b.crates;
     frame.alarms = b.alarms;
+    frame.airdrop = b.airdrop;
+    // La zona se interpola para que el muro se cierre suave
+    if (b.zone.length && a.zone.length) {
+      frame.zone = b.zone.map((v, i) => (i < 4 ? lerp(a.zone[i], v, alpha) : v));
+    } else {
+      frame.zone = b.zone;
+    }
   }
 
   // Entrega los eventos de los snapshots que el tiempo de dibujo ya alcanzó

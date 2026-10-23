@@ -6,6 +6,7 @@ import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGren
 import {
   answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates,
 } from './crates.js';
+import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 
 const DT = TICK_MS / 1000;
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -21,7 +22,13 @@ export class Game {
     this.nextGrenadeId = 1;
     this.dummies = [];
     this.crates = createCrates();
+    this.airdropCrate = this.crates[this.crates.length - 1];
     this.alarms = [];
+    this.zone = null; // solo durante la partida
+    // Eventos del tick en curso (se vacían al empezar cada tick)
+    this.shots = [];
+    this.explosions = [];
+    this.kills = [];
     this.selfCache = new Map(); // id → último estado privado enviado
     this.resetWorld();
   }
@@ -69,6 +76,14 @@ export class Game {
     else if (rack) player.giveItem(rack.item);
   }
 
+  startMatch() {
+    startMatch(this);
+  }
+
+  stopMatch() {
+    stopMatch(this);
+  }
+
   answerCrate(player, crateId, index) {
     answerCrate(this, player, crateId, index);
   }
@@ -92,6 +107,7 @@ export class Game {
     }
     updateGrenades(this, DT);
     updateCrates(this);
+    updateMatch(this, DT);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -124,6 +140,8 @@ export class Game {
       this.explosions,
       crateStates(this),
       this.alarms.map((a) => [a.x, a.y]),
+      this.zone && this.room.phase === 'playing' ? this.zone.encode(this.now) : [],
+      encodeAirdrop(this),
     ];
   }
 

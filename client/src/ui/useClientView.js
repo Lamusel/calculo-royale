@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { INTERACT_RADIUS, ITEM_NAMES, RARITIES, WEAPONS } from '@calculo-royale/shared/constants';
 import { CRATE_STATE } from '@calculo-royale/shared/protocol';
-import { nearestRack, SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
+import { nearestRack } from '@calculo-royale/shared/mapLayout';
+import { CRATES, cratePosition } from '../game/crateList.js';
 import { selfWeaponId } from '../net/GameClient.js';
 
-const CRATES = [...SUPPLY_CRATES, TRAINING.crate];
 const RESULT_MS = 4500;
 const CRATE_STATUS = {
   [CRATE_STATE.BUSY]: 'ocupada',
@@ -13,7 +13,7 @@ const CRATE_STATUS = {
 };
 
 // Lo más cercano con lo que se puede interactuar: armero (lobby) o caja visible
-function nearestInteractable(me, phase, crateStates) {
+function nearestInteractable(me, phase, crateStates, airdrop) {
   let best = null;
   let bestDist = INTERACT_RADIUS;
   const rack = phase === 'lobby' ? nearestRack(me.x, me.y, INTERACT_RADIUS) : null;
@@ -21,13 +21,14 @@ function nearestInteractable(me, phase, crateStates) {
     bestDist = Math.hypot(rack.x - me.x, rack.y - me.y);
     best = { label: `Tomar ${ITEM_NAMES[rack.item]}`, enabled: true };
   }
-  CRATES.forEach((c, i) => {
+  CRATES.forEach((crate, i) => {
     const state = crateStates[i];
-    if (state === undefined || state === CRATE_STATE.HIDDEN) return;
+    const c = cratePosition(i, airdrop);
+    if (state === undefined || state === CRATE_STATE.HIDDEN || !c) return;
     const d = Math.hypot(c.x - me.x, c.y - me.y);
     if (d > bestDist) return;
     bestDist = d;
-    const rarity = RARITIES[c.rarity];
+    const rarity = RARITIES[crate.rarity];
     best = {
       label: state === CRATE_STATE.CLOSED ? `Abrir caja ${rarity.name.toLowerCase()}` : `Caja ${CRATE_STATUS[state]}`,
       enabled: state === CRATE_STATE.CLOSED,
@@ -45,7 +46,7 @@ export function useClientView(client, frameRef, phase) {
     let deathAt = 0;
     const read = () => {
       const now = performance.now();
-      const { me, others, crates } = frameRef.current;
+      const { me, others, crates, airdrop } = frameRef.current;
       const self = client.self;
       if (self && !self.alive && !deathAt) deathAt = now;
       if (!self || self.alive) deathAt = 0;
@@ -62,7 +63,7 @@ export function useClientView(client, frameRef, phase) {
         killfeed: [...client.killfeed],
         damageFlashAt: client.damageFlashAt,
         deathAt,
-        interact: me && self?.alive && !client.question ? nearestInteractable(me, phase, crates ?? []) : null,
+        interact: me && self?.alive && !client.question ? nearestInteractable(me, phase, crates ?? [], airdrop) : null,
         question: client.question,
         crateResult: result,
         radarLeft: Math.max(0, Math.ceil((client.radarEndsAt - now) / 1000)),

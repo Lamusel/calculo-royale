@@ -1,4 +1,6 @@
-// Barra superior: GPS (coordenadas que usará el mando), latencia y botones
+import { sectorOf } from '@calculo-royale/shared/zone';
+
+// Barra superior: GPS con sector (las coordenadas que usa el mando), latencia y botones
 const fmt = (v) => (Math.abs(v) < 0.5 ? '0' : Math.round(v).toString().replace('-', '−'));
 
 export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscreen }) {
@@ -9,7 +11,7 @@ export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscree
       <div className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-khaki-light sm:text-sm">
         {me && (
           <div className="rounded bg-black/55 px-2.5 py-1">
-            POS {fmt(me.x)}, {fmt(me.y)}
+            POS {fmt(me.x)}, {fmt(me.y)} · {sectorOf(me.x, me.y)}
           </div>
         )}
         {latency != null && <div className="rounded bg-black/40 px-2 py-1 text-stone-400">{latency} ms</div>}

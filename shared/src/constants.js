@@ -58,8 +58,9 @@ export const PLAYER_COLORS = [
 ];
 
 // --- Armas ---
-// Índice de cada arma en snapshots y killfeed (el orden no debe cambiar)
-export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade'];
+// Índice de cada arma en snapshots y killfeed (el orden no debe cambiar).
+// 'zone' y 'bomb' solo aparecen en el killfeed (zona y bombardeo).
+export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'zone', 'bomb'];
 
 // intervalMs: tiempo entre disparos · spread: desviación máxima (rad) por bala
 // o apertura total del abanico en la escopeta · range: alcance en unidades
@@ -138,3 +139,25 @@ export const PRACTICE_CRATE_RESET_MS = 4_000; // la caja de práctica se vuelve 
 export const STREAK_FOR_RADAR = 3;
 export const RADAR_MS = 10_000;
 export const BANDAGE_HEAL = 25;
+
+// --- Zona segura ---
+// Todas las zonas son elipses (x − cx)²/p² + (y − cy)²/q² ≤ 1; el círculo es p = q.
+// La inicial cubre todo el mapa (las esquinas están a 60·√2 ≈ 85).
+export const ZONE_START = { cx: 0, cy: 0, p: 86, q: 86 };
+// Cada fase: aviso (waitMs), cierre (shrinkMs), radio de la zona nueva y daño por segundo fuera.
+// `ellipse` escala los semiejes (idea #3: una fase con elipse).
+export const ZONE_PHASES = [
+  { radius: 58, waitMs: 60_000, shrinkMs: 45_000, dps: 2 },
+  { radius: 40, waitMs: 60_000, shrinkMs: 45_000, dps: 4 },
+  { radius: 27, waitMs: 60_000, shrinkMs: 45_000, dps: 6, ellipse: [1.3, 0.75] },
+  { radius: 15, waitMs: 60_000, shrinkMs: 45_000, dps: 9 },
+  { radius: 6, waitMs: 60_000, shrinkMs: 45_000, dps: 14 },
+];
+// Daño fuera de la zona cuando ya terminó la última fase
+export const ZONE_FINAL_DPS = 20;
+
+// Lanzamiento aéreo: a mitad de partida cae una caja dorada en paracaídas
+export const AIRDROP = { atMs: 240_000, fallMs: 20_000, rarity: 3 };
+
+// Cuadrícula militar de sectores: 6 × 6 (A1 arriba a la izquierda)
+export const SECTORS = 6;

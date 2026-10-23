@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { SERVER_PORT } from '@calculo-royale/shared/constants';
 
-const server = `http://localhost:${SERVER_PORT}`;
+// CR_SERVER_URL permite apuntar el proxy a otro servidor (otra copia de prueba o uno remoto)
+const server = process.env.CR_SERVER_URL || `http://localhost:${SERVER_PORT}`;
 
 export default defineConfig({
   plugins: [react()],

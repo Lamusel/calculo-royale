@@ -50,10 +50,17 @@ export function switchWeapon(game, p, slot) {
   p.nextFireAt = Math.max(p.nextFireAt, game.now + 250);
 }
 
-// Aplica daño (primero al chaleco). Devuelve { dealt, killed }.
-export function damagePlayer(game, target, amount, attackerId, weaponIndex) {
+// Jugadores vivos (y conectados) en la partida: decide la posición final y la victoria
+export function aliveCount(game) {
+  let n = 0;
+  for (const p of game.room.players.values()) if (p.alive && p.connected) n++;
+  return n;
+}
+
+// Aplica daño (primero al chaleco, salvo ignoreArmor). Devuelve { dealt, killed }.
+export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ignoreArmor = false } = {}) {
   if (!target.alive) return { dealt: 0, killed: false };
-  const absorbed = Math.min(target.armor, amount);
+  const absorbed = ignoreArmor ? 0 : Math.min(target.armor, amount);
   target.armor -= absorbed;
   if (target.armor <= 0 && target.armorLevel > 0) {
     target.armor = 0;
@@ -69,6 +76,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex) {
   target.killedBy = attackerId;
   target.killedWith = weaponIndex;
   target.reloadUntil = 0;
+  // Posición final: los que siguen vivos + 1
+  if (game.room.phase === 'playing') target.place = aliveCount(game) + 1;
   const attacker = game.room.players.get(attackerId);
   if (attacker && attacker !== target) attacker.kills++;
   game.kills.push([attackerId, target.id, weaponIndex]);

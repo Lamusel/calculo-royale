@@ -35,6 +35,13 @@ export const EVENTS = {
   CRATE_CANCEL: 'crate:cancel', // C → S
   // S → C: { crateId, outcome: 'correct'|'wrong'|'timeout'|'cancelled', loot: [nombres], explicacion?, reason? }
   CRATE_RESULT: 'crate:result',
+
+  // Transmisiones del centro de mando: { kind: 'zone'|'closing'|'airdrop'|..., title, text (LaTeX entre $), durationMs }
+  RADIO_MESSAGE: 'radio:message',
+  // Fin de la partida (a todos): { winnerId, ranking: [{ id, name, color, place, kills, correct, answered, score }] }
+  GAME_OVER: 'game:over',
+  // Resultados privados (solo al dueño): { byTopic, failed: [{ tema, enunciado, opciones, correcta, elegida, explicacion }] }
+  RESULTS_SELF: 'results:self',
 };
 
 // Botones dentro del input (máscara de bits)

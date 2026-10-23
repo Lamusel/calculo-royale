@@ -1,5 +1,5 @@
 import {
-  ALARM_MS, ARMOR_ABSORB, BANDAGE_HEAL, CRATE_LOCK_MS, GRENADE, INTERACT_RADIUS, MAX_HP,
+  AIRDROP, ALARM_MS, ARMOR_ABSORB, BANDAGE_HEAL, CRATE_LOCK_MS, GRENADE, INTERACT_RADIUS, MAX_HP,
   PRACTICE_CRATE_RESET_MS, RADAR_MS, RARITIES, STREAK_FOR_RADAR, TOPICS, WEAPONS,
 } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
@@ -60,18 +60,28 @@ export function applyLoot(player, item) {
   return LOOT_NAMES[item];
 }
 
+// Orden fijo (el snapshot manda un estado por caja): las del mapa, la de práctica y al
+// final la del lanzamiento aéreo (su posición se decide en la partida)
 export function createCrates() {
   return [
     ...SUPPLY_CRATES.map((c) => ({ ...c, practice: false })),
     { ...TRAINING.crate, practice: true },
+    { x: 0, y: 0, rarity: AIRDROP.rarity, airdrop: true },
   ].map((c, id) => ({ ...c, id, state: CRATE_STATE.CLOSED, busyBy: null, lockedUntil: 0, reopenAt: 0 }));
 }
 
-// Las del mapa existen en partida; la de práctica, solo en el lobby
-export const crateVisible = (crate, phase) => (crate.practice ? phase === 'lobby' : phase === 'playing');
+// Las del mapa existen en partida; la de práctica, solo en el lobby; la aérea, cuando aterriza
+export function crateVisible(crate, phase) {
+  if (crate.practice) return phase === 'lobby';
+  if (crate.airdrop) return phase === 'playing' && crate.landed;
+  return phase === 'playing';
+}
 
 export function resetCrates(game) {
-  for (const c of game.crates) Object.assign(c, { state: CRATE_STATE.CLOSED, busyBy: null, lockedUntil: 0, reopenAt: 0 });
+  for (const c of game.crates) {
+    Object.assign(c, { state: CRATE_STATE.CLOSED, busyBy: null, lockedUntil: 0, reopenAt: 0 });
+    if (c.airdrop) Object.assign(c, { active: false, landed: false });
+  }
   game.alarms = [];
 }
 

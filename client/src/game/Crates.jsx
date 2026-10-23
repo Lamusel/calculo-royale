@@ -1,17 +1,16 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RARITIES } from '@calculo-royale/shared/constants';
+import { AIRDROP, RARITIES } from '@calculo-royale/shared/constants';
 import { CRATE_STATE } from '@calculo-royale/shared/protocol';
-import { SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
-import { box, merge, modelMaterial, piece } from './models/build.js';
+import { CRATES, cratePosition } from './crateList.js';
+import { box, cylinder, limb, merge, modelMaterial, piece } from './models/build.js';
 
 // Cajas de suministro militares: franja del color de la rareza y candado al frente.
 // Abierta: tapa levantada. Bloqueada: luz roja intermitente. Alguien respondiendo: luz amarilla.
 // Las alarmas (fallos recientes) se ven como una columna roja visible desde lejos.
 
-const CRATES = [...SUPPLY_CRATES, TRAINING.crate];
 const W = 1.3;
 const H = 0.85;
 const D = 0.85;
@@ -41,6 +40,20 @@ const lightGeometry = new THREE.SphereGeometry(0.12, 8, 6);
 const lightMaterial = new THREE.MeshBasicMaterial({ toneMapped: false });
 const beamGeometry = new THREE.CylinderGeometry(0.5, 0.7, 14, 12, 1, true);
 const ringGeometry = new THREE.RingGeometry(1.1, 1.5, 32).rotateX(-Math.PI / 2);
+const FALL_HEIGHT = 40;
+
+// Paracaídas del lanzamiento aéreo: cúpula de gajos y cuerdas hasta la caja
+const parachuteGeometry = (() => {
+  const canopy = new THREE.SphereGeometry(2.4, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2.6);
+  const colors = ['#c9b37a', '#a8442e'];
+  const pieces = [piece(canopy, colors[0], { position: [0, 4.2, 0], scale: [1, 0.55, 1] })];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    pieces.push(limb([Math.cos(a) * 1.8, 4.3, Math.sin(a) * 1.8], [Math.cos(a) * 0.4, H, Math.sin(a) * 0.3], 0.03, '#ddd8c4'));
+  }
+  pieces.push(piece(cylinder(2.42, 2.42, 0.1, 10, true), colors[1], { position: [0, 4.25, 0] }));
+  return merge(pieces);
+})();
 
 export default function Crates({ frameRef }) {
   const bodies = useRef([]);
@@ -49,6 +62,7 @@ export default function Crates({ frameRef }) {
   const beams = useRef([]);
   const geometries = useMemo(() => RARITIES.map((_, i) => bodyGeometry(i)), []);
   const byRarity = useMemo(() => RARITIES.map((_, r) => CRATES.map((c, i) => ({ c, i })).filter(({ c }) => c.rarity === r)), []);
+  const falling = useRef(null);
   const tmp = useMemo(() => ({ o: new THREE.Object3D(), color: new THREE.Color(), lid: new Map() }), []);
 
   // El color por instancia de las luces debe existir antes del primer dibujo
@@ -59,12 +73,23 @@ export default function Crates({ frameRef }) {
   useFrame((_, delta) => {
     const now = performance.now();
     const states = frameRef.current.crates ?? [];
+    const airdrop = frameRef.current.airdrop;
     const { o, color } = tmp;
 
+    // Caja aérea cayendo: baja desde FALL_HEIGHT con el paracaídas abierto
+    const inAir = airdrop?.length && airdrop[2] > 0;
+    falling.current.visible = Boolean(inAir);
+    if (inAir) {
+      const t = Math.min(1, airdrop[2] / AIRDROP.fallMs);
+      falling.current.position.set(airdrop[0], terrainHeight(airdrop[0], airdrop[1]) + FALL_HEIGHT * t, -airdrop[1]);
+      falling.current.rotation.set(Math.sin(now / 700) * 0.06, now / 4000, Math.cos(now / 900) * 0.06);
+    }
+
     byRarity.forEach((list, r) => {
-      list.forEach(({ c, i }, k) => {
+      list.forEach(({ i }, k) => {
         const state = states[i] ?? CRATE_STATE.HIDDEN;
-        if (state === CRATE_STATE.HIDDEN) {
+        const c = cratePosition(i, airdrop);
+        if (state === CRATE_STATE.HIDDEN || !c) {
           bodies.current[r].setMatrixAt(k, HIDDEN);
           return;
         }
@@ -77,14 +102,15 @@ export default function Crates({ frameRef }) {
       bodies.current[r].instanceMatrix.needsUpdate = true;
     });
 
-    CRATES.forEach((c, i) => {
+    CRATES.forEach((_, i) => {
       const state = states[i] ?? CRATE_STATE.HIDDEN;
-      const h = terrainHeight(c.x, c.y) - 0.05;
-      if (state === CRATE_STATE.HIDDEN) {
+      const c = cratePosition(i, airdrop);
+      if (state === CRATE_STATE.HIDDEN || !c) {
         lids.current.setMatrixAt(i, HIDDEN);
         lights.current.setMatrixAt(i, HIDDEN);
         return;
       }
+      const h = terrainHeight(c.x, c.y) - 0.05;
       // La tapa gira sobre la bisagra trasera
       const goal = state === CRATE_STATE.OPEN ? -1.9 : 0;
       const angle = (tmp.lid.get(i) ?? 0) + (goal - (tmp.lid.get(i) ?? 0)) * (1 - Math.exp(-6 * delta));
@@ -137,6 +163,11 @@ export default function Crates({ frameRef }) {
           frustumCulled={false}
         />
       ))}
+      <group ref={falling} visible={false}>
+        <mesh geometry={geometries[AIRDROP.rarity]} material={modelMaterial} castShadow />
+        <mesh geometry={lidGeometry} material={modelMaterial} position={[0, H, -D / 2 - 0.03]} />
+        <mesh geometry={parachuteGeometry} material={modelMaterial} />
+      </group>
       <instancedMesh ref={lids} args={[lidGeometry, modelMaterial, CRATES.length]} castShadow frustumCulled={false} />
       <instancedMesh ref={lights} args={[lightGeometry, lightMaterial, CRATES.length]} frustumCulled={false} />
       {Array.from({ length: MAX_ALARMS }, (_, i) => (

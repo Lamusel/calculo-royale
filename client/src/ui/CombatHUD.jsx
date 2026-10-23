@@ -121,7 +121,9 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
   const weaponName = weapon === 'grenade' ? GRENADE.name : WEAPONS[weapon]?.name;
   const respawnIn = Math.max(0, Math.ceil((RESPAWN_MS - (performance.now() - deathAt)) / 1000));
   let cause = weaponName ?? '';
-  if (self.killedBy === myId) cause = 'por tu propia granada';
+  if (weapon === 'zone') cause = 'La zona te alcanzó';
+  else if (weapon === 'bomb') cause = 'Bombardeo de los operadores de radio';
+  else if (self.killedBy === myId) cause = 'por tu propia granada';
   else if (killer) cause = `por ${killer.name}${weaponName ? ` · ${weaponName}` : ''}`;
   return (
     <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/40 text-center">

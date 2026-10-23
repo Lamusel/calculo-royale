@@ -187,7 +187,7 @@ test('las preguntas respetan los temas de la sala y la dificultad de la rareza',
 
 test('caja de práctica: solo en el lobby, no cuenta en las estadísticas y se vuelve a cerrar', () => {
   const room = makeRoom('lobby');
-  const practice = room.game.crates.length - 1;
+  const practice = room.game.crates.findIndex((c) => c.practice);
   const p = addPlayer(room, 1, TRAINING.crate.x + 1, TRAINING.crate.y);
   const { correct } = open(room, p);
   room.game.answerCrate(p, practice, correct);

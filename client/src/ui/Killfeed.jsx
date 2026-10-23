@@ -17,7 +17,7 @@ export default function Killfeed({ killfeed = [], roster, myId }) {
             key={`${k.at}-${k.victim}`}
             className={`flex items-center gap-2 rounded px-2 py-0.5 ${mine ? 'bg-black/70 ring-1 ring-khaki/60' : 'bg-black/50'}`}
           >
-            {k.killer !== k.victim && <span style={{ color: killer.color }}>{killer.name}</span>}
+            {k.killer !== null && k.killer !== k.victim && <span style={{ color: killer.color }}>{killer.name}</span>}
             <WeaponIcon weapon={k.weapon} className="h-3.5 w-10 text-stone-200" />
             <span style={{ color: victim.color }}>{victim.name}</span>
           </div>

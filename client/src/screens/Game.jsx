@@ -12,6 +12,9 @@ import HUD from '../ui/HUD.jsx';
 import Killfeed from '../ui/Killfeed.jsx';
 import { CrateResult, LockModal } from '../ui/LockModal.jsx';
 import RadarOverlay from '../ui/RadarOverlay.jsx';
+import { RadioFeed, ZoneStatus } from '../ui/Radio.jsx';
+import Results from '../ui/Results.jsx';
+import TacticalMap, { minimapSize } from '../ui/TacticalMap.jsx';
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
 import Lobby from './Lobby.jsx';
@@ -53,12 +56,18 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
         onFullscreen={isTouch && canFullscreen() ? enterLandscape : null}
       />
       <Killfeed killfeed={view.killfeed} roster={room.players} myId={myId} />
+      <TacticalMap frameRef={frameRef} myId={myId} radar={view.radarLeft > 0} radio={client.radio} isTouch={isTouch} />
+      <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
+      <RadioFeed radio={client.radio} />
       <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} />
       {view.radarLeft > 0 && <RadarOverlay me={view.me} others={view.others} myId={myId} secondsLeft={view.radarLeft} />}
       {view.question && (
         <LockModal question={view.question} onAnswer={(i) => client.answer(i)} onCancel={() => client.cancelQuestion()} />
       )}
       {view.crateResult && <CrateResult result={view.crateResult} onClose={() => (client.crateResult = null)} />}
+      {room.phase === 'results' && (
+        <Results results={client.results} mine={client.privateResults} myId={myId} isHost={isHost} onReset={resetGame} />
+      )}
     </>
   );
 }
@@ -67,7 +76,9 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
 export default function Game({ room, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
-  const frameRef = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [] });
+  const frameRef = useRef({
+    me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [], zone: [], airdrop: [],
+  });
   const isTouch = isTouchDevice();
 
   // Calidad automática: el controlador mide FPS cada cuadro y cambia el nivel si hace falta

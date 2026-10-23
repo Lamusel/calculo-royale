@@ -14,6 +14,7 @@ import MapMesh from './MapMesh.jsx';
 import Players from './Players.jsx';
 import Scenery from './Scenery.jsx';
 import Training from './Training.jsx';
+import ZoneMesh from './ZoneMesh.jsx';
 
 // Cámara 3/4: inclinación (grados sobre el horizonte) y distancia al jugador. Fácil de ajustar.
 export const CAMERA_PITCH_DEG = 50;
@@ -175,6 +176,7 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
+      <ZoneMesh frameRef={frameRef} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} />
       <Grenades frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />

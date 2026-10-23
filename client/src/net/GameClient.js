@@ -41,12 +41,15 @@ export class GameClient {
     this.question = null; // pregunta de la caja que se está abriendo
     this.crateResult = null; // último resultado (se muestra unos segundos)
     this.radarEndsAt = 0;
+    this.radio = []; // transmisiones del mando recientes
+    this.results = null; // ranking al terminar la partida
+    this.privateResults = null; // aciertos por tema y preguntas falladas (solo mías)
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms]) => {
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms);
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop]) => {
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop);
         const me = players.find((p) => p[0] === this.myId);
         if (me) this.predictor.reconcile(me[1], me[2], me[4]);
       },
@@ -69,6 +72,17 @@ export class GameClient {
         this.crateResult = { ...result, at: performance.now() };
         if (result.outcome === 'correct') vibrate([20, 40, 20]);
         else if (result.outcome !== 'cancelled') vibrate(150);
+      },
+      [EVENTS.RADIO_MESSAGE]: (message) => {
+        this.radio.push({ ...message, at: performance.now() });
+        if (this.radio.length > 6) this.radio.shift();
+        vibrate(25);
+      },
+      [EVENTS.GAME_OVER]: (results) => {
+        this.results = results;
+      },
+      [EVENTS.RESULTS_SELF]: (mine) => {
+        this.privateResults = mine;
       },
       [EVENTS.COMBAT_KILL]: ([killer, victim, weapon]) => {
         this.killfeed.push({ killer, victim, weapon, at: performance.now() });
