@@ -234,19 +234,23 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 
 ## 6. Plan por fases
 
-**Prioridad si el tiempo aprieta:** 1) combate, 2) cajas con preguntas, 3) zona. El arte nunca bloquea esas tres: lo que no quepa en la fase 3 pasa a la fase 7.
+**Prioridad si el tiempo aprieta:** 1) combate, 2) cajas con preguntas, 3) zona. El arte nunca bloquea esas tres: lo que no quepa pasa a la fase 11 (pulido).
 
 | Fase | Objetivo | Resultado verificable |
 |---|---|---|
 | **0. Base** ✅ | Monorepo, cliente y servidor corriendo, conexión Socket.io | Cliente muestra "conectado" |
 | **1. Movimiento multijugador** ✅ | Salas con código y QR, lobby jugable, escena 3D con terreno z = f(x, y), interpolación y predicción, controles táctiles y teclado, reconexión, bots de prueba | 2 pestañas + 1 celular se ven moverse |
-| **2. Combate** | Túnel para probar desde el celular. Piso neutro natural (fuera la pizarra). Pistola, escopeta, rifle de asalto, francotirador y granadas (máx. 2); balas, vida, chaleco, muerte. Obstáculos de `mapLayout` con colisión que bloquean balas. Velocidad por pendiente. Hit markers, números de daño, vibración, killfeed con icono. Campo de entrenamiento con armeros y blancos. Modelos simples todavía | Se pueden eliminar entre jugadores con todas las armas |
+| **2. Combate** ✅ | Túnel para probar desde el celular. Piso neutro natural (fuera la pizarra). Pistola, escopeta, rifle de asalto, francotirador y granadas (máx. 2); balas, vida, chaleco, muerte. Obstáculos de `mapLayout` con colisión que bloquean balas. Velocidad por pendiente. Hit markers, números de daño, vibración, killfeed con icono. Campo de entrenamiento con armeros y blancos. Modelos simples todavía | Se pueden eliminar entre jugadores con todas las armas |
 | **3. Arte base** (alcance mínimo) ✅ | Soldado procedural completo con animaciones, terreno natural, cámara 3/4, sol con sombras, niebla, efectos, paredes semitransparentes, calidad automática. Solo dos zonas: **pueblo** y **patio de contenedores** | El juego ya "se ve" final en PC y celular |
 | **4. Cajas de suministro** ✅ | Banco JSON, modal de candado con KaTeX, validación en servidor, rarezas, botín, racha y radar, Todo o nada | Abrir caja, responder y recibir botín |
 | **5. Zona y victoria** ✅ | Transmisiones del mando con la desigualdad, mapa táctico con coordenadas, daño fuera de zona, lanzamientos aéreos, último en pie gana, resultados con tus errores resueltos. *Opcional: #3* | Partida completa de principio a fin |
 | **6. Operadores de radio y clase** ✅ | Vista espectador, reanimación, votos y bombardeo por sector, interceptar transmisión, ranking, panel del profe con mapa de calor, reporte (Supabase) | El profe ve estadísticas al final |
-| **7. Pulido y carga** | Base militar, bosque y trincheras; sonidos; despliegue; división del bundle; prueba con 40 bots; ajuste en celulares de gama baja; lo que haya quedado pendiente de arte | Prueba de carga estable con 40 conexiones |
-| *Backlog* | #4 campos vectoriales, #6 centro de masa | |
+| **7. Despliegue** ✅ | Servidor en Render (gratis) y cliente en Vercel desde el monorepo, CORS por variable, `/health` para UptimeRobot, "Despertando el servidor…", guía paso a paso, `npm run stop` | Jugar desde internet con la URL de Vercel |
+| **8. Skins propias** | Skins 100 % procedurales en colecciones (Leyendas de las Matemáticas, Santander, Fantasía, Locuras, De honor por logros de cálculo), selector 3D en el lobby, color del jugador como acento | Elegir skin y verla en partida sin perder rendimiento |
+| **9. Mecánicas épicas** | Recompensa al líder (corona y botín épico), clima por partida (lluvia, niebla, tormenta de arena, atardecer/noche con linternas), jeeps con "código del motor" | Partida con líder, clima y vehículos |
+| **10. Cine** | Duelo final con cinemática y zona final; repetición de la mejor jugada antes de los resultados | Final de dos y repetición |
+| **11. Pulido y carga** | Base militar, bosque y trincheras; sonidos (con la sirena del bombardeo); animación de paracaídas al reanimar; revisar el bot que salió acostado en una captura; división del bundle; prueba de carga con 40 bots; ajuste en celulares de gama baja; lo pendiente de arte | Prueba de carga estable con 40 conexiones |
+| *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
 
 ### Planes por fase (modo maratón: el plan se escribe aquí antes de ejecutar cada fase)
 
@@ -290,6 +294,15 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Resultados guardados:** con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` se guardan en Supabase; sin ellas, en `server/data/resultados/*.json`. El juego funciona igual en ambos casos.
 - **Pruebas:** reanimación, votos y bombardeo, intercepción, puntaje, estadísticas de clase y guardado local.
 
+#### Fase 7: despliegue
+- **Vercel** (cliente) desde la raíz del monorepo con `vercel.json`: instala los workspaces (`--ignore-scripts`), compila `client` con `shared` y publica `client/dist`; todas las rutas van a `index.html` (para `/espectador`).
+- **Render** (servidor, plan gratis) con `render.yaml`: instala solo `server` y `shared` sin dependencias de desarrollo, `npm start`, Node 22+, health check en `/health`.
+- **Variables:** `VITE_SERVER_URL` en Vercel (URL de Render); `CLIENT_ORIGIN` en Render (URL de Vercel; admite comodines como `https://*.vercel.app` para las vistas previas).
+- **Inicio:** si el servidor no responde en 2 s, "Despertando el servidor…" con contador (Render gratis tarda ~50 s en despertar).
+- **QR:** en producción usa la URL de Vercel (el origen de la página).
+- **`npm run stop`:** libera los puertos 3001 y 5173 (Windows, macOS y Linux).
+- **Guía paso a paso** en este README para Vercel, Render y UptimeRobot. Las pruebas de despliegue se hacen en una copia limpia del repo con los mismos comandos que usarán Render y Vercel.
+
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
 
@@ -309,7 +322,8 @@ npm run bots -- ABCD 5   # 5 bots caminando al azar en la sala ABCD (Ctrl+C para
 npm run bots -- ABCD 5 --armados   # bots que disparan al jugador visible más cercano
 npm run bots -- ABCD 5 --cazar     # además caminan hacia el jugador vivo más cercano
 npm run tunnel     # URL pública para el celular (con npm run dev corriendo)
-npm test           # pruebas de combate y colisiones (node:test)
+npm test           # pruebas (node:test)
+npm run stop       # libera los puertos 3001 y 5173 (si quedó otro npm run dev abierto)
 ```
 
 | Servicio | Puerto | Comprobación |
@@ -398,7 +412,73 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 
 ---
 
-## 8. Estado del proyecto
+## 8. Despliegue (jugar desde internet)
+
+Servidor en **Render** (plan gratis), cliente en **Vercel** y **UptimeRobot** para que el servidor no se duerma. Todo lo que necesitan ya está en el repo: `render.yaml` (servidor), `vercel.json` (cliente) y `/health`. Cada `git push` a `main` vuelve a desplegar los dos solos.
+
+### Paso 0: subir el código a GitHub
+
+En la terminal, dentro del proyecto: `git push`. El repositorio es `github.com/Lamusel/calculo-royale`.
+
+### Paso 1: servidor en Render
+
+1. Entra a **render.com** y haz clic en **Get Started** / **Sign in** → **GitHub** (autoriza a Render).
+2. En el panel, botón **New +** (arriba a la derecha) → **Blueprint**.
+3. En **Connect a repository** busca **calculo-royale** y haz clic en **Connect**. Si no aparece, haz clic en **Configure account** y dale acceso a ese repositorio.
+4. **Blueprint Name:** `calculo-royale`. Render lee `render.yaml` y muestra el servicio **calculo-royale-server** (plan *Free*).
+5. Te pide las variables marcadas como secretas:
+   - **CLIENT_ORIGIN:** déjala **vacía** por ahora (se completa en el paso 3).
+   - **SUPABASE_URL** y **SUPABASE_SERVICE_KEY:** vacías (opcionales, ver "Guardar resultados en Supabase").
+6. Clic en **Apply**. El primer despliegue tarda 2 a 5 minutos (pestaña **Logs**: termina con `[server] escuchando en …`).
+7. Copia la URL del servicio (arriba, debajo del nombre), por ejemplo `https://calculo-royale-server.onrender.com`. Si el nombre estaba ocupado, Render le agrega letras al final: usa la que te muestre.
+8. Prueba: abre `<esa URL>/health` en el navegador. Debe decir `{"ok":true,...}`.
+
+### Paso 2: cliente en Vercel
+
+1. Entra a **vercel.com** → **Sign Up / Log In** → **Continue with GitHub**.
+2. Botón **Add New…** → **Project**.
+3. En **Import Git Repository**, junto a **calculo-royale**, clic en **Import** (si no aparece: **Adjust GitHub App Permissions** y dale acceso).
+4. En **Configure Project**:
+   - **Root Directory:** déjalo en `./` (la raíz del repo; **no** elijas `client`).
+   - **Framework Preset:** Vite (lo toma de `vercel.json`). No cambies **Build and Output Settings**: `vercel.json` ya dice cómo compilar el monorepo.
+   - Abre **Environment Variables** y agrega: **Key** `VITE_SERVER_URL`, **Value** la URL de Render del paso 1 (sin `/` al final). Clic en **Add**.
+5. Clic en **Deploy** (1 a 2 minutos).
+6. Copia el dominio que te da (botón **Continue to Dashboard** → **Domains**), por ejemplo `https://calculo-royale.vercel.app`.
+
+### Paso 3: volver a Render y permitir solo tu cliente (CORS)
+
+1. En Render, abre **calculo-royale-server** → menú izquierdo **Environment**.
+2. En **CLIENT_ORIGIN** clic en **Edit** y pon tu dominio de Vercel y, separado por coma, el patrón de las vistas previas:
+   `https://calculo-royale.vercel.app,https://calculo-royale-*.vercel.app`
+   (cambia `calculo-royale` por el nombre real si Vercel te dio otro).
+3. **Save Changes** → Render vuelve a desplegar solo (1 a 2 minutos).
+
+### Paso 4: UptimeRobot (que el servidor no se duerma)
+
+El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al despertar tarda ~50 s (el juego muestra "Despertando el servidor…").
+
+1. Entra a **uptimerobot.com** → **Register for FREE** (o **Login**).
+2. Botón **+ New monitor** (o **Add New Monitor**).
+3. **Monitor Type:** `HTTP(s)`. **Friendly Name:** `Cálculo Royale servidor`.
+4. **URL (or IP):** `https://<tu-servidor>.onrender.com/health`.
+5. **Monitoring Interval:** 5 minutes. Clic en **Create Monitor**.
+6. Nota: 24/7 son ~730 h/mes y el plan gratis de Render da 750 h/mes para un servicio: alcanza justo. Si algún mes necesitas ahorrar, pausa el monitor fuera de clase (**Pause**).
+
+### Paso 5: probar
+
+- Abre la URL de Vercel en el PC y crea una sala: el **QR** ya apunta a la URL de Vercel. Escanéalo con el celular (datos móviles o cualquier Wi-Fi).
+- Proyector: `https://<tu-cliente>.vercel.app/espectador?code=ABCD`.
+
+### Si algo falla
+
+| Síntoma | Qué revisar |
+|---|---|
+| Se queda en "Despertando el servidor…" más de 2 minutos | Que el servicio de Render esté *Live* (pestañas **Events** y **Logs**) y que `VITE_SERVER_URL` sea exactamente su URL. Si cambias `VITE_SERVER_URL`, en Vercel hay que **Redeploy** (se incrusta al compilar). |
+| En la consola del navegador aparece un error de CORS | `CLIENT_ORIGIN` en Render debe contener la URL exacta de Vercel (con `https://`, sin `/` final). |
+| El build de Render falla por la versión de Node | La variable `NODE_VERSION` (22.12.0) está en `render.yaml`; si la borraste, vuelve a ponerla. |
+| `/espectador` da 404 en Vercel | `vercel.json` en la raíz debe tener la regla `rewrites`; el proyecto debe usar la raíz como **Root Directory**. |
+
+## 9. Estado del proyecto
 
 | Fase | Estado | Notas |
 |---|---|---|
@@ -409,7 +489,11 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 | 4 | ✅ Completa | Banco provisional de 40 preguntas verificadas numéricamente, 4 generadores, 27 cajas con candado (KaTeX), botín por rareza, bloqueo y alarma, racha y radar, Todo o nada, temas por sala. Falta probar en celular |
 | 5 | ✅ Completa | Zona en 5 fases (una elíptica) anunciada por el mando con su desigualdad, daño fuera, mapa táctico con ejes y sectores, GPS con sector, lanzamiento aéreo en paracaídas, último en pie gana, resultados con preguntas falladas resueltas. Falta probar en celular |
 | 6 | ✅ Completa | Operadores de radio (reanimación y votos), bombardeo por sectores, intercepción, ranking por puntos, vista de proyector, panel del profe y resultados guardados (Supabase o JSON local). Falta probar en celular |
-| 7 | Pendiente | |
+| 7 | ✅ Lista en el repo | Render (render.yaml), Vercel (vercel.json), CORS por variable con comodines, "Despertando el servidor…", guía paso a paso, `npm run stop`. Falta que hagas los pasos en los paneles |
+| 8 | Pendiente | |
+| 9 | Pendiente | |
+| 10 | Pendiente | |
+| 11 | Pendiente | |
 
 ### Bitácora
 
@@ -425,3 +509,5 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 - 2026-10-23: **fase 4 completa (cajas de suministro).** Banco PROVISIONAL de 40 preguntas en 9 temas y 4 dificultades (`server/src/questions/bank/*.json`); `tests/questions.test.js` recalcula cada respuesta correcta de forma independiente (Simpson en 1, 2 y 3 dimensiones, muestreo para Lagrange, derivadas numéricas) y comprueba que ningún distractor también sea correcto: las 40 pasaron a la primera. 4 generadores paramétricos probados con 300 semillas cada uno. `QuestionBank` elige por temas de la sala y dificultad de la rareza (la más cercana si falta), prefiere preguntas no vistas por ese jugador y baraja las opciones por jugador; la respuesta correcta vive solo en el servidor (una prueba revisa que el mensaje al cliente no la incluya). 26 cajas en `SUPPLY_CRATES` (rareza fija por lugar: campo, casas, contenedores, doradas en la plaza y el patio) y una de práctica en el campo de entrenamiento (no cuenta en estadísticas, se vuelve a cerrar a los 4 s). Modal de candado con KaTeX (rareza, tema, tiempo, 4 opciones grandes que responden al levantar el dedo, botín posible, cancelar). Mientras responde: quieto, icono "⚠ ABRIENDO" sobre el soldado; moverse o morir cancela sin bloquear. Acierto: botín (venda, botiquín, munición, granada, armas, chaleco) y explicación. Fallo o tiempo: caja bloqueada 15 s, luz roja y columna de alarma visible 3 s para todos; la pregunta queda guardada para los resultados. Racha de 3 = radar 10 s (flechas en el borde hacia los enemigos). Doradas: Todo o nada (dos tiradas épicas, o pierdes el chaleco). El host elige los temas en el lobby. 24 pruebas nuevas (50 en total). Dependencia: `katex` (ya estaba en el stack). Decisiones menores: las cajas no tienen colisión (simplifica la predicción del movimiento), la curación se aplica al instante (sin inventario de consumibles), durante una pregunta no se puede disparar, y al fallar no se muestra la respuesta en ese momento (aparece en los resultados al final). Corregidos: la caja de práctica quedaba junto al armero del francotirador (E tomaba el arma) y un reemplazo de `slate-` por `stone-` había roto el centrado del panel del lobby (`translate-x`).
 - 2026-10-23: **fase 5 completa (zona y victoria).** `Zone.js`: 5 fases (aviso 60 s, cierre 45 s, ~9 min) con radios 58 → 40 → 27 (elipse 35×20, idea #3) → 15 → 6; cada zona nueva cabe dentro de la anterior (probado con 500 partidas simuladas); centro y semiejes enteros para que la desigualdad sea legible. Todas las zonas son elipses (`shared/src/zone.js`: contención, interpolación, desigualdad en LaTeX y sectores A1–F6). El mando transmite (`radio:message`) cada zona nueva con su desigualdad, el cierre, la última zona y el lanzamiento aéreo. Daño fuera de la zona 2 → 14 por segundo (20 al final), sin chaleco; muerte por zona con icono propio en el killfeed. Cliente: muro translúcido de la zona y franja blanca de la siguiente; minimapa en canvas (casas, contenedores, ejes, sectores, zona actual sombreada, siguiente punteada, alarmas, lanzamiento aéreo, enemigos con radar) que al tocarlo abre el mapa grande con coordenadas, tu sector, la próxima desigualdad y el historial de transmisiones; aviso "FUERA DE LA ZONA" con la desigualdad a la que volver; GPS con sector. Lanzamiento aéreo a los 4 min: coordenadas enteras dentro de la zona siguiente y sin obstáculos, cae en paracaídas 20 s y queda como caja dorada. Victoria: último vivo (y conectado) con 2 o más jugadores; posición por orden de caída; pantalla de resultados con ranking, aciertos por tema y cada pregunta fallada con tu respuesta, la correcta y la solución (solo la ve su dueño; se reenvía al reconectar). El host vuelve al lobby. 9 pruebas nuevas (59 en total) y una partida completa acelerada en Edge con 3 bots armados (zona, elipse, lanzamiento aéreo, ganador y resultados, sin errores de consola). Para probar rápido: `CR_TIME_SCALE` (solo pruebas) y `CR_SERVER_URL` para una segunda copia. Los bots ahora caminan hacia la zona si quedan afuera. Decisiones menores: sin región en polares (la elipse cubre la idea #3 de forma simple), los jugadores desconectados no cuentan para la victoria, con un solo jugador no hay victoria automática (pruebas en solitario).
 - 2026-10-23: **fase 6 completa (operadores de radio y clase).** `radio.js`: al caer en partida se pasa a operador de radio con vista espectador (la cámara sigue a quien te eliminó u otro vivo, ◀ ▶ para cambiar) y transmisiones de 30 s una tras otra. Si caíste en las fases 1 o 2 de la zona y no has usado la reanimación: 3 aciertos seguidos te reaniman una vez dentro de la zona con pistola y 75 de vida (un fallo reinicia la cuenta). Si no: eliges sector en la cuadrícula A1–F6 y cada acierto es un voto; cada 60 s el más votado recibe un bombardeo (aviso de 5 s con columna roja en la escena, sector rojo en el minimapa y aviso grande a quien está dentro; 70 de daño en todo el sector). Nunca el mismo sector dos veces seguidas; desactivado con 5 vivos o menos. Intercepción cada 2 min para todos los vivos, sin detenerse (tarjeta compacta que no tapa los joysticks): los 5 primeros reciben el centro de la próxima zona (la zona siguiente se decide una sola vez y es la que después se anuncia; se salta la ronda si el anuncio está demasiado cerca para que sirva). Ranking por puntos: 10 por puesto superado, 15 por baja, 5 por acierto (cajas, transmisiones e intercepciones). Vista para proyector en `/espectador?code=ABCD` (mapa completo, vivos, killfeed, transmisiones, acierto de la clase por tema, seguir jugadores) y panel del profe con el acierto por tema en vivo (`class:stats` cada 2 s). Resultados guardados al terminar: Supabase si hay `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`, si no (o si falla) `server/data/resultados/*.json`; dependencia `@supabase/supabase-js` (estaba en el stack), cargada solo si hay variables. `client/vercel.json` para que `/espectador` funcione desplegado. 9 pruebas nuevas (68 en total) y partida acelerada en Edge con bots `--cazar` (nuevo modo: caminan hacia el vivo más cercano): intercepción, caída del host, panel de operador con transmisión y cámara siguiendo a otro jugador, proyector y resultados con puntos, sin errores de consola. Decisiones menores: reanimación con 75 de vida ("pistola y venda" = 50 + 25, sin inventario de consumibles); la reanimación cae directamente en la zona (sin animación de paracaídas, pasa a la fase 7); el sector por defecto para votar es donde caíste; la sirena del bombardeo queda para la fase 7 (sonidos).
+- 2026-10-23: **plan reorganizado (tanda 2).** Nuevas fases 7 (despliegue), 8 (skins propias), 9 (mecánicas épicas) y 10 (cine); la antigua fase 7 pasa a ser la 11 (pulido y carga) e incluye los pendientes: sirena del bombardeo, animación de paracaídas, revisar el bot acostado, base militar, bosque, trincheras, sonidos y prueba de carga con 40 bots. Backlog: modo "Profe jefe final", #4 y #6.
+- 2026-10-23: **fase 7 lista (despliegue).** `render.yaml` (Blueprint de Render, plan gratis): instala solo `server` y `shared` sin dependencias de desarrollo (`npm ci --omit=dev --ignore-scripts -w …`), `npm start`, Node 22.12, health check `/health`; `CLIENT_ORIGIN` y Supabase como secretos. `vercel.json` en la raíz (reemplaza a `client/vercel.json`): `npm ci --ignore-scripts` (evita que `cloudflared` descargue su binario en Vercel; esbuild no lo necesita), `npm run build` del workspace del cliente, salida `client/dist` y todas las rutas a `index.html`. `engines.node >= 22.12` (por `--env-file-if-exists`). `CLIENT_ORIGIN` admite varias URLs y comodines (`https://calculo-royale-*.vercel.app` para las vistas previas), en `server/src/origins.js` con prueba. Inicio: "Despertando el servidor… N s" si no conecta en 2 s. El QR en producción usa el origen (Vercel). Probado en copias limpias del repo con los mismos comandos de Render (instala 85 paquetes, arranca, responde `/health`, acepta una vista previa de Vercel y rechaza otro origen) y de Vercel (compila con `shared` y la URL de Render queda en el bundle). `npm run stop` (`scripts/stop.js`) libera 3001 y 5173 en Windows (netstat en inglés o español), macOS y Linux. Guía paso a paso en la sección 8. Corregido en el camino: un reemplazo con `$&` dentro de `String.replace` corrompió `server/src/index.js` (se restauró desde git antes de seguir).

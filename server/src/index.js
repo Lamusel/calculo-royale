@@ -7,11 +7,12 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 import { SERVER_PORT } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
+import { parseOrigins } from './origins.js';
 import { RoomManager } from './rooms/RoomManager.js';
 
 const PORT = Number(process.env.PORT) || SERVER_PORT;
-// En desarrollo se acepta cualquier origen (para probar desde el celular en la red local)
-const origin = process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(',') : true;
+// Vacío = cualquier origen (desarrollo y celular en la red local); en producción, la URL de Vercel
+const origin = parseOrigins(process.env.CLIENT_ORIGIN);
 
 const app = express();
 app.use(cors({ origin }));

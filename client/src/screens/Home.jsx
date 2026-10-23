@@ -1,9 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from '@calculo-royale/shared/constants';
 import { createRoom, joinRoom, loadName, saveName } from '../net/session.js';
 
 const codeFromUrl = () =>
   (new URLSearchParams(location.search).get('code') ?? '').toUpperCase().slice(0, ROOM_CODE_LENGTH);
+
+// Render (plan gratis) duerme el servidor: el primer arranque puede tardar ~50 s
+function WakeUp({ connected }) {
+  const [since, setSince] = useState(() => performance.now());
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (connected) return;
+    setSince(performance.now());
+    const id = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(id);
+  }, [connected]);
+  if (connected) {
+    return (
+      <div className="mt-1 flex items-center gap-2 text-sm text-stone-400">
+        <span className="h-2.5 w-2.5 rounded-full bg-green-400" /> Conectado
+      </div>
+    );
+  }
+  const seconds = Math.floor((performance.now() - since) / 1000);
+  return (
+    <div className="mt-1 flex flex-col gap-1 text-sm text-stone-400">
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-amber-400" />
+        {seconds < 2 ? 'Conectando…' : `Despertando el servidor… ${seconds} s`}
+      </div>
+      {seconds >= 2 && <p className="text-xs text-stone-500">El servidor gratuito se duerme si nadie juega; tarda hasta ~50 s en arrancar.</p>}
+    </div>
+  );
+}
 
 export default function Home({ connected, notice, onEnter }) {
   const [name, setName] = useState(loadName);
@@ -38,10 +67,7 @@ export default function Home({ connected, notice, onEnter }) {
             Cálculo <span className="text-khaki">Royale</span>
           </h1>
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-stone-400">Battle royale militar · Cálculo Multivariable</p>
-          <div className="mt-1 flex items-center gap-2 text-sm text-stone-400">
-            <span className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-500'}`} />
-            {connected ? 'Conectado' : 'Conectando…'}
-          </div>
+          <WakeUp connected={connected} />
         </div>
 
         <form

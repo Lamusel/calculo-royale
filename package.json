@@ -16,10 +16,14 @@
     "start": "npm run start -w server",
     "bots": "node server/scripts/bots.js",
     "tunnel": "node scripts/tunnel.js",
-    "test": "node --test \"tests/*.test.js\""
+    "test": "node --test \"tests/*.test.js\"",
+    "stop": "node scripts/stop.js"
   },
   "devDependencies": {
     "cloudflared": "^0.7.3",
     "concurrently": "^9.2.5"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

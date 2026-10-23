@@ -35,7 +35,8 @@ Lee `README.md` completo antes de empezar cualquier tarea: ahí están el concep
 ## Comandos
 
 - `npm install` en la raíz instala todos los workspaces.
-- `npm run dev` levanta cliente y servidor.
+- `npm run dev` levanta cliente y servidor. `npm run stop` libera los puertos 3001 y 5173 si quedó otro abierto.
+- Despliegue: `render.yaml` (servidor) y `vercel.json` (cliente); guía en la sección 8 del README.
 - `npm run bots -- <CÓDIGO> <N> [--armados]` mete N bots en una sala.
 - `npm run tunnel` abre una URL pública para probar en el celular (con `npm run dev` corriendo).
 - `npm test` corre las pruebas (`node:test`). Agregar pruebas para la lógica nueva del servidor.
