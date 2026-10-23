@@ -58,15 +58,13 @@ export function currentAim(now = performance.now()) {
   return aim;
 }
 
-// Qué vista previa de mira dibujar: 'line', 'cone', 'sniper', 'grenade' o null
+// Qué vista previa de mira dibujar: 'sniper' (línea larga), 'grenade' (arco) o null.
+// Pistola, rifle y escopeta no llevan línea: solo la flecha de dirección bajo el soldado.
 export function aimPreview() {
   const s = inputState;
   if (s.grenadeHeld || (s.grenadeMode && s.stickAim !== null)) return 'grenade';
   if (s.grenadeMode) return null;
-  if (s.stickAim !== null || s.adsHeld) {
-    if (s.weapon === 'shotgun') return 'cone';
-    return s.weapon === 'sniper' ? 'sniper' : 'line';
-  }
+  if ((s.stickAim !== null || s.adsHeld) && s.weapon === 'sniper') return 'sniper';
   return null;
 }
 

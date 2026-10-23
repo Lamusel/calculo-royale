@@ -58,11 +58,17 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => rooms.disconnect(socket));
 });
 
-// Con node --watch, el proceso anterior a veces aún tiene el puerto: se reintenta unos segundos
+// Con node --watch, el proceso anterior a veces aún tiene el puerto: se reintenta unos segundos.
+// Si sigue ocupado, casi siempre es otro `npm run dev` abierto.
 let listenAttempts = 0;
 httpServer.on('error', (err) => {
-  if (err.code !== 'EADDRINUSE' || ++listenAttempts > 20) throw err;
-  setTimeout(() => httpServer.listen(PORT), 250);
+  if (err.code !== 'EADDRINUSE') throw err;
+  if (++listenAttempts <= 20) {
+    setTimeout(() => httpServer.listen(PORT), 250);
+    return;
+  }
+  console.error(`[server] El puerto ${PORT} ya está en uso. ¿Hay otro "npm run dev" abierto? Ciérralo y vuelve a intentar.`);
+  process.exit(1);
 });
 
 httpServer.listen(PORT, () => {

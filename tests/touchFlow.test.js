@@ -2,7 +2,7 @@
 // y el input resultante se envía al Game real del servidor.
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AIM_CANCEL_ZONE, GRENADE, PLAYER_SPEED, TICK_MS, WEAPONS } from '@calculo-royale/shared/constants';
+import { AIM_CANCEL_ZONE, GRENADE, PLAYER_SPEED, TICK_MS } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { decodeInput, encodeInput } from '@calculo-royale/shared/codec';
 import { applyInput } from '@calculo-royale/shared/movement';
@@ -145,18 +145,23 @@ test('armas de mantener: la zona muerta del 30 % no dispara; fuera de ella sí',
   assert.equal(aimPreview(), null);
   gesture.move(0.5, 0);
   assert.equal(inputState.fireHeld, true);
-  assert.equal(aimPreview(), 'line');
+  assert.equal(aimPreview(), null, 'sin línea de mira: solo la flecha bajo el soldado');
   gesture.end(400);
   assert.equal(inputState.fireHeld, false);
 });
 
-test('la escopeta muestra el cono de dispersión', () => {
-  inputState.weapon = 'shotgun';
-  const gesture = createAimGesture();
-  gesture.start(0);
-  gesture.move(0.7, 0);
-  assert.equal(aimPreview(), 'cone');
-  assert.ok(WEAPONS.shotgun.spread > 0);
+test('solo el francotirador y la granada muestran vista previa', () => {
+  for (const weapon of ['pistol', 'rifle', 'shotgun']) {
+    inputState.weapon = weapon;
+    const gesture = createAimGesture();
+    gesture.start(0);
+    gesture.move(0.7, 0);
+    assert.equal(aimPreview(), null, weapon);
+    gesture.end(300);
+  }
+  inputState.weapon = 'sniper';
+  inputState.adsHeld = true;
+  assert.equal(aimPreview(), 'sniper');
 });
 
 test('al soltar, el soldado conserva la última dirección de mira', () => {
