@@ -5,7 +5,7 @@ import { applyInput } from '@calculo-royale/shared/movement';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 import {
-  answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates,
+  answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates, pickMatchCrates,
 } from './crates.js';
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
@@ -159,6 +159,11 @@ export class Game {
 
   requestAmmo(player) {
     if (!player.deploying) requestAmmo(this, player);
+  }
+
+  // Cajas de esta partida (lo pide la sala; en las pruebas están todas)
+  pickCrates(rand) {
+    pickMatchCrates(this, rand);
   }
 
   // Despliegue al iniciar (lo pide la sala; las pruebas que arman escenarios lo omiten)

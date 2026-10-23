@@ -6,7 +6,8 @@ import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { box, cylinder, limb, merge, modelMaterial, piece, shade } from './models/build.js';
 import { findOccluders, insideRect } from './occlusion.js';
 
-// Pueblo, patio de contenedores y utilería, construidos por código a partir de mapLayout.
+// Edificios (casas, bodega, cabaña, hangar, barracas, búnker), contenedores y utilería,
+// construidos por código a partir de mapLayout.
 // Lo que tapa al jugador desde la cámara se vuelve semitransparente; el techo de la casa
 // donde está el jugador se oculta.
 
@@ -16,6 +17,14 @@ const TRIM = '#8a7c63';
 const WOOD = '#5d4128';
 const ROOF = ['#7c3b2a', '#6e4a33', '#5d5a4a'];
 const CONTAINER = ['#8c3b2b', '#2f5a7a', '#3f6b3a', '#a8742c', '#5b5f63'];
+// Colores y techo por tipo de edificio (las casas varían entre PLASTER y ROOF)
+const TYPE_LOOK = {
+  bodega: { plaster: '#a89a7c', roof: '#5d5a4a', shape: 'gable' },
+  cabana: { plaster: '#7d5b3b', roof: '#4e3524', shape: 'gable' },
+  hangar: { plaster: '#7f8673', roof: '#6c7363', shape: 'arch' },
+  barraca: { plaster: '#8a8c6c', roof: '#55603f', shape: 'gable' },
+  bunker: { plaster: '#8d8a80', roof: '#77736a', shape: 'flat' },
+};
 const DOOR_WIDTH = 2.2;
 const ROOF_PEAK = 1.5;
 const ROOF_OVERHANG = 0.35;
@@ -52,6 +61,14 @@ function gableRoof(length, depth, color, gable) {
   ];
 }
 
+// Techo en arco (hangar): medio cilindro a lo largo de x, centrado en el origen
+function archRoof(length, depth, color) {
+  const g = new THREE.CylinderGeometry(depth / 2, depth / 2, length, 14, 1, false, -Math.PI / 2, Math.PI);
+  g.rotateZ(Math.PI / 2);
+  g.scale(1, 0.55, 1);
+  return [piece(g, color)];
+}
+
 function buildHouse(house, index, walls) {
   const minX = house.x - house.w / 2 - 0.25;
   const maxX = house.x + house.w / 2 + 0.25;
@@ -60,7 +77,9 @@ function buildHouse(house, index, walls) {
   const hs = footprintHeights(minX, maxX, minY, maxY);
   const base = hs.min - 0.3;
   const top = hs.max + WALL_HEIGHT;
-  const plaster = PLASTER[index % PLASTER.length];
+  const look = TYPE_LOOK[house.type] ?? { plaster: PLASTER[index % PLASTER.length], roof: ROOF[index % ROOF.length], shape: 'gable' };
+  const plaster = look.plaster;
+  const doorWidth = house.doorWidth ?? DOOR_WIDTH;
 
   const wallPieces = walls.flatMap((w) => {
     const height = top - base;
@@ -73,17 +92,22 @@ function buildHouse(house, index, walls) {
   });
   // Dintel sobre la puerta
   const door = {
-    n: [house.x, house.y + house.h / 2, DOOR_WIDTH, 0.5],
-    s: [house.x, house.y - house.h / 2, DOOR_WIDTH, 0.5],
-    e: [house.x + house.w / 2, house.y, 0.5, DOOR_WIDTH],
-    w: [house.x - house.w / 2, house.y, 0.5, DOOR_WIDTH],
+    n: [house.x, house.y + house.h / 2, doorWidth, 0.5],
+    s: [house.x, house.y - house.h / 2, doorWidth, 0.5],
+    e: [house.x + house.w / 2, house.y, 0.5, doorWidth],
+    w: [house.x - house.w / 2, house.y, 0.5, doorWidth],
   }[house.door];
   wallPieces.push(piece(box(door[2] + 0.1, 0.55, door[3] + 0.1), WOOD, { position: [door[0], top - 0.28, -door[1]] }));
 
   const alongX = house.w >= house.h;
   const length = (alongX ? house.w : house.h) + ROOF_OVERHANG * 2 + 0.5;
   const depth = (alongX ? house.h : house.w) + ROOF_OVERHANG * 2 + 0.5;
-  const roof = gableRoof(length, depth, ROOF[index % ROOF.length], plaster).map((g) => {
+  const shapes = {
+    gable: () => gableRoof(length, depth, look.roof, plaster),
+    arch: () => archRoof(length, depth, look.roof),
+    flat: () => [piece(box(length, 0.35, depth), look.roof, { position: [0, 0.17, 0] })],
+  };
+  const roof = shapes[look.shape]().map((g) => {
     g.applyMatrix4(new THREE.Matrix4().makeRotationY(alongX ? 0 : Math.PI / 2));
     g.translate(house.x, top, -house.y);
     return g;
@@ -237,7 +261,7 @@ function InstancedProps({ items, geometry, place }) {
 export default function Buildings({ frameRef, pitchDeg }) {
   const { houses, containers, items } = useMemo(() => {
     const houses = HOUSES.map((h, i) =>
-      buildHouse(h, i, OBSTACLES.filter((o) => o.house === i)),
+      buildHouse(h, i, OBSTACLES.filter((o) => o.house === i && o.kind === 'wall')),
     );
     const containers = OBSTACLES.filter((o) => o.kind === 'container').map(buildContainer);
     const items = [...houses, ...containers].map((b) => ({ id: b.id, ...b.bounds }));

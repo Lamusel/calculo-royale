@@ -126,6 +126,7 @@ export class Room {
     this.results = null;
     Object.assign(this, pickWeather(this.weatherChoice));
     this.game.startMatch();
+    this.game.pickCrates();
     this.game.startDeploy(this.deployMode);
     this.broadcastInfo();
   }

@@ -52,20 +52,21 @@ const tick = (room, n = 1) => {
 
 // --- Movimiento y colisiones ---
 
+// Casa del pueblo en (−46, 64), 9 × 8, puerta al sur: la pared este por dentro está en x = −41,75
 test('las paredes detienen el movimiento', () => {
-  const p = { x: -44, y: 44, aim: 0 };
-  for (let i = 0; i < 40; i++) applyInput(p, { mx: 0, my: 1, aim: 0 }, 0.05);
-  assert.ok(Math.abs(p.y - 45.15) < 1e-6, `y = ${p.y}`);
+  const p = { x: -44, y: 62, aim: 0 };
+  for (let i = 0; i < 40; i++) applyInput(p, { mx: 1, my: 0, aim: 0 }, 0.05);
+  assert.ok(Math.abs(p.x - (-41.75 - 0.6)) < 1e-6, `x = ${p.x}`);
 });
 
 test('se puede salir por la puerta de una casa', () => {
-  const p = { x: -44, y: 41, aim: 0 };
+  const p = { x: -46, y: 61.5, aim: 0 };
   for (let i = 0; i < 40; i++) applyInput(p, { mx: 0, my: -1, aim: 0 }, 0.05);
-  assert.ok(p.y < 37, `y = ${p.y}`);
+  assert.ok(p.y < 57, `y = ${p.y}`);
 });
 
 test('los rayos se detienen en la primera pared', () => {
-  assert.equal(raycastObstacles(-44, 42, 0, 1, 50), 3.75);
+  assert.equal(raycastObstacles(-44, 62, 1, 0, 50), 2.25);
 });
 
 test('la pendiente cambia la velocidad solo entre 80 % y 115 %', () => {
@@ -206,10 +207,10 @@ test('el toque rápido apunta solo al enemigo visible más cercano', () => {
 });
 
 test('el auto apuntado ignora a quien está detrás de una pared', () => {
-  // Desde dentro de la casa: el más cercano está tras la pared norte, el visible sale por la puerta sur
-  const hidden = { id: 1, x: -44, y: 47 };
-  const visible = { id: 2, x: -44, y: 33 };
-  assert.equal(findAutoTarget(-44, 42, 20, [hidden, visible]), visible);
+  // Desde dentro de la casa: el más cercano está tras la pared este, el visible sale por la puerta sur
+  const hidden = { id: 1, x: -40, y: 62 };
+  const visible = { id: 2, x: -46, y: 55 };
+  assert.equal(findAutoTarget(-46, 62, 20, [hidden, visible]), visible);
 });
 
 test('la compensación de lag acierta donde el tirador veía al objetivo', () => {

@@ -11,6 +11,7 @@ import AimPreview from './AimPreview.jsx';
 import BombingMesh from './BombingMesh.jsx';
 import Buildings from './Buildings.jsx';
 import Bus from './Bus.jsx';
+import MapProps from './MapProps.jsx';
 import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
@@ -31,7 +32,7 @@ const LOOK_AHEAD = 2.5;
 // Al apuntar con el francotirador la cámara se aleja un poco y se desplaza hacia la mira
 const SNIPER_ZOOM = 1.15;
 // Vista del proyector sin nadie a quien seguir: todo el mapa desde arriba
-const OVERVIEW_DISTANCE = 112;
+const OVERVIEW_DISTANCE = 176;
 const OVERVIEW_PITCH = (62 * Math.PI) / 180;
 
 const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
@@ -232,7 +233,7 @@ export default function Scene({
     <Canvas
       dpr={quality.dpr}
       shadows
-      camera={{ fov: CAMERA_FOV, near: 0.5, far: 300, position: CAMERA_OFFSET.toArray() }}
+      camera={{ fov: CAMERA_FOV, near: 0.5, far: 420, position: CAMERA_OFFSET.toArray() }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
       <color attach="background" args={[look.sky]} />
@@ -248,6 +249,7 @@ export default function Scene({
       <MapMesh />
       <Scenery quality={quality} />
       <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
+      <MapProps frameRef={frameRef} />
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
       <ZoneMesh frameRef={frameRef} />

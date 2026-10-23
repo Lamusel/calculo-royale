@@ -1,5 +1,5 @@
 import {
-  AIRDROP, ALARM_MS, ARMOR_ABSORB, BANDAGE_HEAL, CRATE_LOCK_MS, GRENADE, INTERACT_RADIUS, MAX_HP,
+  AIRDROP, ALARM_MS, ARMOR_ABSORB, BANDAGE_HEAL, CRATE_LOCK_MS, CRATE_SPAWN, GRENADE, INTERACT_RADIUS, MAX_HP,
   PRACTICE_CRATE_RESET_MS, RADAR_MS, RARITIES, STREAK_FOR_RADAR, TOPICS, WEAPONS,
 } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
@@ -74,7 +74,16 @@ export function createCrates() {
 export function crateVisible(crate, phase) {
   if (crate.practice) return phase === 'lobby';
   if (crate.airdrop) return phase === 'playing' && crate.landed;
-  return phase === 'playing';
+  return phase === 'playing' && crate.inMatch !== false;
+}
+
+// Al iniciar una partida (lo pide la sala): las de los puntos calientes siempre; del resto, una
+// parte al azar según su lugar (CRATE_SPAWN). Así cada partida tiene otras cajas.
+export function pickMatchCrates(game, rand = Math.random) {
+  for (const c of game.crates) {
+    if (c.practice || c.airdrop) continue;
+    c.inMatch = c.tag === 'hot' || rand() < (CRATE_SPAWN[c.tag] ?? 1);
+  }
 }
 
 export function resetCrates(game) {

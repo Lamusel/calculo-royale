@@ -1,4 +1,4 @@
-import { AIRDROP, WEAPON_IDS, ZONE_PHASES } from '@calculo-royale/shared/constants';
+import { AIRDROP, MAP_HALF, WEAPON_IDS, ZONE_PHASES } from '@calculo-royale/shared/constants';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { insideZone, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
@@ -51,7 +51,7 @@ export function airdropSpot(zone, rand = Math.random) {
     const r = Math.sqrt(rand()) * 0.75;
     const x = Math.round(zone.cx + Math.cos(angle) * zone.p * r);
     const y = Math.round(zone.cy + Math.sin(angle) * zone.q * r);
-    if (Math.abs(x) < 57 && Math.abs(y) < 57 && !overlapsObstacle(x, y, 1.5)) return { x, y };
+    if (Math.abs(x) < MAP_HALF - 3 && Math.abs(y) < MAP_HALF - 3 && !overlapsObstacle(x, y, 1.5)) return { x, y };
   }
   return { x: Math.round(zone.cx), y: Math.round(zone.cy) };
 }

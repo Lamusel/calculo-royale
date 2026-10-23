@@ -28,7 +28,8 @@ export const RECONNECT_GRACE_MS = 60_000;
 
 // --- Mapa ---
 // Cuadrado centrado en el origen: x e y van de -MAP_HALF a MAP_HALF
-export const MAP_SIZE = 120;
+// ~2,5 veces el área del mapa original (120): para 40 jugadores
+export const MAP_SIZE = 190;
 export const MAP_HALF = MAP_SIZE / 2;
 
 // Terreno z = A·sin(x/k)·cos(y/k), solo interno. Colinas suaves: pendiente máxima ≈ A/k
@@ -144,6 +145,9 @@ export const RARITIES = [
   { id: 'legendario', name: 'Legendario', color: '#eab308', difficulty: 4, timeMs: 60_000, loot: ['Todo o nada: botín épico doble', 'Si fallas pierdes el chaleco'] },
 ];
 
+// Cajas por partida: los puntos calientes siempre; de los demás, esta fracción al azar
+export const CRATE_SPAWN = { inside: 0.75, open: 0.35 };
+
 export const CRATE_LOCK_MS = 15_000; // caja bloqueada tras fallar
 export const ALARM_MS = 3_000; // alarma visible para todos tras un fallo
 export const PRACTICE_CRATE_RESET_MS = 4_000; // la caja de práctica se vuelve a cerrar
@@ -154,21 +158,22 @@ export const BANDAGE_HEAL = 25;
 // --- Zona segura ---
 // Todas las zonas son elipses (x − cx)²/p² + (y − cy)²/q² ≤ 1; el círculo es p = q.
 // La inicial cubre todo el mapa (las esquinas están a 60·√2 ≈ 85).
-export const ZONE_START = { cx: 0, cy: 0, p: 86, q: 86 };
+export const ZONE_START = { cx: 0, cy: 0, p: 136, q: 136 };
 // Cada fase: aviso (waitMs), cierre (shrinkMs), radio de la zona nueva y daño por segundo fuera.
 // `ellipse` escala los semiejes (idea #3: una fase con elipse).
 export const ZONE_PHASES = [
-  { radius: 58, waitMs: 60_000, shrinkMs: 45_000, dps: 2 },
-  { radius: 40, waitMs: 60_000, shrinkMs: 45_000, dps: 4 },
-  { radius: 27, waitMs: 60_000, shrinkMs: 45_000, dps: 6, ellipse: [1.3, 0.75] },
-  { radius: 15, waitMs: 60_000, shrinkMs: 45_000, dps: 9 },
-  { radius: 6, waitMs: 60_000, shrinkMs: 45_000, dps: 14 },
+  // Radios del mapa grande (×1,58) y tiempos algo más largos: ~9 min 15 s de zona
+  { radius: 92, waitMs: 75_000, shrinkMs: 60_000, dps: 2 },
+  { radius: 63, waitMs: 65_000, shrinkMs: 55_000, dps: 4 },
+  { radius: 43, waitMs: 60_000, shrinkMs: 50_000, dps: 6, ellipse: [1.3, 0.75] },
+  { radius: 24, waitMs: 55_000, shrinkMs: 45_000, dps: 9 },
+  { radius: 9, waitMs: 50_000, shrinkMs: 40_000, dps: 14 },
 ];
 // Daño fuera de la zona cuando ya terminó la última fase
 export const ZONE_FINAL_DPS = 20;
 
 // Lanzamiento aéreo: a mitad de partida cae una caja dorada en paracaídas
-export const AIRDROP = { atMs: 240_000, fallMs: 20_000, rarity: 3 };
+export const AIRDROP = { atMs: 280_000, fallMs: 20_000, rarity: 3 };
 
 // Cuadrícula militar de sectores: 6 × 6 (A1 arriba a la izquierda)
 export const SECTORS = 6;
@@ -244,7 +249,7 @@ export const REPLAY = {
 // Despliegue al iniciar la partida: bus volador o elegir punto (lo decide el anfitrión)
 export const DEPLOY_MODES = { bus: 'Bus', punto: 'Elegir punto' };
 export const DEPLOY = {
-  busSpeed: 12, // m/s
+  busSpeed: 15, // m/s
   busAltitude: 45, // m sobre el suelo
   busWaitMs: 4_000, // la ruta se ve antes de que el bus arranque
   routeMargin: 8, // el bus empieza y termina fuera del mapa

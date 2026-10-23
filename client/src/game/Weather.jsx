@@ -73,7 +73,7 @@ function Puddles() {
   const spots = useMemo(() => {
     const rand = seeded(7);
     const list = [];
-    while (list.length < 46) {
+    while (list.length < 110) {
       const x = (rand() * 2 - 1) * (MAP_HALF - 6);
       const y = (rand() * 2 - 1) * (MAP_HALF - 6);
       if (!overlapsObstacle(x, y, 2)) list.push({ x, y, s: 0.9 + rand() * 1.6, r: rand() * Math.PI });

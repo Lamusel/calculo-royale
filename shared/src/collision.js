@@ -1,7 +1,8 @@
 import { OBSTACLES } from './mapLayout.js';
 
-// Colisiones 2D contra los obstáculos fijos del mapa. Con unos cientos de obstáculos
-// basta un prefiltro por caja envolvente (sin rejilla espacial).
+// Colisiones 2D contra los obstáculos fijos del mapa. Rejilla espacial de celdas de CELL m:
+// cada consulta revisa solo los obstáculos de las celdas que toca (el mapa grande tiene más
+// de mil entre paredes, muebles, árboles y sacos de arena).
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -11,12 +12,47 @@ const BOXES = OBSTACLES.map((o) =>
     : { o, minX: o.x - o.r, maxX: o.x + o.r, minY: o.y - o.r, maxY: o.y + o.r },
 );
 
+const CELL = 8;
+const cellOf = (v) => Math.floor(v / CELL);
+const key = (cx, cy) => (cx + 1000) * 4096 + (cy + 1000);
+const GRID = new Map();
+BOXES.forEach((b, i) => {
+  for (let cx = cellOf(b.minX); cx <= cellOf(b.maxX); cx++) {
+    for (let cy = cellOf(b.minY); cy <= cellOf(b.maxY); cy++) {
+      const k = key(cx, cy);
+      if (!GRID.has(k)) GRID.set(k, []);
+      GRID.get(k).push(i);
+    }
+  }
+});
+
+// Obstáculos cuyas celdas tocan el rectángulo (sin repetir). El arreglo se reutiliza.
+const seen = new Uint32Array(BOXES.length);
+let stamp = 0;
+const found = [];
+function candidates(minX, minY, maxX, maxY) {
+  stamp++;
+  found.length = 0;
+  for (let cx = cellOf(minX); cx <= cellOf(maxX); cx++) {
+    for (let cy = cellOf(minY); cy <= cellOf(maxY); cy++) {
+      const list = GRID.get(key(cx, cy));
+      if (!list) continue;
+      for (const i of list) {
+        if (seen[i] === stamp) continue;
+        seen[i] = stamp;
+        found.push(BOXES[i]);
+      }
+    }
+  }
+  return found;
+}
+
 const touchesBox = (b, x, y, r) => x + r > b.minX && x - r < b.maxX && y + r > b.minY && y - r < b.maxY;
 
 // Empuja un círculo (pos: { x, y }) fuera de los obstáculos. Modifica pos.
 export function resolveCircle(pos, r) {
   for (let pass = 0; pass < 2; pass++) {
-    for (const b of BOXES) {
+    for (const b of candidates(pos.x - r, pos.y - r, pos.x + r, pos.y + r)) {
       if (!touchesBox(b, pos.x, pos.y, r)) continue;
       const o = b.o;
       if (o.shape === 'circle') {
@@ -60,7 +96,7 @@ export function resolveCircle(pos, r) {
 }
 
 export function overlapsObstacle(x, y, r) {
-  for (const b of BOXES) {
+  for (const b of candidates(x - r, y - r, x + r, y + r)) {
     if (!touchesBox(b, x, y, r)) continue;
     const o = b.o;
     if (o.shape === 'circle') {
@@ -118,7 +154,7 @@ export function raycastObstacles(x, y, dx, dy, maxDist) {
   const maxX = Math.max(x, ex);
   const minY = Math.min(y, ey);
   const maxY = Math.max(y, ey);
-  for (const b of BOXES) {
+  for (const b of candidates(minX, minY, maxX, maxY)) {
     if (b.maxX < minX || b.minX > maxX || b.maxY < minY || b.minY > maxY) continue;
     const o = b.o;
     const t = o.shape === 'circle' ? rayCircle(x, y, dx, dy, o.x, o.y, o.r) : rayBox(x, y, dx, dy, b);

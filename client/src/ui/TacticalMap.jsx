@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { JEEP, MAP_HALF, MAP_SIZE, NIGHT_REVEAL_MS, SECTORS } from '@calculo-royale/shared/constants';
 import { PLAYER_FLAGS, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
-import { HOUSES, OBSTACLES } from '@calculo-royale/shared/mapLayout';
+import { AREAS, HOUSES, OBSTACLES, TOWERS, TREES } from '@calculo-royale/shared/mapLayout';
 import { sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
 import MathText from './MathText.jsx';
 
@@ -12,6 +12,9 @@ import MathText from './MathText.jsx';
 // a quien acaba de disparar (el fogonazo lo delata).
 
 const CONTAINERS = OBSTACLES.filter((o) => o.kind === 'container');
+const SANDBAGS = OBSTACLES.filter((o) => o.kind === 'sandbag');
+const NAMED = Object.values(AREAS).filter((a) => a.name);
+const AREA_TINT = { 'Base militar': 'rgba(150, 150, 130, 0.22)', Bosque: 'rgba(20, 50, 20, 0.45)', Trincheras: 'rgba(120, 90, 50, 0.3)' };
 
 export function draw(ctx, size, data, detailed) {
   const s = size / MAP_SIZE;
@@ -22,7 +25,19 @@ export function draw(ctx, size, data, detailed) {
   ctx.fillStyle = '#2f3a1e';
   ctx.fillRect(0, 0, size, size);
 
-  // Pueblo y contenedores como referencia
+  // Zonas con nombre (tinte), árboles, torres y sacos de arena como referencia
+  for (const a of NAMED) {
+    if (!AREA_TINT[a.name]) continue;
+    ctx.fillStyle = AREA_TINT[a.name];
+    ctx.fillRect(X(a.x - a.w / 2), Y(a.y + a.h / 2), a.w * s, a.h * s);
+  }
+  ctx.fillStyle = 'rgba(20, 45, 18, 0.9)';
+  for (const t of TREES) ctx.fillRect(X(t.x) - 1, Y(t.y) - 1, 2, 2);
+  ctx.fillStyle = 'rgba(190, 165, 110, 0.85)';
+  for (const b of SANDBAGS) ctx.fillRect(X(b.x - b.w / 2), Y(b.y + b.h / 2), Math.max(1, b.w * s), Math.max(1, b.h * s));
+  ctx.fillStyle = 'rgba(110, 86, 54, 0.95)';
+  for (const t of TOWERS) ctx.fillRect(X(t.x) - 2.5, Y(t.y) - 2.5, 5, 5);
+  // Edificios y contenedores
   ctx.fillStyle = 'rgba(214, 196, 150, 0.55)';
   for (const h of HOUSES) ctx.fillRect(X(h.x - h.w / 2), Y(h.y + h.h / 2), h.w * s, h.h * s);
   ctx.fillStyle = 'rgba(160, 120, 90, 0.6)';
@@ -53,13 +68,18 @@ export function draw(ctx, size, data, detailed) {
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.font = `${Math.max(10, size / 45)}px ui-monospace, monospace`;
     ctx.textAlign = 'center';
-    for (let v = -40; v <= 40; v += 20) {
+    for (let v = -80; v <= 80; v += 40) {
       if (v === 0) continue;
       ctx.fillText(String(v), X(v), Y(0) + 14);
       ctx.fillText(String(v), X(0) - 14, Y(v) + 4);
     }
     ctx.fillText('x', size - 10, Y(0) - 6);
     ctx.fillText('y', X(0) + 10, 14);
+    // Nombres de las zonas
+    ctx.fillStyle = 'rgba(253, 230, 138, 0.9)';
+    ctx.font = `bold ${Math.max(10, size / 42)}px system-ui, sans-serif`;
+    for (const a of NAMED) ctx.fillText(a.name.toUpperCase(), X(a.x), Y(a.y + a.h / 2) + Math.max(12, size / 36));
+    ctx.font = `${Math.max(10, size / 45)}px ui-monospace, monospace`;
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     for (let i = 0; i < SECTORS; i++) {
       ctx.fillText(String.fromCharCode(65 + i), ((i + 0.5) / SECTORS) * size, size - 6);

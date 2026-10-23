@@ -169,6 +169,8 @@ test('interceptar: los 5 primeros reciben el centro de la zona que después se a
   for (const p of players) p.hp = 1e9;
   start(room);
   advance(room, INTERCEPT.everyMs + TICK_MS);
+  // Si el próximo anuncio de zona está muy cerca, la intercepción se reprograma unos segundos
+  for (let i = 0; i < 60 && !players[0].intercept; i++) advance(room, 1000);
   assert.ok(players.every((p) => p.intercept), 'a todos los vivos les llega');
   for (const p of players) answer(room, p, true);
   const winners = players.filter((p) => p.intel);

@@ -1,7 +1,7 @@
 // Zona, lanzamiento aéreo y victoria (npm test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AIRDROP, MAX_HP, TICK_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
+import { AIRDROP, MAP_HALF, MAX_HP, TICK_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { insideZone, sectorBounds, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
@@ -94,8 +94,8 @@ test('una fase usa elipse y la desigualdad se escribe bien', () => {
 });
 
 test('sectores A1 (noroeste) a F6 (sureste)', () => {
-  assert.equal(sectorOf(-59, 59), 'A1');
-  assert.equal(sectorOf(59, -59), 'F6');
+  assert.equal(sectorOf(-MAP_HALF + 1, MAP_HALF - 1), 'A1');
+  assert.equal(sectorOf(MAP_HALF - 1, -MAP_HALF + 1), 'F6');
   assert.equal(sectorOf(0.5, 0.5), 'D3');
   const b = sectorBounds('C4');
   assert.equal(sectorOf(b.cx, b.cy), 'C4');

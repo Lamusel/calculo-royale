@@ -18,6 +18,7 @@ const DIRT = new THREE.Color('#9a8052');
 const GRAVEL = new THREE.Color('#938d7d');
 const PATH = new THREE.Color('#a58a5f');
 const GRASS_DRY = new THREE.Color('#999953');
+const FOREST = new THREE.Color('#4a6630');
 
 function hash(ix, iy) {
   let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263);
@@ -62,6 +63,10 @@ function groundColor(x, y, out) {
   const training = 1 - smooth(AREAS.training.r - 6, AREAS.training.r, Math.hypot(x, y));
   out.lerp(DIRT, Math.max(patches * 0.8, town, training * 0.85));
   out.lerp(GRAVEL, rectWeight(AREAS.containers, x, y, 4) * 0.85);
+  // Base militar: patio de grava; bosque: pasto oscuro con hojarasca; trincheras: tierra removida
+  out.lerp(GRAVEL, rectWeight(AREAS.base, x, y, 4) * 0.55 * smooth(0.2, 0.55, noise(x / 6 + 9, y / 6)));
+  out.lerp(FOREST, rectWeight(AREAS.forest, x, y, 8) * 0.8);
+  out.lerp(DIRT, rectWeight(AREAS.trenches, x, y, 5) * 0.75);
   // Caminos de tierra con borde irregular
   const path = 1 - smooth(1.1, 2.6, distanceToPaths(x, y) + (noise(x / 3, y / 3) - 0.5) * 1.2);
   out.lerp(PATH, path * 0.9);

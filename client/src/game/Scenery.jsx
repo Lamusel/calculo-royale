@@ -32,7 +32,7 @@ const bushModel = () =>
 function bushSpots() {
   const rand = seeded(7331);
   const spots = [];
-  for (let i = 0; i < 900 && spots.length < 140; i++) {
+  for (let i = 0; i < 2400 && spots.length < 330; i++) {
     const x = (rand() * 2 - 1) * (MAP_HALF - 2);
     const y = (rand() * 2 - 1) * (MAP_HALF - 2);
     if (Math.hypot(x, y) < AREAS.training.r + 2) continue;
