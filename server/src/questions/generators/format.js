@@ -29,12 +29,12 @@ export const term = (a, v) => (a === 1 ? v : `${a}${v}`);
 export const pick = (list, rand) => list[Math.floor(rand() * list.length)];
 export const randInt = (min, max, rand) => min + Math.floor(rand() * (max - min + 1));
 
-// Cuatro opciones distintas: la correcta primero y luego los distractores sin repetir.
-// Si faltan, se completan con variantes de la correcta (`fallback`).
-export function options(correct, distractors, fallback) {
+// n opciones distintas (4 por defecto): la correcta primero y luego los distractores en orden
+// (los de errores típicos van primero), sin repetir. Si faltan, se completan con `fallback`.
+export function options(correct, distractors, fallback, n = 4) {
   const out = [correct];
   for (const d of [...distractors, ...fallback]) {
-    if (out.length === 4) break;
+    if (out.length === n) break;
     if (!out.includes(d)) out.push(d);
   }
   return out.map((o) => `$${o}$`);

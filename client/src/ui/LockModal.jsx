@@ -52,7 +52,8 @@ export function LockModal({ question, onAnswer, onCancel }) {
 
         <MathText text={question.enunciado} className="text-base leading-relaxed sm:text-lg" />
 
-        <div className="grid grid-cols-2 gap-2">
+        {/* 2 opciones (dificultad 1 y 2) o 3 (dificultad 3 y 4): botones grandes, fáciles en un tiroteo */}
+        <div className={`grid gap-2 ${question.opciones.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
           {question.opciones.map((option, i) => (
             <button
               key={i}
@@ -62,11 +63,11 @@ export function LockModal({ question, onAnswer, onCancel }) {
                 setChosen(i);
                 onAnswer(i);
               }}
-              className={`flex min-h-[3.25rem] items-center gap-3 rounded-md border px-3 py-2 text-left text-base transition sm:text-lg ${
+              className={`flex min-h-[4.25rem] items-center gap-3 rounded-md border px-3 py-2 text-left text-lg transition sm:min-h-[5rem] sm:text-xl ${
                 chosen === i ? 'border-khaki bg-khaki/25' : 'border-white/15 bg-black/35 active:bg-khaki/20'
               }`}
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-khaki font-bold text-olive-950">{LETTERS[i]}</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-khaki text-lg font-bold text-olive-950">{LETTERS[i]}</span>
               <MathText text={option} />
             </button>
           ))}

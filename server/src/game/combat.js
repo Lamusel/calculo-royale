@@ -49,7 +49,7 @@ export function finishReload(p) {
   const w = WEAPONS[p.weaponId];
   const take = Math.min(w.magazine - p.mag, p.reserve);
   p.mag += take;
-  if (p.weaponId !== 'pistol') p.primary.reserve -= take;
+  p.reserve -= take;
   p.reloadUntil = 0;
 }
 

@@ -20,7 +20,7 @@ export default {
   name: 'derivada-direccional',
   tema: 'gradiente_direccional',
   dificultad: 3,
-  generar(rand) {
+  generar(rand, n = 4) {
     const a = randInt(1, 3, rand);
     const b = randInt(1, 3, rand);
     const x = pick([-2, -1, 1, 2], rand);
@@ -39,7 +39,7 @@ export default {
       tema: this.tema,
       dificultad: this.dificultad,
       enunciado: `Derivada direccional de $f(x,y) = ${term(a, 'x^2')} + ${term(b, 'y^2')}$ en $(${x}, ${y})$ en la dirección de $\\mathbf v = (${vx}, ${vy})$`,
-      opciones: options(correct, distractors, fallback),
+      opciones: options(correct, distractors, fallback, n),
       correcta: 0,
       explicacion:
         `$\\nabla f(${x}, ${y}) = (${gx}, ${gy})$, $|\\mathbf v| = ${len}$, ` +

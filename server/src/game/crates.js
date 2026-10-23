@@ -38,8 +38,8 @@ export function rollLoot(rarity, rand = Math.random) {
 // Aplica un objeto al jugador; devuelve el nombre de lo que recibió
 export function applyLoot(player, item) {
   if (item === 'ammo') {
-    if (!player.primary) return applyLoot(player, 'bandage');
-    player.primary.reserve += WEAPONS[player.primary.id].magazine;
+    // Un cargador para el arma en mano (también la pistola)
+    player.addMagazine();
   } else if (item === 'bandage') {
     player.hp = Math.min(MAX_HP, player.hp + BANDAGE_HEAL);
   } else if (item === 'medkit') {

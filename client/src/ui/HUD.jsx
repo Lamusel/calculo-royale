@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { sectorOf } from '@calculo-royale/shared/zone';
+import Options from './Options.jsx';
 
 // Barra superior: GPS con sector (las coordenadas que usa el mando), latencia y botones
 const fmt = (v) => (Math.abs(v) < 0.5 ? '0' : Math.round(v).toString().replace('-', '−'));
 
 export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscreen, onPanel }) {
   const { me, latency } = view;
+  const [options, setOptions] = useState(false);
 
   return (
     <>
@@ -28,6 +31,9 @@ export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscree
             Volver al lobby
           </button>
         )}
+        <button onClick={() => setOptions(true)} className="rounded bg-black/55 px-3 py-1.5 text-sm text-white" aria-label="Opciones">
+          ⚙
+        </button>
         {onFullscreen && (
           <button onClick={onFullscreen} className="rounded bg-black/55 px-3 py-1.5 text-sm text-white" aria-label="Pantalla completa">
             ⛶
@@ -37,6 +43,7 @@ export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscree
           Salir
         </button>
       </div>
+      {options && <Options onClose={() => setOptions(false)} />}
     </>
   );
 }

@@ -1,7 +1,7 @@
 // Cajas de suministro (npm test): flujo completo en el Game real con una sala falsa.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALARM_MS, CRATE_LOCK_MS, MAX_HP, RADAR_MS, RARITIES, TICK_MS, TOPICS } from '@calculo-royale/shared/constants';
+import { ALARM_MS, CRATE_LOCK_MS, MAX_HP, optionCount, RADAR_MS, RARITIES, TICK_MS, TOPICS } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { applyLoot, LOOT_TABLES, rollLoot } from '../server/src/game/crates.js';
@@ -54,7 +54,8 @@ test('abrir una caja manda la pregunta sin la respuesta correcta y marca al juga
   const p = addPlayer(room, 1, c.x + 1, c.y);
   const { question } = open(room, p);
   assert.ok(question, 'llegó la pregunta');
-  assert.equal(question.opciones.length, 4);
+  // 2 opciones en dificultad 1 y 2, 3 en 3 y 4
+  assert.equal(question.opciones.length, optionCount(RARITIES[c.rarity].difficulty));
   assert.equal(question.timeLimitMs, RARITIES[c.rarity].timeMs);
   const json = JSON.stringify(question);
   assert.ok(!json.includes('correcta') && !json.includes('explicacion') && !json.includes('valor'), json);

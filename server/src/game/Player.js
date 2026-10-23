@@ -46,6 +46,7 @@ export class Player {
     this.armorLevel = 0;
     this.armor = 0; // puntos que le quedan al chaleco
     this.pistolMag = WEAPONS.pistol.magazine;
+    this.pistolReserve = WEAPONS.pistol.reserve;
     this.primary = null; // { id, mag, reserve }
     this.slot = 1;
     this.grenades = 0;
@@ -65,6 +66,8 @@ export class Player {
     this.vehicleId = null; // jeep en el que va
     this.seat = null; // 'driver' | 'passenger'
     this.engineQuestion = null; // código del motor pendiente
+    this.ammoQuestion = null; // "Obtener balas" pendiente
+    this.ammoCooldownUntil = 0;
   }
 
   get weaponId() {
@@ -81,7 +84,19 @@ export class Player {
   }
 
   get reserve() {
-    return this.weaponId === 'pistol' ? Infinity : this.primary.reserve;
+    return this.weaponId === 'pistol' ? this.pistolReserve : this.primary.reserve;
+  }
+
+  set reserve(value) {
+    if (this.weaponId === 'pistol') this.pistolReserve = value;
+    else this.primary.reserve = value;
+  }
+
+  // Un cargador de reserva para el arma en mano (cajas y "Obtener balas"); devuelve su id
+  addMagazine() {
+    const id = this.weaponId;
+    this.reserve += WEAPONS[id].magazine;
+    return id;
   }
 
   giveItem(item) {
@@ -165,6 +180,8 @@ export class Player {
       armor: Math.ceil(this.armor),
       slot: this.slot,
       pistolMag: this.pistolMag,
+      pistolReserve: this.pistolReserve,
+      ammoCooldownLeft: Math.max(0, this.ammoCooldownUntil - now),
       primary: this.primary && { ...this.primary },
       grenades: this.grenades,
       reloadLeft: this.reloadUntil ? Math.max(0, this.reloadUntil - now) : 0,

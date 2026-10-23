@@ -150,7 +150,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
           )}
         </div>
         <p className="rounded bg-black/45 px-3 py-1 text-center text-[11px] text-stone-200">
-          {isHost ? 'Campo de entrenamiento · prueba la caja de práctica' : 'Esperando a que el profe inicie…'}
+          {isHost ? 'Campo de entrenamiento · prueba la caja de práctica' : 'Esperando a que el anfitrión inicie…'}
         </p>
         {error && <p className="rounded-lg bg-red-950/80 px-3 py-1 text-xs text-red-300">{error}</p>}
       </div>
@@ -166,7 +166,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
         ) : (
           <>
             WASD moverse · clic disparar
-            <br />R recargar · 1/2 armas · G granada · E tomar
+            <br />R recargar · B balas · 1/2 armas · G granada · E tomar
           </>
         )}
       </div>

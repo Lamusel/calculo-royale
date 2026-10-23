@@ -4,7 +4,7 @@ import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
 import WeaponIcon from './WeaponIcon.jsx';
 
-const ammoText = (mag, reserve) => `${mag} / ${reserve === null || reserve === undefined ? '∞' : reserve}`;
+const ammoText = (mag, reserve) => `${mag} / ${reserve ?? 0}`;
 
 // Vida del jeep y asiento (mientras vas en uno)
 function JeepBar({ vehicle }) {
@@ -85,16 +85,17 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
   const [noGrenadesAt, setNoGrenadesAt] = useState(0);
   const noGrenades = performance.now() - noGrenadesAt < 1500;
 
-  // Celular: entra o sale del modo granada. PC: se usa G (mantener para ver el arco)
+  // Celular: entra o sale del modo granada. PC: G mantenida, o este botón y luego clic donde lanzar
   const onGrenade = () => {
     if (self.grenades === 0) setNoGrenadesAt(performance.now());
     else if (isTouch) toggleGrenadeMode(true);
+    else inputState.grenadeAiming = !inputState.grenadeAiming;
   };
   return (
     <div className="relative flex items-end gap-1.5">
       <Slot active={self.slot === 1} label="1" onPress={() => actions.switchWeapon(1)}>
         <WeaponIcon weapon="pistol" className="h-4 w-10" />
-        <span className="font-mono">{ammoText(self.pistolMag, null)}</span>
+        <span className="font-mono">{ammoText(self.pistolMag, self.pistolReserve)}</span>
       </Slot>
       <Slot active={self.slot === 2} label="2" onPress={() => actions.switchWeapon(2)}>
         {primary ? (
@@ -106,15 +107,19 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
           <span className="py-1.5 text-stone-500">vacío</span>
         )}
       </Slot>
-      <Slot active={inputState.grenadeMode} alert={noGrenades} label={isTouch ? '' : 'G'} onPress={onGrenade}>
+      <Slot active={inputState.grenadeMode || inputState.grenadeAiming || inputState.grenadeHeld} alert={noGrenades} label={isTouch ? '' : 'G'} onPress={onGrenade}>
         <WeaponIcon weapon="grenade" className="h-4 w-8" />
         <span className="font-mono">
           {self.grenades}/{GRENADE.max}
         </span>
       </Slot>
-      {(inputState.grenadeMode || noGrenades) && (
+      {(inputState.grenadeMode || inputState.grenadeAiming || noGrenades) && (
         <p className="absolute -top-6 right-0 whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-[10px] uppercase tracking-wider text-khaki-light">
-          {noGrenades ? 'Sin granadas' : 'Arrastra a la derecha y suelta · toca otra vez para salir'}
+          {noGrenades
+            ? 'Sin granadas'
+            : inputState.grenadeAiming
+              ? 'Clic donde lanzar · clic derecho o Esc para cancelar'
+              : 'Arrastra a la derecha y suelta · toca otra vez para salir'}
         </p>
       )}
       {reloadProgress !== null && (
@@ -126,6 +131,40 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Munición del arma en mano
+function handAmmo(self) {
+  const pistol = self.slot !== 2 || !self.primary;
+  return pistol ? { mag: self.pistolMag, reserve: self.pistolReserve } : { mag: self.primary.mag, reserve: self.primary.reserve };
+}
+
+// "Obtener balas": botón (celular) o B (PC); con espera tras fallar
+function AmmoButton({ self, client, isTouch }) {
+  const { mag, reserve } = handAmmo(self);
+  const cooldown = Math.ceil(Math.max(0, (client.ammoCooldownEndsAt ?? 0) - performance.now()) / 1000);
+  const empty = mag + reserve === 0;
+  const low = reserve === 0;
+  const busy = Boolean(client.ammoQuestion);
+  const label = busy ? 'Respondiendo…' : cooldown > 0 ? `Balas en ${cooldown} s` : 'Obtener balas';
+  const tone = empty ? 'bg-red-700/85 text-white animate-pulse' : low ? 'bg-amber-700/80 text-amber-50' : 'bg-black/55 text-amber-200';
+  if (isTouch) {
+    return (
+      <TouchButton
+        onPress={() => cooldown <= 0 && client.requestAmmo()}
+        className={`h-12 w-24 rounded-2xl px-1 text-[10px] font-bold uppercase leading-tight ${tone} ${cooldown > 0 || busy ? 'opacity-60' : ''}`}
+      >
+        {label}
+      </TouchButton>
+    );
+  }
+  return (
+    <p className={`rounded px-2 py-0.5 text-[11px] ${tone}`}>
+      {cooldown <= 0 && !busy && <kbd className="mr-1 rounded bg-amber-300 px-1 font-bold text-black">B</kbd>}
+      {empty ? 'Sin balas · ' : ''}
+      {label}
+    </p>
   );
 }
 
@@ -152,7 +191,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
 }
 
 // Interfaz de combate: vida, armas, botones táctiles, aviso para tomar armas y pantalla de muerte
-export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
+export default function CombatHUD({ view, phase, roster, myId, isTouch, client }) {
   const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle } = view;
   if (!self) return null;
 
@@ -201,8 +240,15 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
         </p>
       )}
 
+      {!isTouch && self.alive && client && (
+        <div className="absolute bottom-3 right-3 z-20">
+          <AmmoButton self={self} client={client} isTouch={false} />
+        </div>
+      )}
+
       {isTouch && self.alive && (
-        <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-3">
+        <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-3">
+          {client && <AmmoButton self={self} client={client} isTouch />}
           <TouchButton
             onPress={() => press(BUTTONS.RELOAD)}
             className="h-12 w-12 rounded-full bg-black/55 text-[10px] font-bold uppercase text-khaki-light"

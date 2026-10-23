@@ -27,7 +27,7 @@ export default {
   name: 'polar-cartesiano',
   tema: 'polares',
   dificultad: 1,
-  generar(rand) {
+  generar(rand, n = 4) {
     const r = pick([2, 4, 6], rand);
     const angle = pick(ANGLES, rand);
     const x = value(r, angle.cos);
@@ -42,7 +42,7 @@ export default {
       tema: this.tema,
       dificultad: this.dificultad,
       enunciado: `El punto con coordenadas polares $(r, \\theta) = \\left(${r}, ${angle.tex}\\right)$ en cartesianas es`,
-      opciones: options(pair(x, y), distractors, fallback),
+      opciones: options(pair(x, y), distractors, fallback, n),
       correcta: 0,
       explicacion: `$x = r\\cos\\theta = ${r}\\cos ${angle.tex} = ${tex(x)}$, $y = r\\sin\\theta = ${r}\\sin ${angle.tex} = ${tex(y)}$.`,
       valor: [num(x), num(y)],

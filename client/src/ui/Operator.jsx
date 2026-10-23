@@ -16,7 +16,7 @@ function useCountdown(item) {
 }
 
 // Pregunta con 4 opciones que responden al levantar el dedo (sirve también con otro dedo en pantalla)
-function QuestionCard({ item, onAnswer, compact = false }) {
+export function QuestionCard({ item, onAnswer, compact = false }) {
   const [chosen, setChosen] = useState(null);
   const left = useCountdown(item);
   useEffect(() => setChosen(null), [item?.id]);
@@ -31,7 +31,7 @@ function QuestionCard({ item, onAnswer, compact = false }) {
         <div className="h-full bg-khaki" style={{ width: `${(left / item.timeLimitMs) * 100}%` }} />
       </div>
       <MathText text={item.enunciado} className={compact ? 'text-sm' : 'text-sm sm:text-base'} />
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className={`grid gap-1.5 ${item.opciones.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
         {item.opciones.map((o, i) => (
           <button
             key={i}
@@ -41,7 +41,7 @@ function QuestionCard({ item, onAnswer, compact = false }) {
               setChosen(i);
               onAnswer(i);
             }}
-            className={`flex items-center gap-2 rounded border px-2 text-left ${compact ? 'min-h-[2.25rem] text-sm' : 'min-h-[2.75rem] text-sm sm:text-base'} ${
+            className={`flex items-center gap-2 rounded border px-2 text-left ${compact ? 'min-h-[2.75rem] text-base' : 'min-h-[3.25rem] text-base sm:text-lg'} ${
               chosen === i ? 'border-khaki bg-khaki/25' : 'border-white/15 bg-black/35'
             }`}
           >

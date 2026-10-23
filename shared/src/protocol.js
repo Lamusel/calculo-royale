@@ -37,6 +37,12 @@ export const EVENTS = {
   CRATE_QUESTION: 'crate:question',
   CRATE_ANSWER: 'crate:answer', // C → S: { crateId, index }
   CRATE_CANCEL: 'crate:cancel', // C → S
+
+  // "Obtener balas": pregunta rápida (te puedes mover, no disparar)
+  AMMO_REQUEST: 'ammo:request', // C → S
+  AMMO_QUESTION: 'ammo:question', // S → C: { id, tema, enunciado, opciones, timeLimitMs } (sin la respuesta)
+  AMMO_ANSWER: 'ammo:answer', // C → S: { id, index }
+  AMMO_RESULT: 'ammo:result', // S → C: { id, correct, weapon?, explicacion?, cooldownMs?, timedOut?, cancelled? }
   // S → C: { crateId, outcome: 'correct'|'wrong'|'timeout'|'cancelled', loot: [nombres], explicacion?, reason? }
   CRATE_RESULT: 'crate:result',
 

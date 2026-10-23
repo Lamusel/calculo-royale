@@ -21,6 +21,7 @@ export const inputState = {
 
   adsHeld: false, // PC: clic derecho mantenido (mira)
   grenadeHeld: false, // PC: G mantenida (vista previa de la granada)
+  grenadeAiming: false, // PC: granada armada con el botón del HUD (el siguiente clic la lanza)
   grenadeMode: false, // celular: el joystick derecho lanza granadas
 
   fireHeld: false, // mouse presionado o joystick derecho arrastrado (armas de mantener)
@@ -35,6 +36,7 @@ export const inputState = {
 export const actions = {
   switchWeapon: () => {},
   interact: () => {},
+  requestAmmo: () => {},
 };
 
 function movement() {
@@ -62,7 +64,7 @@ export function currentAim(now = performance.now()) {
 // Pistola, rifle y escopeta no llevan línea: solo la flecha de dirección bajo el soldado.
 export function aimPreview() {
   const s = inputState;
-  if (s.grenadeHeld || (s.grenadeMode && s.stickAim !== null)) return 'grenade';
+  if (s.grenadeHeld || s.grenadeAiming || (s.grenadeMode && s.stickAim !== null)) return 'grenade';
   if (s.grenadeMode) return null;
   if ((s.stickAim !== null || s.adsHeld) && s.weapon === 'sniper') return 'sniper';
   return null;
@@ -72,7 +74,7 @@ export function aimPreview() {
 export function grenadeDistance() {
   const s = inputState;
   const clamp = (v) => Math.max(GRENADE.minRange, Math.min(GRENADE.maxRange, v));
-  if (s.grenadeHeld) return clamp(s.mouseDist ?? GRENADE.maxRange * 0.75);
+  if (s.grenadeHeld || s.grenadeAiming) return clamp(s.mouseDist ?? GRENADE.maxRange * 0.75);
   const t = Math.max(0, (s.stickForce - AIM_CANCEL_ZONE) / (1 - AIM_CANCEL_ZONE));
   return clamp(GRENADE.minRange + t * (GRENADE.maxRange - GRENADE.minRange));
 }
@@ -106,7 +108,7 @@ export function press(buttons, aim = null, dist = null) {
 export function resetInput() {
   Object.assign(inputState, {
     keyX: 0, keyY: 0, stickX: 0, stickY: 0, stickAim: null, stickForce: 0,
-    retainedAim: null, adsHeld: false, grenadeHeld: false, grenadeMode: false,
+    retainedAim: null, adsHeld: false, grenadeHeld: false, grenadeAiming: false, grenadeMode: false,
     fireHeld: false, pressed: 0, pendingAim: null, pendingDist: null,
   });
 }

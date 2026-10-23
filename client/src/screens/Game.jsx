@@ -13,6 +13,8 @@ import { GameClient } from '../net/GameClient.js';
 import { resetGame } from '../net/session.js';
 import { socket } from '../net/socket.js';
 import CombatHUD from '../ui/CombatHUD.jsx';
+import MathText from '../ui/MathText.jsx';
+import { AmmoCard, AmmoToast } from '../ui/AmmoCard.jsx';
 import HUD from '../ui/HUD.jsx';
 import Killfeed from '../ui/Killfeed.jsx';
 import { CrateResult, LockModal } from '../ui/LockModal.jsx';
@@ -27,6 +29,8 @@ import { InterceptCard, OperatorPanel, TransmissionToast } from '../ui/Operator.
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
 import Lobby from './Lobby.jsx';
+
+const FONT_WARMUP = '$\\displaystyle\\lim_{x \\to 2} \\frac{3x^{2} - 1}{x + 4} = \\nabla f \\cdot \\int_0^1 \\lambda\\, dy$';
 
 function StartBanner() {
   return (
@@ -137,7 +141,9 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         <OperatorPanel client={client} self={view.self} roster={room.players} others={view.others} followName={followName} />
       )}
       {panel && <HostPanel stats={client.classStats} code={room.code} onClose={() => setPanel(false)} />}
-      <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} />
+      <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} client={client} />
+      {!operating && <AmmoCard client={client} />}
+      <AmmoToast result={client.ammoResult} />
       {view.radarLeft > 0 && <RadarOverlay me={view.me} others={view.others} myId={myId} secondsLeft={view.radarLeft} />}
       {view.question && (
         <LockModal question={view.question} onAnswer={(i) => client.answer(i)} onCancel={() => client.cancelQuestion()} />
@@ -240,6 +246,8 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
       {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
       {banner && <StartBanner />}
       {isTouch && <RotateDevice />}
+      {/* Fórmula invisible: precarga las fuentes de KaTeX para que la primera pregunta no salga vacía */}
+      <MathText text={FONT_WARMUP} className="pointer-events-none invisible absolute" />
     </div>
   );
 }

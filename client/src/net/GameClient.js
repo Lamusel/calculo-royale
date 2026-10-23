@@ -96,6 +96,8 @@ export class GameClient {
     this.vehicleId = null; // jeep en el que voy
     this.seat = null; // 'driver' | 'passenger'
     this.duel = null; // { ids, introMs, at } duelo final
+    this.ammoQuestion = null; // "Obtener balas" pendiente
+    this.ammoResult = null;
     this.replay = null; // repetición de la mejor jugada (llega justo antes de los resultados)
     this.effectViews = new EffectViews();
 
@@ -166,6 +168,17 @@ export class GameClient {
       [EVENTS.GAME_OVER]: (results) => {
         this.results = results;
       },
+      [EVENTS.AMMO_QUESTION]: (q) => {
+        this.ammoQuestion = { ...q, receivedAt: performance.now() };
+        this.ammoResult = null;
+        vibrate(15);
+      },
+      [EVENTS.AMMO_RESULT]: (r) => {
+        if (this.ammoQuestion?.id === r.id) this.ammoQuestion = null;
+        this.ammoResult = { ...r, at: performance.now() };
+        if (r.correct) this.achieve('correct');
+        if (!r.cancelled) vibrate(r.correct ? [20, 30, 20] : 120);
+      },
       [EVENTS.MATCH_DUEL]: (duel) => {
         this.duel = { ...duel, at: performance.now() };
         vibrate([40, 60, 40]);
@@ -188,6 +201,7 @@ export class GameClient {
 
     actions.switchWeapon = (slot) => socket.emit(EVENTS.WEAPON_SWITCH, slot);
     actions.interact = () => socket.emit(EVENTS.INTERACT);
+    actions.requestAmmo = () => this.requestAmmo();
 
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
     socket.emit(EVENTS.PING, Date.now());
@@ -215,6 +229,7 @@ export class GameClient {
     if (!self.radar) this.radarEndsAt = 0;
     this.self = self;
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
+    this.ammoCooldownEndsAt = self.ammoCooldownLeft ? now + self.ammoCooldownLeft : 0;
     this.predictedMag = selfMag(self);
     inputState.weapon = selfWeaponId(self);
     if (self.grenades === 0) inputState.grenadeMode = false;
@@ -288,6 +303,7 @@ export class GameClient {
     const me = this.predictor.state;
     if (!me || !this.self || !(input.buttons & BUTTONS.FIRE) || input.buttons & BUTTONS.GRENADE) return;
     if (this.seat === 'driver') return; // el conductor no dispara
+    if (this.ammoQuestion) return; // respondiendo "Obtener balas"
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
     const w = WEAPONS[id];
@@ -384,6 +400,14 @@ export class GameClient {
     this.followId = ids[(i + step + ids.length) % ids.length];
   }
 
+  requestAmmo() {
+    if (!this.ammoQuestion && this.alive) this.socket.emit(EVENTS.AMMO_REQUEST);
+  }
+
+  answerAmmo(index) {
+    if (this.ammoQuestion) this.socket.emit(EVENTS.AMMO_ANSWER, { id: this.ammoQuestion.id, index });
+  }
+
   answer(index) {
     if (this.question) this.socket.emit(EVENTS.CRATE_ANSWER, { crateId: this.question.crateId, index });
   }
@@ -399,6 +423,7 @@ export class GameClient {
       this.duel = null;
       this.replay = null;
     }
+    this.ammoQuestion = null;
   }
 
   dispose() {
@@ -407,5 +432,6 @@ export class GameClient {
     for (const [event, handler] of Object.entries(this.handlers)) this.socket.off(event, handler);
     actions.switchWeapon = () => {};
     actions.interact = () => {};
+    actions.requestAmmo = () => {};
   }
 }

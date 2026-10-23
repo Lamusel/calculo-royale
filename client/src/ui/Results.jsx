@@ -1,4 +1,4 @@
-import { TOPICS } from '@calculo-royale/shared/constants';
+import { TOPIC_NAMES } from '@calculo-royale/shared/constants';
 import { ClassTopics } from './HostPanel.jsx';
 import MathText from './MathText.jsx';
 
@@ -11,7 +11,7 @@ function TopicBars({ byTopic }) {
     <div className="flex flex-col gap-1.5">
       {entries.map(([slug, { ok, total }]) => (
         <div key={slug} className="flex items-center gap-2 text-sm">
-          <span className="w-48 shrink-0 truncate text-stone-300">{TOPICS[slug] ?? slug}</span>
+          <span className="w-48 shrink-0 truncate text-stone-300">{TOPIC_NAMES[slug] ?? slug}</span>
           <div className="h-2 flex-1 overflow-hidden rounded bg-black/50">
             <div className="h-full bg-khaki" style={{ width: `${(ok / total) * 100}%` }} />
           </div>
@@ -27,7 +27,7 @@ function TopicBars({ byTopic }) {
 function FailedQuestion({ q }) {
   return (
     <div className="rounded border border-white/10 bg-black/30 p-3">
-      <p className="mb-1 text-[11px] uppercase tracking-wider text-stone-400">{TOPICS[q.tema] ?? q.tema}</p>
+      <p className="mb-1 text-[11px] uppercase tracking-wider text-stone-400">{TOPIC_NAMES[q.tema] ?? q.tema}</p>
       <MathText text={q.enunciado} className="block text-sm sm:text-base" />
       <div className="mt-2 grid grid-cols-2 gap-1.5 text-sm">
         {q.opciones.map((o, i) => (
@@ -71,7 +71,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                 Volver al lobby
               </button>
             ) : (
-              <p className="text-sm text-stone-400">Esperando al profe…</p>
+              <p className="text-sm text-stone-400">Esperando al anfitrión…</p>
             )}
           </div>
         </div>

@@ -109,7 +109,7 @@ export default function Home({ connected, notice, onEnter }) {
             onClick={() => run(() => createRoom(name))}
             className="rounded-xl border border-stone-600 py-2.5 font-semibold text-stone-200 transition hover:bg-stone-700 disabled:opacity-40"
           >
-            Crear sala (profe)
+            Crear sala
           </button>
           {(error || notice) && <p className="text-center text-sm text-red-400">{error || notice}</p>}
         </form>

@@ -152,6 +152,16 @@ export class RoomManager {
     if (player) this.roomOf(socket).game.answerCrate(player, data?.crateId, data?.index);
   }
 
+  ammoRequest(socket) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.requestAmmo(player);
+  }
+
+  ammoAnswer(socket, data) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.answerAmmo(player, data?.id, data?.index);
+  }
+
   crateCancel(socket) {
     const player = this.playerOf(socket);
     if (player) this.roomOf(socket).game.cancelQuestion(player);

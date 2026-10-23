@@ -29,7 +29,8 @@ export function startRadio(game) {
 }
 
 function sendTransmission(game, player, kind, difficulty, timeLimitMs) {
-  const q = drawQuestion({ topics: game.room.topics, difficulty, seen: player.seenQuestions });
+  // Operadores e intercepciones: siempre 2 opciones
+  const q = drawQuestion({ topics: game.room.topics, difficulty, seen: player.seenQuestions, count: 2 });
   const t = { id: nextTransmissionId++, kind, q, expiresAt: game.now + timeLimitMs };
   if (kind === 'operator') player.transmission = t;
   else player.intercept = t;

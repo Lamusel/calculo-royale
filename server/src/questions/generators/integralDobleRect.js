@@ -5,7 +5,7 @@ export default {
   name: 'integral-doble-rect',
   tema: 'integrales_dobles',
   dificultad: 2,
-  generar(rand) {
+  generar(rand, n = 4) {
     const a = randInt(1, 4, rand);
     const b = randInt(1, 4, rand);
     const p = randInt(1, 3, rand);
@@ -20,7 +20,7 @@ export default {
       tema: this.tema,
       dificultad: this.dificultad,
       enunciado: `Evalúe $\\int_0^{${p}} \\int_0^{${q}} (${term(a, 'x')} + ${term(b, 'y')}) \\, dy \\, dx$`,
-      opciones: options(correct, distractors, fallback),
+      opciones: options(correct, distractors, fallback, n),
       correcta: 0,
       explicacion:
         `Integrando en $y$: $${term(a, 'x')} \\cdot ${q} + ${term(b, '')}${b === 1 ? '' : '\\cdot '}\\frac{${q * q}}{2}$. ` +

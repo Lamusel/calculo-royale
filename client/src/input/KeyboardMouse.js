@@ -15,8 +15,17 @@ const MOVE_KEYS = {
 // Posición del mouse en coordenadas normalizadas (-1 a 1); la escena la convierte en ángulo
 export const mousePointer = { x: 0, y: 0, active: false };
 
+// Tecla por código físico o, si no, por la letra (algunos teclados o extensiones solo dan una)
+const isKey = (e, letter) => e.code === `Key${letter}` || e.key?.toLowerCase() === letter.toLowerCase();
+
+// Solo se ignora el teclado mientras se escribe (no con botones, casillas o deslizadores con foco)
+const TEXT_TYPES = new Set(['text', 'search', 'email', 'password', 'number', 'tel', 'url']);
+export const isTyping = (target) =>
+  (target?.tagName === 'INPUT' && TEXT_TYPES.has(target.type)) || target?.tagName === 'TEXTAREA' || Boolean(target?.isContentEditable);
+
 // PC: WASD mueve, mouse apunta, clic izquierdo dispara, clic derecho mantenido = mira,
-// G mantenida muestra el arco de la granada y al soltarla la lanza.
+// G mantenida muestra el arco de la granada y al soltarla la lanza (o clic en el botón de
+// granada y luego clic donde lanzar), R recarga, B pide balas, E toma o abre, 1/2 cambian de arma.
 export function attachKeyboardMouse() {
   const pressed = new Set();
 
@@ -32,23 +41,31 @@ export function attachKeyboardMouse() {
   };
 
   const onKeyDown = (e) => {
-    if (e.target instanceof HTMLInputElement) return;
+    if (isTyping(e.target)) return;
     if (MOVE_KEYS[e.code]) {
       e.preventDefault();
       pressed.add(e.code);
       update();
       return;
     }
+    // G: también con repeticiones, por si la primera pulsación se perdió (foco, extensión, IME)
+    if (isKey(e, 'G')) {
+      e.preventDefault();
+      inputState.grenadeHeld = true;
+      inputState.grenadeAiming = false;
+      return;
+    }
     if (e.repeat) return;
-    if (e.code === 'KeyR') press(BUTTONS.RELOAD);
-    else if (e.code === 'KeyG') inputState.grenadeHeld = true;
-    else if (e.code === 'KeyE') actions.interact();
-    else if (e.code === 'Digit1') actions.switchWeapon(1);
-    else if (e.code === 'Digit2') actions.switchWeapon(2);
+    if (isKey(e, 'R')) press(BUTTONS.RELOAD);
+    else if (isKey(e, 'B')) actions.requestAmmo();
+    else if (isKey(e, 'E')) actions.interact();
+    else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);
+    else if (e.code === 'Digit2' || e.key === '2') actions.switchWeapon(2);
+    else if (e.code === 'Escape') inputState.grenadeAiming = false;
   };
   const onKeyUp = (e) => {
     if (pressed.delete(e.code)) update();
-    if (e.code === 'KeyG' && inputState.grenadeHeld) {
+    if (isKey(e, 'G') && inputState.grenadeHeld) {
       press(BUTTONS.GRENADE, null, grenadeDistance());
       inputState.grenadeHeld = false;
     }
@@ -59,6 +76,7 @@ export function attachKeyboardMouse() {
     inputState.fireHeld = false;
     inputState.adsHeld = false;
     inputState.grenadeHeld = false;
+    inputState.grenadeAiming = false;
   };
   const onPointerMove = (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -72,6 +90,12 @@ export function attachKeyboardMouse() {
     // Los toques generan mousedown de compatibilidad: esos los maneja TouchControls
     if (e.sourceCapabilities?.firesTouchEvents) return;
     if (e.target instanceof Element && e.target.closest('button, input, a')) return;
+    // Granada armada con el botón del HUD: el clic izquierdo la lanza, el derecho cancela
+    if (inputState.grenadeAiming) {
+      if (e.button === 0) press(BUTTONS.GRENADE, null, grenadeDistance());
+      inputState.grenadeAiming = false;
+      return;
+    }
     if (e.button === 0) inputState.fireHeld = true;
     if (e.button === 2) inputState.adsHeld = true;
   };

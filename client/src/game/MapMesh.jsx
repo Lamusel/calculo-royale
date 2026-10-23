@@ -11,12 +11,13 @@ import { distanceToPaths } from './paths.js';
 const MARGIN = 30; // terreno extra fuera del área jugable
 const SEGMENT = 2; // tamaño de cada celda de la malla
 
-const GRASS_DARK = new THREE.Color('#566f31');
-const GRASS_LIGHT = new THREE.Color('#748f42');
-const DIRT = new THREE.Color('#8b7349');
-const GRAVEL = new THREE.Color('#857f70');
-const PATH = new THREE.Color('#957d55');
-const GRASS_DRY = new THREE.Color('#8a8a4a');
+// Colores un poco más claros que al principio: en celular el terreno se veía muy oscuro
+const GRASS_DARK = new THREE.Color('#617c38');
+const GRASS_LIGHT = new THREE.Color('#819c4a');
+const DIRT = new THREE.Color('#9a8052');
+const GRAVEL = new THREE.Color('#938d7d');
+const PATH = new THREE.Color('#a58a5f');
+const GRASS_DRY = new THREE.Color('#999953');
 
 function hash(ix, iy) {
   let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263);

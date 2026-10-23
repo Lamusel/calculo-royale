@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { AIM_CANCEL_ZONE, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, currentAim, inputState } from '../input/inputState.js';
+import { isTouchDevice } from '../input/TouchControls.jsx';
+import { exposureFor, onSettings, settings } from '../settings.js';
 import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
 import BombingMesh from './BombingMesh.jsx';
@@ -161,6 +163,18 @@ function PerfMonitor({ onFrame, stats }) {
   return null;
 }
 
+// Exposición del tone mapping: base según el dispositivo por el Brillo del menú Opciones
+function Exposure() {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    const touch = isTouchDevice();
+    const apply = () => (gl.toneMappingExposure = exposureFor(touch, settings.brightness));
+    apply();
+    return onSettings(apply);
+  }, [gl]);
+  return null;
+}
+
 function Sun({ sunRef, quality, intensity, color }) {
   const scene = useThree((s) => s.scene);
   useEffect(() => {
@@ -211,7 +225,9 @@ export default function Scene({
     >
       <color attach="background" args={[look.sky]} />
       <fog attach="fog" args={[look.sky, ...fog]} />
-      <hemisphereLight args={['#dfe9f0', '#4a4632', look.hemi]} />
+      <Exposure />
+      {/* Luz ambiental algo más alta: sin sombras (calidad baja) no debe verse más oscuro */}
+      <hemisphereLight args={['#e6eef4', '#5a5540', look.hemi * 1.25]} />
       <Sun sunRef={sun} quality={quality} intensity={look.sun} color={look.sunColor} />
       <FrameDriver client={client} frameRef={frameRef} followId={followId} />
       <CameraRig client={client} frameRef={frameRef} sun={sun} overview={overview} />

@@ -5,7 +5,7 @@ export default {
   name: 'gradiente-punto',
   tema: 'gradiente_direccional',
   dificultad: 2,
-  generar(rand) {
+  generar(rand, n = 4) {
     const a = randInt(1, 3, rand);
     const b = randInt(1, 2, rand);
     const x = pick([-2, -1, 1, 2, 3], rand);
@@ -21,7 +21,7 @@ export default {
       tema: this.tema,
       dificultad: this.dificultad,
       enunciado: `Para $f(x,y) = ${term(a, 'x^2 y')} + ${term(b, 'y^3')}$, calcule $\\nabla f(${x}, ${y})$`,
-      opciones: options(pair(fx, fy), distractors, fallback),
+      opciones: options(pair(fx, fy), distractors, fallback, n),
       correcta: 0,
       explicacion: `$\\nabla f = (${term(2 * a, 'xy')}, ${term(a, 'x^2')} + ${term(3 * b, 'y^2')})$; en $(${x}, ${y})$: $${pair(fx, fy)}$.`,
       valor: [fx, fy],

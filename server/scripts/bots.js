@@ -37,6 +37,13 @@ function spawnBot(n) {
   let snapshot = null;
 
   socket.on(EVENTS.STATE, (s) => (snapshot = s));
+  // Munición finita: sin balas piden más y responden al azar (2 opciones) tras pensarlo un poco
+  let self = null;
+  let askedAt = 0;
+  socket.on(EVENTS.PLAYER_SELF, (s) => (self = s));
+  socket.on(EVENTS.AMMO_QUESTION, (q) =>
+    setTimeout(() => socket.emit(EVENTS.AMMO_ANSWER, { id: q.id, index: Math.floor(Math.random() * q.opciones.length) }), 1500 + Math.random() * 2000),
+  );
 
   const step = () => {
     // Cambia de rumbo de vez en cuando y a veces se queda quieto
@@ -54,6 +61,12 @@ function spawnBot(n) {
       const dx = (self[1] - cx) / p;
       const dy = (self[2] - cy) / q;
       if (dx * dx + dy * dy > 0.7) dir = Math.atan2(cy - self[2], cx - self[1]);
+    }
+
+    const ammo = self && (self.slot === 2 && self.primary ? self.primary.mag + self.primary.reserve : self.pistolMag + self.pistolReserve);
+    if (armed && self?.alive && ammo === 0 && Date.now() - askedAt > 3000) {
+      askedAt = Date.now();
+      socket.emit(EVENTS.AMMO_REQUEST);
     }
 
     if (armed && snapshot) {

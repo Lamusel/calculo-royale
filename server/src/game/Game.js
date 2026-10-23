@@ -10,6 +10,7 @@ import {
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
+import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
   answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
@@ -79,6 +80,8 @@ export class Game {
     }
     // El conductor maneja, no dispara
     if (player.seat === 'driver') return;
+    // Respondiendo "Obtener balas": se mueve pero no dispara
+    if (player.ammoQuestion) return;
     // Abriendo una caja: quieto; moverse cancela y no se puede disparar
     if (player.question) {
       if (input.mx !== 0 || input.my !== 0) cancelQuestion(this, player, 'Te moviste');
@@ -146,6 +149,14 @@ export class Game {
     answerCrate(this, player, crateId, index);
   }
 
+  requestAmmo(player) {
+    requestAmmo(this, player);
+  }
+
+  answerAmmo(player, id, index) {
+    answerAmmo(this, player, id, index);
+  }
+
   cancelQuestion(player) {
     if (cancelEngine(this, player, 'Cancelaste')) return;
     cancelQuestion(this, player, 'Cancelaste');
@@ -179,6 +190,7 @@ export class Game {
     updateVehicles(this, DT);
     updateLeader(this);
     checkDuel(this);
+    updateAmmo(this);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -227,11 +239,12 @@ export class Game {
   sendSelfStates(players) {
     for (const p of players) {
       if (!p.connected) continue;
-      const { reloadLeft, ...rest } = p.selfState(this.now);
-      const key = JSON.stringify(rest) + (reloadLeft > 0);
+      // Los tiempos restantes cambian cada tick: solo cuenta si hay o no (el cliente lleva la cuenta)
+      const { reloadLeft, ammoCooldownLeft, ...rest } = p.selfState(this.now);
+      const key = JSON.stringify(rest) + (reloadLeft > 0) + (ammoCooldownLeft > 0);
       if (this.selfCache.get(p.id) === key) continue;
       this.selfCache.set(p.id, key);
-      this.room.emitTo(p, EVENTS.PLAYER_SELF, { ...rest, reloadLeft });
+      this.room.emitTo(p, EVENTS.PLAYER_SELF, { ...rest, reloadLeft, ammoCooldownLeft });
     }
   }
 

@@ -64,21 +64,23 @@ export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'z
 
 // intervalMs: tiempo entre disparos · spread: desviación máxima (rad) por bala
 // o apertura total del abanico en la escopeta · range: alcance en unidades
+// Munición: cargador y reserva limitada (también la pistola). Se consigue en cajas o con
+// "Obtener balas" (pregunta rápida).
 export const WEAPONS = {
   pistol: {
-    name: 'Pistola', damage: 18, intervalMs: 300, magazine: 12, reserve: Infinity,
+    name: 'Pistola', damage: 18, intervalMs: 300, magazine: 12, reserve: 36,
     reloadMs: 1200, spread: 0.03, pellets: 1, range: 24, auto: false,
   },
   shotgun: {
-    name: 'Escopeta', damage: 11, intervalMs: 850, magazine: 5, reserve: 20,
+    name: 'Escopeta', damage: 11, intervalMs: 850, magazine: 5, reserve: 10,
     reloadMs: 2200, spread: 0.35, pellets: 8, range: 13, auto: false,
   },
   rifle: {
-    name: 'Rifle de asalto', damage: 14, intervalMs: 100, magazine: 30, reserve: 90,
+    name: 'Rifle de asalto', damage: 14, intervalMs: 100, magazine: 30, reserve: 60,
     reloadMs: 1800, spread: 0.06, pellets: 1, range: 30, auto: true,
   },
   sniper: {
-    name: 'Francotirador', damage: 80, intervalMs: 1400, magazine: 5, reserve: 15,
+    name: 'Francotirador', damage: 80, intervalMs: 1400, magazine: 5, reserve: 10,
     reloadMs: 2600, spread: 0, pellets: 1, range: 55, auto: false, releaseToFire: true,
   },
 };
@@ -124,6 +126,15 @@ export const TOPICS = {
   lagrange: 'Multiplicadores de Lagrange',
   gradiente_direccional: 'Gradiente y derivada direccional',
 };
+
+// Nombres de todos los temas que pueden aparecer en las estadísticas (los elegibles + el de las balas)
+export const TOPIC_NAMES = { ...TOPICS, basicas: 'Derivadas y límites (balas)' };
+
+// Opciones por pregunta según la dificultad: con 4 era demasiado en medio de un tiroteo
+export const optionCount = (difficulty) => (difficulty <= 2 ? 2 : 3);
+
+// "Obtener balas": pregunta rápida de dificultad 1 (te puedes mover pero no disparar)
+export const AMMO = { questionMs: 15_000, failCooldownMs: 10_000, okCooldownMs: 1_500 };
 
 // Rareza = dificultad de la pregunta = calidad del botín. El índice es la dificultad − 1.
 export const RARITIES = [
