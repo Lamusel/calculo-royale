@@ -1,13 +1,13 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { DUMMY_HP, ITEM_NAMES, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { DUMMY_HP, ITEM_NAMES } from '@calculo-royale/shared/constants';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { textTexture } from './labels.js';
-import {
-  armorGeometry, armorMaterial, grenadeGeometry, grenadeMaterial, weaponGeometries, weaponMaterial,
-} from './weaponModels.js';
+import { modelMaterial } from './models/build.js';
+import { torsoGeometry } from './models/soldier.js';
+import { weaponGeometry } from './models/weapons.js';
 
 // Campo de entrenamiento (solo en el lobby): armeros para tomar armas y blancos de práctica
 
@@ -21,18 +21,21 @@ const centerGeometry = new THREE.CylinderGeometry(0.16, 0.16, 0.16, 12).rotateX(
 const redMaterial = new THREE.MeshLambertMaterial({ color: '#b91c1c' });
 const whiteMaterial = new THREE.MeshLambertMaterial({ color: '#f1f5f9' });
 
+// Objeto sobre la mesa del armero, con los mismos modelos que usan los soldados
 function RackItem({ item }) {
-  const index = WEAPON_IDS.indexOf(item);
   if (item === 'grenade') {
     return (
-      <>
-        <mesh geometry={grenadeGeometry} material={grenadeMaterial} position={[-0.2, 0, 0]} />
-        <mesh geometry={grenadeGeometry} material={grenadeMaterial} position={[0.2, 0, 0]} />
-      </>
+      <group scale={2}>
+        <mesh geometry={weaponGeometry('grenade')} material={modelMaterial} position={[-0.12, 0.08, 0]} />
+        <mesh geometry={weaponGeometry('grenade')} material={modelMaterial} position={[0.12, 0.08, 0]} />
+      </group>
     );
   }
-  if (item === 'armor') return <mesh geometry={armorGeometry} material={armorMaterial} position-y={0.3} />;
-  return <mesh geometry={weaponGeometries[index]} material={weaponMaterial} />;
+  if (item === 'armor') {
+    // Chaleco nivel 3 sobre un maniquí (el torso del soldado)
+    return <mesh geometry={torsoGeometry('#56602f', 3)} material={modelMaterial} position-y={-1.0} scale={[1, 0.9, 1]} />;
+  }
+  return <mesh geometry={weaponGeometry(item)} material={modelMaterial} scale={1.7} position-x={-0.3} rotation-x={-0.3} />;
 }
 
 function Rack({ rack }) {

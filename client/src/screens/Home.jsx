@@ -20,7 +20,10 @@ export default function Home({ connected, notice, onEnter }) {
     const res = await action();
     setBusy(false);
     if (res.ok) {
-      history.replaceState(null, '', location.pathname);
+      // Se quita solo el código: otros parámetros (?debug, ?calidad) se conservan
+      const url = new URL(location.href);
+      url.searchParams.delete('code');
+      history.replaceState(null, '', url);
       onEnter(res);
     } else {
       setError(res.error);

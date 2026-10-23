@@ -38,6 +38,8 @@ export class GameClient {
     this.effects = []; // la escena los consume cada cuadro
     this.killfeed = [];
     this.damageFlashAt = 0;
+    this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
+    this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
 
     this.handlers = {
       [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions]) => {
@@ -77,6 +79,7 @@ export class GameClient {
       const before = prev.hp + prev.armor;
       if (self.hp + self.armor < before && self.alive) {
         this.damageFlashAt = now;
+        this.trauma = Math.min(1, this.trauma + (before - self.hp - self.armor) / 35);
         vibrate(40);
       }
       if (prev.alive && !self.alive) vibrate([80, 60, 220]);
@@ -160,7 +163,8 @@ export class GameClient {
       for (const t of targets) dist = Math.min(dist, rayCircle(me.x, me.y, dx, dy, t.x, t.y, PLAYER_RADIUS));
       this.effects.push({ type: 'tracer', x: me.x, y: me.y, angle, dist, weapon });
     }
-    this.effects.push({ type: 'muzzle', x: me.x, y: me.y, angle: input.aim });
+    this.effects.push({ type: 'muzzle', x: me.x, y: me.y, angle: input.aim, weapon });
+    this.lastShot.set(this.myId, now);
   }
 
   // Se llama una vez por cuadro; escribe en `frame` para no crear objetos nuevos
@@ -175,7 +179,8 @@ export class GameClient {
         for (const { angle, dist } of shot.pellets) {
           this.effects.push({ type: 'tracer', x: shot.x, y: shot.y, angle, dist, weapon: shot.weaponIndex });
         }
-        this.effects.push({ type: 'muzzle', x: shot.x, y: shot.y, angle: shot.pellets[0]?.angle ?? 0 });
+        this.effects.push({ type: 'muzzle', x: shot.x, y: shot.y, angle: shot.pellets[0]?.angle ?? 0, weapon: shot.weaponIndex });
+        this.lastShot.set(shot.shooterId, now);
       }
       for (const [x, y] of snap.explosions) this.effects.push({ type: 'explosion', x, y });
     });

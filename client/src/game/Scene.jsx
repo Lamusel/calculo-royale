@@ -1,28 +1,39 @@
-import { useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AIM_CANCEL_ZONE, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, currentAim, inputState } from '../input/inputState.js';
 import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
+import Buildings from './Buildings.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
 import MapMesh from './MapMesh.jsx';
-import Obstacles from './Obstacles.jsx';
 import Players from './Players.jsx';
+import Scenery from './Scenery.jsx';
 import Training from './Training.jsx';
 
-// Cámara inclinada (≈56°) que sigue al jugador. La cámara 3/4 final llega en la fase 3.
-// Lo bastante alta para ver a quien te dispara con el celular en horizontal.
-const CAMERA_OFFSET = new THREE.Vector3(0, 20, 13.5);
+// Cámara 3/4: inclinación (grados sobre el horizonte) y distancia al jugador. Fácil de ajustar.
+export const CAMERA_PITCH_DEG = 50;
+const CAMERA_DISTANCE = 25;
+const CAMERA_FOV = 48;
+// La cámara se adelanta un poco hacia donde apunta el jugador
+const LOOK_AHEAD = 2.5;
 // Al apuntar con el francotirador la cámara se aleja un poco y se desplaza hacia la mira
-const SNIPER_ZOOM = 1.2;
-const SKY = '#b8c8d2';
+const SNIPER_ZOOM = 1.15;
+
+const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
+const CAMERA_OFFSET = new THREE.Vector3(0, Math.sin(pitch) * CAMERA_DISTANCE, Math.cos(pitch) * CAMERA_DISTANCE);
+
+const SKY = '#a9bfcc';
+// Dirección del sol (desde el suroeste, alto): sombras hacia el noreste
+const SUN_OFFSET = new THREE.Vector3(-22, 40, 18);
+const SHADOW_SIZE = 26;
 
 // Calcula una vez por cuadro dónde dibujar todo (antes que el resto de useFrame)
 function FrameDriver({ client, frameRef }) {
-  useFrame(() => client.frame(performance.now(), frameRef.current), -2);
+  useFrame(() => client.frame(performance.now(), frameRef.current), -3);
   return null;
 }
 
@@ -33,27 +44,43 @@ function sniperLook() {
   return SNIPER_LOOK_AHEAD * Math.max(0, (inputState.stickForce - AIM_CANCEL_ZONE) / (1 - AIM_CANCEL_ZONE));
 }
 
-function CameraRig({ frameRef }) {
-  const target = useMemo(() => new THREE.Vector3(), []);
-  const goal = useMemo(() => new THREE.Vector3(), []);
-  const look = useMemo(() => new THREE.Vector3(), []);
-  const lookGoal = useMemo(() => new THREE.Vector3(), []);
-  const zoom = useMemo(() => ({ value: 1 }), []);
+// Cámara que sigue al jugador, se adelanta hacia la mira y tiembla al recibir daño.
+// El sol (y su caja de sombras) sigue al mismo punto.
+function CameraRig({ client, frameRef, sun }) {
+  const s = useMemo(
+    () => ({ target: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3(), lookGoal: new THREE.Vector3(), zoom: 1 }),
+    [],
+  );
   useFrame(({ camera }, delta) => {
+    const dt = Math.min(delta, 0.1);
     const { me } = frameRef.current;
-    if (me) goal.set(me.x, terrainHeight(me.x, me.y), -me.y);
-    target.lerp(goal, 1 - Math.exp(-12 * delta));
+    if (me) s.goal.set(me.x, terrainHeight(me.x, me.y), -me.y);
+    s.target.lerp(s.goal, 1 - Math.exp(-12 * dt));
 
-    const amount = sniperLook();
     const aim = currentAim();
-    lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount);
-    look.lerp(lookGoal, 1 - Math.exp(-5 * delta));
-    target.add(look);
-    const wanted = amount > 0 ? SNIPER_ZOOM : 1;
-    zoom.value += (wanted - zoom.value) * (1 - Math.exp(-4 * delta));
-    camera.position.copy(target).addScaledVector(CAMERA_OFFSET, zoom.value);
-    camera.lookAt(target);
-    target.sub(look);
+    const extra = sniperLook();
+    const amount = LOOK_AHEAD + extra;
+    s.lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount);
+    s.look.lerp(s.lookGoal, 1 - Math.exp(-5 * dt));
+    s.zoom += ((extra > 0 ? SNIPER_ZOOM : 1) - s.zoom) * (1 - Math.exp(-4 * dt));
+
+    const focus = s.target.clone().add(s.look);
+    camera.position.copy(focus).addScaledVector(CAMERA_OFFSET, s.zoom);
+    // Sacudida proporcional al trauma (cuadrático: los golpes fuertes se notan mucho más)
+    const shake = client.trauma ** 2 * 0.7;
+    if (shake > 0.001) {
+      camera.position.x += (Math.random() * 2 - 1) * shake;
+      camera.position.y += (Math.random() * 2 - 1) * shake;
+      focus.x += (Math.random() * 2 - 1) * shake * 0.3;
+    }
+    client.trauma = Math.max(0, client.trauma - dt * 1.6);
+    camera.lookAt(focus);
+
+    if (sun.current) {
+      sun.current.position.copy(s.target).add(SUN_OFFSET);
+      sun.current.target.position.copy(s.target);
+      sun.current.target.updateMatrixWorld();
+    }
   }, -1);
   return null;
 }
@@ -76,26 +103,80 @@ function MouseAim({ frameRef }) {
   return null;
 }
 
-export default function Scene({ client, roster, myId, phase, frameRef }) {
+// Mide FPS para la calidad automática y llena las estadísticas de ?debug=1
+function PerfMonitor({ onFrame, stats }) {
+  const gl = useThree((s) => s.gl);
+  useFrame(() => {
+    const now = performance.now();
+    onFrame(now);
+    if (stats) {
+      stats.frames.push(now);
+      while (stats.frames.length && now - stats.frames[0] > 1000) stats.frames.shift();
+      stats.fps = stats.frames.length;
+      stats.calls = gl.info.render.calls;
+      stats.triangles = gl.info.render.triangles;
+    }
+  });
+  return null;
+}
+
+function Sun({ sunRef, quality }) {
+  const scene = useThree((s) => s.scene);
+  useEffect(() => {
+    const light = sunRef.current;
+    scene.add(light.target);
+    return () => scene.remove(light.target);
+  }, [scene, sunRef]);
+  useEffect(() => {
+    // El mapa de sombras se recrea con el nuevo tamaño
+    const light = sunRef.current;
+    light.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+    light.shadow.map?.dispose();
+    light.shadow.map = null;
+  }, [quality.shadowMapSize, sunRef]);
+  return (
+    <directionalLight
+      ref={sunRef}
+      intensity={2.1}
+      color="#fff4dc"
+      castShadow={quality.shadows}
+      shadow-bias={-0.0005}
+      shadow-normalBias={0.04}
+      shadow-camera-left={-SHADOW_SIZE}
+      shadow-camera-right={SHADOW_SIZE}
+      shadow-camera-top={SHADOW_SIZE}
+      shadow-camera-bottom={-SHADOW_SIZE}
+      shadow-camera-near={1}
+      shadow-camera-far={120}
+    />
+  );
+}
+
+export default function Scene({ client, roster, myId, phase, frameRef, quality, onFrame, stats }) {
+  const sun = useRef(null);
   return (
     <Canvas
-      dpr={[1, 1.5]}
-      camera={{ fov: 50, near: 0.5, far: 300, position: CAMERA_OFFSET.toArray() }}
+      dpr={quality.dpr}
+      shadows
+      camera={{ fov: CAMERA_FOV, near: 0.5, far: 300, position: CAMERA_OFFSET.toArray() }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
       <color attach="background" args={[SKY]} />
-      <hemisphereLight args={['#e3ecf2', '#4d4a38', 1.5]} />
-      <directionalLight position={[20, 40, 15]} intensity={1.7} />
+      <fog attach="fog" args={[SKY, ...quality.fog]} />
+      <hemisphereLight args={['#dfe9f0', '#4a4632', 1.2]} />
+      <Sun sunRef={sun} quality={quality} />
       <FrameDriver client={client} frameRef={frameRef} />
-      <CameraRig frameRef={frameRef} />
+      <CameraRig client={client} frameRef={frameRef} sun={sun} />
       <MouseAim frameRef={frameRef} />
+      <PerfMonitor onFrame={onFrame} stats={stats} />
       <MapMesh />
-      <Obstacles />
+      <Scenery quality={quality} />
+      <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
       {phase === 'lobby' && <Training frameRef={frameRef} />}
-      <Players roster={roster} myId={myId} frameRef={frameRef} />
+      <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} />
       <Grenades frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />
-      <Effects client={client} />
+      <Effects client={client} quality={quality} />
     </Canvas>
   );
 }

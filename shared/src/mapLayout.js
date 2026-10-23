@@ -7,7 +7,7 @@
 import { MAP_HALF } from './constants.js';
 
 const WALL = 0.5; // grosor de las paredes
-const WALL_HEIGHT = 3.2;
+export const WALL_HEIGHT = 3.2;
 const DOOR = 2.2; // ancho de las puertas
 
 // Casa de 4 paredes con una puerta en el lado indicado ('n', 's', 'e', 'w')
@@ -65,13 +65,18 @@ export const AREAS = {
 };
 
 // --- Pueblo abandonado (noroeste) ---
+// Planta de cada casa: el servidor solo usa sus paredes; el cliente dibuja además piso y techo
+export const HOUSES = [
+  { x: -44, y: 42, w: 10, h: 8, door: 's' },
+  { x: -30, y: 44, w: 8, h: 7, door: 's' },
+  { x: -46, y: 26, w: 8, h: 10, door: 'e' },
+  { x: -32, y: 28, w: 10, h: 8, door: 'w' },
+  { x: -20, y: 38, w: 7, h: 9, door: 'w' },
+  { x: -38, y: 14, w: 9, h: 7, door: 'n' },
+];
+
 const town = [
-  ...house(-44, 42, 10, 8, 's'),
-  ...house(-30, 44, 8, 7, 's'),
-  ...house(-46, 26, 8, 10, 'e'),
-  ...house(-32, 28, 10, 8, 'w'),
-  ...house(-20, 38, 7, 9, 'w'),
-  ...house(-38, 14, 9, 7, 'n'),
+  ...HOUSES.flatMap((h, i) => house(h.x, h.y, h.w, h.h, h.door).map((wall) => ({ ...wall, house: i }))),
   fence(-24, 19, 8, 0.3),
   fence(-49, 34, 0.3, 5),
   barrel(-37, 35),
@@ -135,6 +140,15 @@ function scatteredCover() {
 }
 
 export const OBSTACLES = [...town, ...containers, ...scatteredCover()];
+
+// Caminos de tierra (solo visuales): polilíneas de puntos (x, y)
+export const PATHS = [
+  [[0, 0], [-10, 8], [-22, 16], [-34, 20], [-50, 20]],
+  [[-34, 20], [-34, 36], [-26, 50]],
+  [[0, 0], [12, -10], [22, -24], [34, -32], [52, -36]],
+  [[0, 0], [6, 20], [10, 40], [16, 58]],
+  [[0, 0], [-8, -20], [-20, -40], [-30, -58]],
+];
 
 // Campo de entrenamiento (solo existe en el lobby): armeros y blancos de práctica
 export const TRAINING = {

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createQualityController, initialQuality, QUALITY } from '../game/quality.js';
 import Scene from '../game/Scene.jsx';
 import { attachKeyboardMouse } from '../input/KeyboardMouse.js';
 import { resetInput } from '../input/inputState.js';
@@ -18,6 +19,20 @@ function StartBanner() {
     <div className="pointer-events-none absolute inset-x-0 top-[14%] z-30 flex flex-col items-center gap-1 text-center">
       <p className="font-mono text-xs uppercase tracking-[0.4em] text-khaki-light/80">Aquí Mando</p>
       <p className="text-5xl font-black uppercase tracking-wider text-khaki drop-shadow-lg">¡Despliegue!</p>
+    </div>
+  );
+}
+
+// ?debug=1: FPS, llamadas de dibujo, triángulos y nivel de calidad
+function DebugOverlay({ stats, quality }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="pointer-events-none absolute bottom-24 left-3 z-30 rounded bg-black/70 px-2 py-1 font-mono text-[10px] text-lime-300">
+      {stats.fps} fps · {stats.calls} draws · {(stats.triangles / 1000).toFixed(0)}k tris · calidad {quality.name}
     </div>
   );
 }
@@ -47,6 +62,15 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
   const [banner, setBanner] = useState(false);
   const frameRef = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [] });
   const isTouch = isTouchDevice();
+
+  // Calidad automática: el controlador mide FPS cada cuadro y cambia el nivel si hace falta
+  const quality = useMemo(() => createQualityController(initialQuality(location.search, isTouch)), [isTouch]);
+  const [level, setLevel] = useState(quality.level);
+  const onFrame = useCallback((now) => {
+    const changed = quality.frame(now);
+    if (changed) setLevel(changed);
+  }, [quality]);
+  const stats = useMemo(() => (new URLSearchParams(location.search).has('debug') ? { frames: [] } : null), []);
 
   useEffect(() => {
     const c = new GameClient(socket, myId, room.phase);
@@ -80,7 +104,19 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
 
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-stone-900">
-      {client && <Scene client={client} roster={room.players} myId={myId} phase={room.phase} frameRef={frameRef} />}
+      {client && (
+        <Scene
+          client={client}
+          roster={room.players}
+          myId={myId}
+          phase={room.phase}
+          frameRef={frameRef}
+          quality={QUALITY[level]}
+          onFrame={onFrame}
+          stats={stats}
+        />
+      )}
+      {stats && <DebugOverlay stats={stats} quality={QUALITY[level]} />}
       {isTouch && <TouchControls />}
       {client && (
         <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} />

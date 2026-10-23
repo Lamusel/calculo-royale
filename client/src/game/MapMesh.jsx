@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { MAP_HALF, MAP_SIZE } from '@calculo-royale/shared/constants';
 import { AREAS } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
+import { distanceToPaths } from './paths.js';
 
 // Convención: el plano matemático (x, y) se dibuja en Three.js como (x, altura, −y).
 // Terreno low-poly: cada triángulo tiene un solo color (pasto, tierra o grava).
@@ -14,6 +15,8 @@ const GRASS_DARK = new THREE.Color('#566f31');
 const GRASS_LIGHT = new THREE.Color('#748f42');
 const DIRT = new THREE.Color('#8b7349');
 const GRAVEL = new THREE.Color('#857f70');
+const PATH = new THREE.Color('#957d55');
+const GRASS_DRY = new THREE.Color('#8a8a4a');
 
 function hash(ix, iy) {
   let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263);
@@ -51,12 +54,16 @@ function rectWeight(area, x, y, fade) {
 function groundColor(x, y, out) {
   const n = noise(x / 9, y / 9) + (hash(Math.round(x * 3), Math.round(y * 3)) - 0.5) * 0.15;
   out.copy(GRASS_DARK).lerp(GRASS_LIGHT, Math.max(0, Math.min(1, n)));
+  out.lerp(GRASS_DRY, smooth(0.6, 0.85, noise(x / 23 - 7, y / 23 + 3)) * 0.5);
 
   const patches = smooth(0.62, 0.78, noise(x / 14 + 50, y / 14 - 20));
   const town = rectWeight(AREAS.town, x, y, 6) * smooth(0.25, 0.6, noise(x / 5, y / 5));
   const training = 1 - smooth(AREAS.training.r - 6, AREAS.training.r, Math.hypot(x, y));
   out.lerp(DIRT, Math.max(patches * 0.8, town, training * 0.85));
   out.lerp(GRAVEL, rectWeight(AREAS.containers, x, y, 4) * 0.85);
+  // Caminos de tierra con borde irregular
+  const path = 1 - smooth(1.1, 2.6, distanceToPaths(x, y) + (noise(x / 3, y / 3) - 0.5) * 1.2);
+  out.lerp(PATH, path * 0.9);
 
   // Fuera del área jugable: más oscuro
   const outside = smooth(0, 4, Math.max(Math.abs(x), Math.abs(y)) - MAP_HALF);
@@ -89,7 +96,7 @@ function buildTerrain() {
 export default function MapMesh() {
   const geometry = useMemo(buildTerrain, []);
   return (
-    <mesh geometry={geometry}>
+    <mesh geometry={geometry} receiveShadow>
       <meshLambertMaterial vertexColors flatShading />
     </mesh>
   );

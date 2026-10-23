@@ -2,7 +2,8 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { GRENADE } from '@calculo-royale/shared/constants';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
-import { grenadeGeometry, grenadeMaterial } from './weaponModels.js';
+import { modelMaterial } from './models/build.js';
+import { weaponGeometry } from './models/weapons.js';
 
 const MAX_GRENADES = 16;
 const ARC_HEIGHT = 2.2;
@@ -32,6 +33,6 @@ export default function Grenades({ frameRef }) {
   });
 
   return Array.from({ length: MAX_GRENADES }, (_, i) => (
-    <mesh key={i} ref={(m) => (meshes.current[i] = m)} geometry={grenadeGeometry} material={grenadeMaterial} visible={false} />
+    <mesh key={i} ref={(m) => (meshes.current[i] = m)} geometry={weaponGeometry('grenade')} material={modelMaterial} scale={1.6} visible={false} castShadow />
   ));
 }
