@@ -94,6 +94,33 @@ export class RoomManager {
   input(socket, data) {
     const input = decodeInput(data);
     if (!input) return;
-    this.roomOf(socket)?.players.get(socket.data.playerId)?.queueInput(input);
+    this.playerOf(socket)?.queueInput(input);
+  }
+
+  reset(socket) {
+    const room = this.roomOf(socket);
+    if (!room) return fail('No estás en una sala');
+    if (room.hostId !== socket.data.playerId) return fail('Solo el anfitrión puede reiniciar');
+    room.reset();
+    return { ok: true };
+  }
+
+  switchWeapon(socket, slot) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.switchWeapon(player, Number(slot));
+  }
+
+  interact(socket) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.interact(player);
+  }
+
+  requestSelf(socket) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.resendSelf(player.id);
+  }
+
+  playerOf(socket) {
+    return this.roomOf(socket)?.players.get(socket.data.playerId) ?? null;
   }
 }

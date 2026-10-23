@@ -1,7 +1,7 @@
 import { TERRAIN } from './constants.js';
 
-// Superficie del mapa: z = f(x, y). Solo visual por ahora; en la fase 2 la pendiente
-// modificará la velocidad (entre 80 % y 115 %).
+// Superficie del mapa: z = f(x, y). Solo interna: da la altura del terreno y,
+// con su gradiente, el factor de velocidad según la pendiente.
 
 const { amplitude: A, scale: K } = TERRAIN;
 
@@ -16,5 +16,3 @@ export function terrainGradient(x, y) {
     -(A / K) * Math.sin(x / K) * Math.sin(y / K),
   ];
 }
-
-export const TERRAIN_FORMULA = `z = ${A}·sin(x/${K})·cos(y/${K})`;

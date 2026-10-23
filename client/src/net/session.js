@@ -85,3 +85,7 @@ export function leaveRoom() {
 export function startGame() {
   return request(EVENTS.GAME_START);
 }
+
+export function resetGame() {
+  return request(EVENTS.GAME_RESET);
+}

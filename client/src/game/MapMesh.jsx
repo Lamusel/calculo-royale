@@ -1,127 +1,96 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { CONTOUR_STEP, GRID_STEP, MAP_HALF, MAP_SIZE, TERRAIN } from '@calculo-royale/shared/constants';
+import { MAP_HALF, MAP_SIZE } from '@calculo-royale/shared/constants';
+import { AREAS } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
-import { textTexture } from './labels.js';
 
-// Convención: el plano matemático (x, y) se dibuja en Three.js como (x, altura, −y),
-// así y crece hacia arriba en la pantalla igual que en el tablero.
+// Convención: el plano matemático (x, y) se dibuja en Three.js como (x, altura, −y).
+// Terreno low-poly: cada triángulo tiene un solo color (pasto, tierra o grava).
 
-const vertexShader = /* glsl */ `
-  varying vec3 vWorld;
-  void main() {
-    vec4 world = modelMatrix * vec4(position, 1.0);
-    vWorld = world.xyz;
-    gl_Position = projectionMatrix * viewMatrix * world;
-  }
-`;
+const MARGIN = 30; // terreno extra fuera del área jugable
+const SEGMENT = 2; // tamaño de cada celda de la malla
 
-// Pizarra: piso verde oscuro, cuadrícula de tiza, curvas de nivel y ejes x (rojo) e y (azul).
-// La altura y la normal se calculan exactas por píxel con f(x, y) y su gradiente,
-// así las curvas de nivel salen suaves aunque la malla sea de triángulos.
-const fragmentShader = /* glsl */ `
-  uniform float uAmp;
-  uniform float uScale;
-  uniform float uGrid;
-  uniform float uContour;
-  uniform float uHalf;
-  varying vec3 vWorld;
+const GRASS_DARK = new THREE.Color('#566f31');
+const GRASS_LIGHT = new THREE.Color('#748f42');
+const DIRT = new THREE.Color('#8b7349');
+const GRAVEL = new THREE.Color('#857f70');
 
-  // 1 sobre líneas en múltiplos de 'spacing' con medio ancho 'w', suavizado de 1 píxel
-  float lines(float v, float spacing, float w) {
-    float d = abs(fract(v / spacing + 0.5) - 0.5) * spacing;
-    float aa = fwidth(v);
-    return 1.0 - smoothstep(w, w + aa, d);
-  }
+function hash(ix, iy) {
+  let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
-  float axis(float v, float w) {
-    return 1.0 - smoothstep(w, w + fwidth(v), abs(v));
-  }
+// Ruido de valor suave en [0, 1]
+function noise(x, y) {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = x - ix;
+  const fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const a = hash(ix, iy);
+  const b = hash(ix + 1, iy);
+  const c = hash(ix, iy + 1);
+  const d = hash(ix + 1, iy + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
 
-  void main() {
-    float x = vWorld.x;
-    float y = -vWorld.z;
-    float sx = sin(x / uScale), cx = cos(x / uScale);
-    float sy = sin(y / uScale), cy = cos(y / uScale);
-    float h = uAmp * sx * cy;
-    float fx = uAmp / uScale * cx * cy;
-    float fy = -uAmp / uScale * sx * sy;
-    vec3 normal = normalize(vec3(-fx, 1.0, fy));
+const smooth = (edge0, edge1, v) => {
+  const t = Math.max(0, Math.min(1, (v - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
 
-    float t = clamp((h + uAmp) / (2.0 * uAmp), 0.0, 1.0);
-    vec3 color = mix(vec3(0.07, 0.18, 0.16), vec3(0.19, 0.38, 0.31), t);
-    vec3 light = normalize(vec3(0.4, 1.0, 0.3));
-    color *= 0.6 + 0.5 * max(dot(normal, light), 0.0);
+// Qué tan dentro de un área rectangular está el punto (1 dentro, 0 lejos)
+function rectWeight(area, x, y, fade) {
+  const dx = Math.abs(x - area.x) - area.w / 2;
+  const dy = Math.abs(y - area.y) - area.h / 2;
+  return 1 - smooth(0, fade, Math.max(dx, dy));
+}
 
-    color = mix(color, vec3(0.98, 0.88, 0.50), 0.25 * lines(h, uContour, 0.0));
-    float grid = max(lines(x, uGrid, 0.04), lines(y, uGrid, 0.04));
-    color = mix(color, vec3(0.92, 0.95, 0.93), 0.4 * grid);
-    color = mix(color, vec3(0.98, 0.45, 0.45), axis(y, 0.12));
-    color = mix(color, vec3(0.45, 0.70, 1.00), axis(x, 0.12));
+function groundColor(x, y, out) {
+  const n = noise(x / 9, y / 9) + (hash(Math.round(x * 3), Math.round(y * 3)) - 0.5) * 0.15;
+  out.copy(GRASS_DARK).lerp(GRASS_LIGHT, Math.max(0, Math.min(1, n)));
 
-    float edge = uHalf - max(abs(x), abs(y));
-    color = mix(color, vec3(0.95), 1.0 - smoothstep(0.25, 0.25 + fwidth(edge), edge));
+  const patches = smooth(0.62, 0.78, noise(x / 14 + 50, y / 14 - 20));
+  const town = rectWeight(AREAS.town, x, y, 6) * smooth(0.25, 0.6, noise(x / 5, y / 5));
+  const training = 1 - smooth(AREAS.training.r - 6, AREAS.training.r, Math.hypot(x, y));
+  out.lerp(DIRT, Math.max(patches * 0.8, town, training * 0.85));
+  out.lerp(GRAVEL, rectWeight(AREAS.containers, x, y, 4) * 0.85);
 
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
+  // Fuera del área jugable: más oscuro
+  const outside = smooth(0, 4, Math.max(Math.abs(x), Math.abs(y)) - MAP_HALF);
+  out.multiplyScalar(1 - outside * 0.35);
+  return out;
+}
 
 function buildTerrain() {
-  const segments = MAP_SIZE;
-  const geometry = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE, segments, segments);
+  const size = MAP_SIZE + MARGIN * 2;
+  const segments = size / SEGMENT;
+  const geometry = new THREE.PlaneGeometry(size, size, segments, segments).toNonIndexed();
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     pos.setY(i, terrainHeight(pos.getX(i), -pos.getZ(i)));
   }
-  return geometry;
-}
-
-// Números de los ejes, como carteles que siempre miran a la cámara
-function axisLabels() {
-  const labels = [];
-  for (let k = -MAP_HALF + GRID_STEP; k < MAP_HALF; k += GRID_STEP) {
-    if (k === 0) continue;
-    labels.push({ text: String(k), x: k, y: -1.4, color: '#fecaca' });
-    labels.push({ text: String(k), x: -1.6, y: k, color: '#bfdbfe' });
+  const colors = new Float32Array(pos.count * 3);
+  const color = new THREE.Color();
+  for (let i = 0; i < pos.count; i += 3) {
+    const x = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
+    const y = -(pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+    groundColor(x, y, color);
+    for (let k = 0; k < 3; k++) color.toArray(colors, (i + k) * 3);
   }
-  labels.push({ text: 'x', x: MAP_HALF - 2, y: 1.6, color: '#f87171', size: 64 });
-  labels.push({ text: 'y', x: 1.6, y: MAP_HALF - 2, color: '#60a5fa', size: 64 });
-  labels.push({ text: '0', x: -1.2, y: -1.2, color: '#e2e8f0' });
-  return labels.map((l) => ({ ...l, ...textTexture(l.text, { color: l.color, size: l.size ?? 48 }) }));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 export default function MapMesh() {
   const geometry = useMemo(buildTerrain, []);
-  const material = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader,
-        fragmentShader,
-        uniforms: {
-          uAmp: { value: TERRAIN.amplitude },
-          uScale: { value: TERRAIN.scale },
-          uGrid: { value: GRID_STEP },
-          uContour: { value: CONTOUR_STEP },
-          uHalf: { value: MAP_HALF },
-        },
-      }),
-    [],
-  );
-  const labels = useMemo(axisLabels, []);
-
   return (
-    <group>
-      <mesh geometry={geometry} material={material} />
-      {labels.map((l) => (
-        <sprite
-          key={`${l.text}-${l.x}-${l.y}`}
-          position={[l.x, terrainHeight(l.x, l.y) + 0.5, -l.y]}
-          scale={[l.aspect * 0.9, 0.9, 1]}
-        >
-          <spriteMaterial map={l.texture} depthWrite={false} transparent />
-        </sprite>
-      ))}
-    </group>
+    <mesh geometry={geometry}>
+      <meshLambertMaterial vertexColors flatShading />
+    </mesh>
   );
 }

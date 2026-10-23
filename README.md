@@ -111,6 +111,8 @@ calculo-royale/
 ├── CLAUDE.md                  # reglas para el asistente de código
 ├── README.md                  # este documento
 ├── package.json               # workspaces: client, server, shared
+├── scripts/tunnel.js          # túnel de Cloudflare para el celular (npm run tunnel)
+├── tests/                     # pruebas con node:test (npm test)
 ├── shared/
 │   └── src/
 │       ├── constants.js       # tamaño del mapa, tick rate, stats de armas, rarezas
@@ -118,10 +120,11 @@ calculo-royale/
 │       ├── codec.js           # codificación compacta de inputs y snapshots
 │       ├── movement.js        # movimiento compartido (servidor = verdad, cliente = predicción)
 │       ├── collision.js       # círculo vs rectángulo/círculo y rayos contra el mapa
+│       ├── combat.js          # ángulos de las balas y auto apuntado (servidor y cliente)
 │       ├── mapLayout.js       # edificios, muros, contenedores, árboles (colisión + dibujo)
 │       └── terrain.js         # z = f(x, y) y su gradiente (solo interno)
 ├── server/
-│   ├── scripts/bots.js        # bots de prueba (npm run bots)
+│   ├── scripts/bots.js        # bots de prueba (npm run bots, --armados)
 │   └── src/
 │       ├── index.js           # Express + Socket.io
 │       ├── rooms/
@@ -149,12 +152,16 @@ calculo-royale/
         │   ├── Scene.jsx      # Canvas R3F, cámara, luces, niebla
         │   ├── Players.jsx
         │   ├── MapMesh.jsx    # terreno natural
+        │   ├── Obstacles.jsx  # obstáculos de mapLayout con instancing
+        │   ├── Training.jsx   # armeros y blancos del campo de entrenamiento
+        │   ├── Effects.jsx    # trazadoras, fogonazo, explosiones, números de daño
+        │   ├── Grenades.jsx
         │   ├── models/        # soldado, armas, cajas, edificios, contenedores (procedurales)
         │   ├── effects/       # fogonazo, trazadoras, casquillos, polvo, humo
         │   ├── quality.js     # calidad automática según FPS
         │   └── labels.js      # textos como texturas de canvas
         ├── input/             # inputState, TouchControls (nipplejs), KeyboardMouse
-        └── ui/                # HUD, RotateDevice, LockModal (KaTeX), Minimap, Killfeed, Radio
+        └── ui/                # HUD, CombatHUD, Killfeed, WeaponIcon, RotateDevice, LockModal (KaTeX), Minimap, Radio
 ```
 
 ---
@@ -167,6 +174,7 @@ calculo-royale/
 - **El mapa es 2D por dentro.** Servidor y `shared` usan las coordenadas matemáticas `(x, y)` del plano cartesiano (las mismas del GPS, el mapa táctico y las desigualdades del mando). Three.js las dibuja como `(x, f(x, y), −y)`, así y crece hacia arriba en la pantalla. Colisiones círculo vs círculo y círculo vs rectángulo. El 3D es solo visual.
 - **Inputs a 20 Hz** con número de secuencia; si el jugador está quieto y no gira, no se envía nada. El servidor acepta ráfagas de hasta 3 inputs pero en promedio solo 1 por tick (anti speed hack).
 - **Reconexión:** cada jugador tiene un token (guardado en `sessionStorage`, por pestaña). Si se cae la conexión o se recarga la página, vuelve como el mismo jugador durante 60 s.
+- **Disparos hitscan con compensación de lag:** el cliente envía el tick que estaba viendo; el servidor guarda ~300 ms de historia de posiciones, retrocede a los objetivos a ese instante y traza el rayo contra el mapa y los jugadores. La trazadora es cosmética y termina donde el servidor dice que pegó. El auto apuntado del toque rápido usa la misma compensación.
 - **Las respuestas correctas nunca viajan al cliente.** El cliente recibe enunciado y opciones; el servidor valida el índice elegido.
 
 ### Eventos principales (ver `shared/src/protocol.js`)
@@ -177,9 +185,13 @@ calculo-royale/
 | C → S | `room:leave` / `game:start` | — (iniciar: solo host) |
 | S → C | `room:info` | código, fase, host, lista de jugadores |
 | S → C | `room:kicked` | la sesión se abrió en otra pestaña |
-| C → S | `input` | `[seq, mx, my, aim]` (disparo y acciones llegan en la fase 2) |
+| C → S | `input` | `[seq, mx, my, aim, botones, tickVisto, distApuntado]` (botones: disparar, auto apuntado, recargar, granada) |
+| C → S | `weapon:switch` / `interact` | ranura 1 o 2 / tomar del armero (luego, cajas) |
+| S → C | `player:self` | solo al dueño: vida, chaleco, munición, granadas (cuando cambia) |
+| S → C | `combat:hit` / `combat:kill` | a quien disparó: daño y posición / a todos: killfeed |
+| C → S | `game:reset` | el host devuelve a todos al lobby |
 | C → S | `crate:open` / `crate:answer` / `crate:cancel` | id de la caja, índice elegido |
-| S → C | `state` | `[tick, [[id, x, y, aim, lastSeq], ...]]`; luego combate, cajas, zona |
+| S → C | `state` | `[tick, jugadores, granadas, blancos, disparos, explosiones]` (ver `shared/src/codec.js`); luego cajas y zona |
 | S → C | `crate:question` | enunciado, opciones, tiempo límite |
 | S → C | `crate:result` | correcto o no, botín, explicación |
 | S → C | `radio:message` | transmisión del mando (zona, lanzamiento aéreo, bombardeo) |
@@ -244,6 +256,9 @@ npm run dev:server # solo servidor
 npm run dev:client # solo cliente
 npm run build      # build de producción del cliente (client/dist)
 npm run bots -- ABCD 5   # 5 bots caminando al azar en la sala ABCD (Ctrl+C para sacarlos)
+npm run bots -- ABCD 5 --armados   # bots que disparan al jugador visible más cercano
+npm run tunnel     # URL pública para el celular (con npm run dev corriendo)
+npm test           # pruebas de combate y colisiones (node:test)
 ```
 
 | Servicio | Puerto | Comprobación |
@@ -251,13 +266,17 @@ npm run bots -- ABCD 5   # 5 bots caminando al azar en la sala ABCD (Ctrl+C para
 | Cliente (Vite) | 5173 | `http://localhost:5173` muestra la pantalla de inicio con "Conectado" |
 | Servidor (Express + Socket.io) | 3001 | `http://localhost:3001/health` (incluye cuántas salas hay) |
 
+Vite redirige `/socket.io`, `/health` y `/net-info` al servidor: en desarrollo **todo pasa por el puerto 5173**.
+
 ### Probar solo, sin más dispositivos
 
 1. Abrir `http://localhost:5173`, escribir un nombre y **Crear sala (profe)**.
-2. En otra terminal: `npm run bots -- <CÓDIGO> 5`. Los bots aparecen en el lobby y caminan.
+2. En otra terminal: `npm run bots -- <CÓDIGO> 5` (agregar `--armados` para que disparen).
 3. Abrir una segunda pestaña y entrar con el mismo código (cada pestaña es un jugador distinto).
-4. **Controles PC:** WASD o flechas para moverse, mouse para apuntar. **Celular:** mitad izquierda de la pantalla = moverse, mitad derecha = apuntar (el joystick aparece donde tocas).
-5. Recargar una pestaña: vuelve al mismo jugador, en la misma posición.
+4. **Controles PC:** WASD o flechas = moverse, mouse = apuntar, clic = disparar (mantener con el rifle), R = recargar, 1/2 = cambiar arma, G = granada hacia el mouse, E = tomar del armero.
+   **Celular:** mitad izquierda = moverse; mitad derecha: **toque rápido** = dispara solo al enemigo visible más cercano, **arrastrar** = apuntar y disparar (pistola, escopeta, rifle) o apuntar y **soltar** para disparar (francotirador). Botón de granada en la barra de armas: el siguiente gesto la lanza (arrastrar más = más lejos). Volver al centro antes de soltar cancela.
+5. En el campo de entrenamiento hay armeros (escopeta, rifle, francotirador, granadas, chaleco) y blancos de práctica. Lo que se toma ahí no pasa a la partida.
+6. Recargar una pestaña: vuelve al mismo jugador, en la misma posición.
 
 ### Variables de entorno (opcionales en desarrollo)
 
@@ -267,15 +286,15 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 |---|---|---|
 | `PORT` | server | Puerto del servidor (por defecto 3001; Render lo asigna) |
 | `CLIENT_ORIGIN` | server | Orígenes CORS permitidos, separados por coma. Vacío = cualquiera |
-| `VITE_SERVER_URL` | client | URL del servidor. Vacío = `http://<host de la página>:3001` |
+| `VITE_SERVER_URL` | client | URL del servidor en producción. Vacío = mismo origen (proxy de Vite) |
 
-### Probar desde el celular (misma red Wi-Fi)
+### Probar desde el celular (recomendado: túnel)
 
-1. Correr `npm run dev`, crear la sala en el PC y tocar **QR** junto al código. El QR ya apunta a la IP de la red local (aunque el PC haya abierto `localhost`).
-2. Escanear con el celular. También sirve abrir la línea `Network: http://192.168.x.x:5173` que imprime Vite y escribir el código.
-3. Si no carga, permitir Node.js en el Firewall de Windows (red privada) para los puertos 5173 y 3001.
+1. Con `npm run dev` corriendo, en otra terminal: `npm run tunnel`. La primera vez descarga `cloudflared`; luego imprime una URL `https://….trycloudflare.com` (cambia cada vez).
+2. Crear la sala en el PC y tocar **QR**: mientras el túnel esté activo, el QR usa la URL pública. Funciona con datos móviles o cualquier Wi-Fi.
+3. El túnel suma ~50–150 ms de latencia: sirve para probar, no para medir rendimiento.
 
-> En la fase 2 se agrega `npm run tunnel` (Cloudflare, sin cuenta) para probar desde el celular sin depender de la red local.
+**Sin túnel (misma red Wi-Fi):** el QR usa la IP local (`http://192.168.x.x:5173`). Si no carga, permitir Node.js en el Firewall de Windows (red privada) para el puerto 5173, o revisar si la red aísla a los dispositivos (común en redes de universidad).
 
 ---
 
@@ -285,7 +304,7 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 |---|---|---|
 | 0 | ✅ Completa | Monorepo con workspaces, Express + Socket.io, Vite + React + Tailwind, indicador de conexión con ping |
 | 1 | ✅ Completa | Salas con código y QR, lobby jugable, terreno z = f(x, y), predicción + interpolación, joysticks y teclado, reconexión, bots. El piso tipo pizarra se reemplaza al empezar la fase 2. Falta probar en un celular real |
-| 2 | Pendiente | |
+| 2 | ✅ Completa | Túnel, piso natural, mapa con pueblo y contenedores, colisiones, pendiente, 5 armas + chaleco, hitscan con compensación de lag, auto apuntado por toque, granadas, campo de entrenamiento, killfeed, bots armados, 15 pruebas. Falta probar en un celular real |
 | 3 | Pendiente | |
 | 4 | Pendiente | |
 | 5 | Pendiente | |
@@ -299,3 +318,4 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 - 2026-10-22: aprobadas las ideas #1, #2, #5, #7, #8 y #9 (base), #3 y #4 (opcionales) y #6 (backlog). Ajustes a #1: colinas suaves que no tapen jugadores, pendiente solo entre 80 % y 115 % de velocidad, sin ventaja de alcance por altura y una sola f(x, y) fija.
 - 2026-10-22: **fase 1 completa.** Salas de 4 letras (sin I ni O) hasta 40 jugadores, host que inicia, QR con IP de la red local, reconexión por token (60 s) y "toma de control" si se abre en otra pestaña. Loop de 20 Hz también en el lobby (lobby jugable). Movimiento compartido en `shared/movement.js`: predicción del jugador propio con reconciliación suavizada e interpolación de los demás a 100 ms. Terreno con shader tipo pizarra que calcula f(x, y) y su gradiente por píxel. Controles: nipplejs dinámico en celular y WASD/flechas + mouse en PC; aviso de girar el celular y pantalla completa. Script `npm run bots`. Dependencias nuevas: `three`, `@react-three/fiber`, `nipplejs` (del stack) y `qrcode.react` (aprobada). Verificado con prueba de servidor (20 casos) y prueba visual en Edge headless.
 - 2026-10-22: **cambio de dirección.** El juego pasa a ser primero un battle royale militar; el cálculo es la llave del poder. Fuera la estética de pizarra (la f(x, y) queda solo interna). Arte 3D low-poly propio y procedural (adiós primitivas y glTF externos), cámara 3/4, sol con sombras, niebla y efectos. Armas reales (pistola, escopeta, rifle de asalto, francotirador, granada con máximo 2), chaleco nivel 1 a 3, cajas de suministro con candado, transmisiones del centro de mando, interceptar transmisión, operadores de radio con reanimación y bombardeo por votos (cuadrícula 6×6, sin repetir sector seguido, desactivado con 5 vivos o menos). Nueva fase 3 de arte base con alcance mínimo (solo pueblo y contenedores); base militar, bosque y trincheras pasan a la fase 7. Prioridad: combate > cajas > zona; el arte nunca las bloquea. #4 pasa al backlog.
+- 2026-10-23: **fase 2 completa.** Túnel de Cloudflare (`npm run tunnel`, dependencia `cloudflared`) con proxy de Vite: un solo puerto (5173) para cliente y servidor, y el QR usa la URL pública. Piso de pasto, tierra y grava low-poly (fuera la pizarra); GPS `POS x, y` en el HUD. `shared/mapLayout.js` con pueblo (6 casas con puertas), patio de contenedores, cobertura dispersa con semilla fija y campo de entrenamiento; `shared/collision.js` (círculo contra rectángulo/círculo y rayos) usado por servidor y predicción. Velocidad por pendiente 80–115 %. Armas en `constants.js` (pistola, escopeta, rifle, francotirador, granada máx. 2) y chaleco 25/50/75. Disparo hitscan con compensación de lag (~300 ms de historia), recarga, cadencia, auto apuntado del toque rápido decidido por el servidor; granadas simuladas en el servidor que rebotan y explotan con daño en área bloqueado por paredes. Feedback: trazadoras, fogonazo, explosión, números de daño, destello rojo, vibración, killfeed con iconos propios, pantalla de eliminado. Campo de entrenamiento: armeros, blancos que se regeneran y reaparición a los 3 s; al iniciar todos vuelven a pistola. Host puede volver al lobby. Bots `--armados`. `npm test` con 15 pruebas (`node:test`, sin dependencias). Corregido en pruebas: el primer estado privado podía perderse (el cliente ahora lo pide al arrancar) y el clic sobre textos de la interfaz no disparaba. La cámara se alejó un poco (offset 20/13.5) para ver a quien dispara con el celular en horizontal; la cámara 3/4 final es de la fase 3.

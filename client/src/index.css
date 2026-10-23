@@ -8,3 +8,13 @@ body,
   height: 100%;
   overscroll-behavior: none;
 }
+
+/* Destello rojo al recibir daño */
+@keyframes damage {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

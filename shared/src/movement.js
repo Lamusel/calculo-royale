@@ -1,4 +1,6 @@
-import { MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED } from './constants.js';
+import { MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED, SLOPE_SPEED } from './constants.js';
+import { resolveCircle } from './collision.js';
+import { terrainGradient } from './terrain.js';
 
 // Movimiento compartido: el servidor lo usa como verdad y el cliente para predecir.
 // Si cambia aquí, cambia en ambos lados y la predicción nunca se desfasa.
@@ -7,16 +9,23 @@ const LIMIT = MAP_HALF - PLAYER_RADIUS;
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
+// Factor de velocidad según la derivada direccional ∇f·û: cuesta arriba más lento
+export function slopeFactor(x, y, ux, uy) {
+  const [fx, fy] = terrainGradient(x, y);
+  return clamp(1 - SLOPE_SPEED.k * (fx * ux + fy * uy), SLOPE_SPEED.min, SLOPE_SPEED.max);
+}
+
 // player: { x, y, aim } — se modifica en el lugar
 // input: { mx, my, aim } con mx, my en [-1, 1]
 export function applyInput(player, input, dt) {
-  let { mx, my } = input;
-  const len = Math.hypot(mx, my);
-  if (len > 1) {
-    mx /= len;
-    my /= len;
-  }
-  player.x = clamp(player.x + mx * PLAYER_SPEED * dt, -LIMIT, LIMIT);
-  player.y = clamp(player.y + my * PLAYER_SPEED * dt, -LIMIT, LIMIT);
   player.aim = input.aim;
+  const len = Math.hypot(input.mx, input.my);
+  if (len < 1e-6) return;
+
+  const ux = input.mx / len;
+  const uy = input.my / len;
+  const step = PLAYER_SPEED * Math.min(len, 1) * slopeFactor(player.x, player.y, ux, uy) * dt;
+  player.x = clamp(player.x + ux * step, -LIMIT, LIMIT);
+  player.y = clamp(player.y + uy * step, -LIMIT, LIMIT);
+  resolveCircle(player, PLAYER_RADIUS);
 }

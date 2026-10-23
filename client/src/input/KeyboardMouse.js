@@ -1,6 +1,7 @@
-import { inputState } from './inputState.js';
+import { BUTTONS } from '@calculo-royale/shared/protocol';
+import { actions, inputState, press } from './inputState.js';
 
-const KEYS = {
+const MOVE_KEYS = {
   KeyW: [0, 1],
   ArrowUp: [0, 1],
   KeyS: [0, -1],
@@ -21,18 +22,27 @@ export function attachKeyboardMouse() {
     let x = 0;
     let y = 0;
     for (const code of pressed) {
-      x += KEYS[code][0];
-      y += KEYS[code][1];
+      x += MOVE_KEYS[code][0];
+      y += MOVE_KEYS[code][1];
     }
     inputState.keyX = x;
     inputState.keyY = y;
   };
 
   const onKeyDown = (e) => {
-    if (!KEYS[e.code] || e.target instanceof HTMLInputElement) return;
-    e.preventDefault();
-    pressed.add(e.code);
-    update();
+    if (e.target instanceof HTMLInputElement) return;
+    if (MOVE_KEYS[e.code]) {
+      e.preventDefault();
+      pressed.add(e.code);
+      update();
+      return;
+    }
+    if (e.repeat) return;
+    if (e.code === 'KeyR') press(BUTTONS.RELOAD);
+    else if (e.code === 'KeyG') press(BUTTONS.GRENADE);
+    else if (e.code === 'KeyE') actions.interact();
+    else if (e.code === 'Digit1') actions.switchWeapon(1);
+    else if (e.code === 'Digit2') actions.switchWeapon(2);
   };
   const onKeyUp = (e) => {
     if (pressed.delete(e.code)) update();
@@ -40,6 +50,7 @@ export function attachKeyboardMouse() {
   const onBlur = () => {
     pressed.clear();
     update();
+    inputState.fireHeld = false;
   };
   const onPointerMove = (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -47,16 +58,29 @@ export function attachKeyboardMouse() {
     mousePointer.y = -(e.clientY / innerHeight) * 2 + 1;
     mousePointer.active = true;
   };
+  // Dispara con cualquier clic que no sea sobre un control de la interfaz (botones, campos)
+  const onPointerDown = (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    if (e.target instanceof Element && e.target.closest('button, input, a')) return;
+    inputState.fireHeld = true;
+  };
+  const onPointerUp = (e) => {
+    if (e.pointerType === 'mouse' && e.button === 0) inputState.fireHeld = false;
+  };
 
   addEventListener('keydown', onKeyDown);
   addEventListener('keyup', onKeyUp);
   addEventListener('blur', onBlur);
   addEventListener('pointermove', onPointerMove);
+  addEventListener('pointerdown', onPointerDown);
+  addEventListener('pointerup', onPointerUp);
   return () => {
     removeEventListener('keydown', onKeyDown);
     removeEventListener('keyup', onKeyUp);
     removeEventListener('blur', onBlur);
     removeEventListener('pointermove', onPointerMove);
+    removeEventListener('pointerdown', onPointerDown);
+    removeEventListener('pointerup', onPointerUp);
     onBlur();
   };
 }

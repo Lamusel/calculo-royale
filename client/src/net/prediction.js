@@ -19,6 +19,7 @@ export class Predictor {
     this.stepAt = 0;
     this.error = { x: 0, y: 0 };
     this.lastFrame = 0;
+    this.snapNext = false;
   }
 
   step(input, now) {
@@ -36,6 +37,11 @@ export class Predictor {
     this.stepAt = now;
   }
 
+  // El próximo snapshot se aplica sin suavizar (reaparición)
+  forceSnap() {
+    this.snapNext = true;
+  }
+
   reconcile(x, y, lastSeq) {
     if (!this.state) {
       this.state = { x, y, aim: 0 };
@@ -51,8 +57,9 @@ export class Predictor {
     this.state = next;
     this.prev.x += dx;
     this.prev.y += dy;
-    if (Math.hypot(dx, dy) > SNAP_DISTANCE) {
+    if (this.snapNext || Math.hypot(dx, dy) > SNAP_DISTANCE) {
       this.error = { x: 0, y: 0 };
+      this.snapNext = false;
     } else {
       // Se compensa el salto y el error se desvanece en los próximos cuadros
       this.error.x -= dx;

@@ -10,15 +10,17 @@ export function angleDiff(a, b) {
 
 const lerpAngle = (a, b, t) => a + angleDiff(b, a) * t;
 
-// Guarda los snapshots del servidor y devuelve a los demás jugadores
-// en (ahora − INTERP_DELAY_MS), interpolando entre los dos snapshots vecinos.
+// Guarda los snapshots del servidor y devuelve el mundo en (ahora − INTERP_DELAY_MS),
+// interpolando entre los dos snapshots vecinos. Los eventos (disparos, explosiones)
+// se entregan cuando ese tiempo de dibujo los alcanza, sincronizados con las posiciones.
 export class SnapshotBuffer {
   constructor() {
     this.snaps = [];
     this.offset = null; // reloj local − reloj del servidor (en tiempo de ticks)
+    this.lastEventTick = 0;
   }
 
-  push(tick, players) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -27,14 +29,28 @@ export class SnapshotBuffer {
 
     const byId = new Map();
     for (const p of players) byId.set(p[0], p);
-    this.snaps.push({ t, players: byId });
+    const grenadesById = new Map();
+    for (const g of grenades) grenadesById.set(g[0], g);
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
-  sample(now, out) {
-    out.clear();
+  get latest() {
+    return this.snaps[this.snaps.length - 1] ?? null;
+  }
+
+  // Tick (fraccionario) que se está dibujando: es el que se envía para la compensación de lag
+  renderTick(now) {
+    if (this.offset === null) return 0;
+    return (now - this.offset - INTERP_DELAY_MS) / TICK_MS;
+  }
+
+  // Llena frame.others, frame.grenades y frame.dummies
+  sample(now, frame) {
+    frame.others.clear();
+    frame.grenades.clear();
     const n = this.snaps.length;
-    if (n === 0) return out;
+    if (n === 0) return;
 
     const t = now - this.offset - INTERP_DELAY_MS;
     let a = this.snaps[0];
@@ -54,12 +70,30 @@ export class SnapshotBuffer {
     const alpha = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
     for (const [id, pb] of b.players) {
       const pa = a.players.get(id) ?? pb;
-      out.set(id, {
+      frame.others.set(id, {
         x: lerp(pa[1], pb[1], alpha),
         y: lerp(pa[2], pb[2], alpha),
         aim: lerpAngle(pa[3], pb[3], alpha),
+        hp: pb[5],
+        armorLevel: pb[6],
+        weapon: pb[7],
+        flags: pb[8],
       });
     }
-    return out;
+    for (const [id, gb] of b.grenades) {
+      const ga = a.grenades.get(id) ?? gb;
+      frame.grenades.set(id, { x: lerp(ga[1], gb[1], alpha), y: lerp(ga[2], gb[2], alpha) });
+    }
+    frame.dummies = b.dummies;
+  }
+
+  // Entrega los eventos de los snapshots que el tiempo de dibujo ya alcanzó
+  drainEvents(now, onEvents) {
+    const t = now - this.offset - INTERP_DELAY_MS;
+    for (const snap of this.snaps) {
+      if (snap.tick <= this.lastEventTick || snap.t > t) continue;
+      this.lastEventTick = snap.tick;
+      onEvents(snap);
+    }
   }
 }

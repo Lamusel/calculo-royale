@@ -61,6 +61,7 @@ export class Room {
     player.socketId = socket.id;
     player.connected = true;
     player.resetInputs();
+    this.game.resendSelf(player.id);
     socket.data.roomCode = this.code;
     socket.data.playerId = player.id;
     socket.join(this.code);
@@ -80,6 +81,7 @@ export class Room {
     if (!player) return;
     clearTimeout(player.removeTimer);
     this.players.delete(id);
+    this.game.forgetPlayer(id);
     if (this.hostId === id) {
       const next = [...this.players.values()].find((p) => p.connected) ?? this.players.values().next().value;
       this.hostId = next ? next.id : null;
@@ -91,12 +93,31 @@ export class Room {
     this.broadcastInfo();
   }
 
+  // Todos empiezan iguales: lo que tomaron en el campo de entrenamiento no pasa a la partida
   start() {
     this.phase = 'playing';
+    this.game.resetWorld();
     const players = [...this.players.values()];
     const spawns = this.world.gameSpawns(players.length);
-    players.forEach((p, i) => p.teleport(spawns[i].x, spawns[i].y));
+    players.forEach((p, i) => {
+      p.resetCombat();
+      p.teleport(spawns[i].x, spawns[i].y);
+    });
     this.broadcastInfo();
+  }
+
+  // El host devuelve a todos al campo de entrenamiento
+  reset() {
+    this.phase = 'lobby';
+    this.game.resetWorld();
+    for (const p of this.players.values()) this.respawnInLobby(p);
+    this.broadcastInfo();
+  }
+
+  respawnInLobby(player) {
+    player.resetCombat();
+    const spawn = this.world.lobbySpawn();
+    player.teleport(spawn.x, spawn.y);
   }
 
   pickColor() {
@@ -115,6 +136,14 @@ export class Room {
 
   broadcastInfo() {
     this.io.to(this.code).emit(EVENTS.ROOM_INFO, this.info());
+  }
+
+  broadcast(event, data) {
+    this.io.to(this.code).emit(event, data);
+  }
+
+  emitTo(player, event, data) {
+    if (player.socketId) this.io.to(player.socketId).emit(event, data);
   }
 
   broadcastState(snapshot) {
