@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GRENADE, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
@@ -92,12 +92,19 @@ export default function Effects({ client, quality }) {
     [],
   );
 
+  // Cada escena tiene su propia copia de la cola de efectos (el proyector dibuja dos en el duelo)
+  const viewId = useMemo(() => Symbol('vista'), []);
+  useEffect(() => {
+    client.effectViews.add(viewId);
+    return () => client.effectViews.remove(viewId);
+  }, [client, viewId]);
+
   useFrame((_, delta) => {
     const now = performance.now();
     const dt = Math.min(delta, 0.05);
     const spawn = spawner(state, quality.particles);
 
-    for (const e of client.effects.splice(0)) {
+    for (const e of client.drainEffects(viewId)) {
       if (e.type === 'tracer') {
         if (state.tracers.length >= MAX_TRACERS) state.tracers.shift();
         const from = point(e.x, e.y);

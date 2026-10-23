@@ -162,7 +162,8 @@ test('Todo o nada: la dorada da botín doble o quita el chaleco', () => {
   const p = addPlayer(win, 1, c.x + 1, c.y);
   const { correct } = open(win, p);
   win.game.answerCrate(p, gold, correct);
-  assert.equal(last(win, EVENTS.CRATE_RESULT).loot.length >= 3, true, 'dos tiradas épicas');
+  // Dos tiradas épicas: al menos 2 objetos (si las dos salen "Chaleco 3", son justo 2)
+  assert.equal(last(win, EVENTS.CRATE_RESULT).loot.length >= 2, true, 'dos tiradas épicas');
 
   const lose = makeRoom();
   const q = addPlayer(lose, 1, c.x + 1, c.y);

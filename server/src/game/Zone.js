@@ -45,6 +45,8 @@ export class Zone {
     this.upcoming = null; // zona de la fase siguiente, ya decidida pero sin anunciar
     this.state = 'idle'; // 'idle' | 'waiting' | 'shrinking' | 'final'
     this.stateEndsAt = 0;
+    this.shrinkMs = 0; // duración del cierre en curso
+    this.nextShrinkMs = null; // cierre forzado (duelo final)
   }
 
   // Devuelve los eventos para anunciar por radio: [{ type, zone, phase }]
@@ -66,12 +68,13 @@ export class Zone {
     const events = [];
     if (this.state === 'waiting' && now >= this.stateEndsAt) {
       this.state = 'shrinking';
-      this.stateEndsAt = now + ZONE_PHASES[this.phase].shrinkMs / this.timeScale;
+      this.shrinkMs = this.nextShrinkMs ?? ZONE_PHASES[this.phase].shrinkMs / this.timeScale;
+      this.nextShrinkMs = null;
+      this.stateEndsAt = now + this.shrinkMs;
       events.push({ type: 'closing', phase: this.phase });
     }
     if (this.state === 'shrinking') {
-      const def = ZONE_PHASES[this.phase];
-      const t = Math.min(1, 1 - (this.stateEndsAt - now) / (def.shrinkMs / this.timeScale));
+      const t = Math.min(1, 1 - (this.stateEndsAt - now) / this.shrinkMs);
       this.current = lerpZone(this.from, this.target, t);
       if (t >= 1) {
         this.current = { ...this.target };
@@ -83,6 +86,17 @@ export class Zone {
       }
     }
     return events;
+  }
+
+  // Duelo final: salta a la última fase con un círculo propio que empieza a cerrarse tras delayMs
+  forceFinal(circle, now, delayMs, shrinkMs) {
+    this.phase = ZONE_PHASES.length - 1;
+    this.from = { ...this.current };
+    this.target = circle;
+    this.upcoming = null;
+    this.state = 'waiting';
+    this.stateEndsAt = now + delayMs;
+    this.nextShrinkMs = shrinkMs;
   }
 
   // Zona de la fase siguiente (sin anunciar): la reciben antes quienes interceptan una transmisión.

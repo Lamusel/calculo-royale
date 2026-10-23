@@ -213,3 +213,19 @@ export const JEEP = {
   explosionRadius: 6,
   explosionDamage: 100,
 };
+
+// Duelo final: al quedar 2 vivos, presentación congelada y un último círculo
+export const DUEL = { introMs: 4_000, radius: 9, shrinkMs: 25_000 };
+
+// Repetición de la mejor jugada (se muestra antes de los resultados)
+export const REPLAY = {
+  bufferMs: 10_000, // historia de snapshots en memoria
+  beforeMs: 4_500, // el clip empieza 4,5 s antes del momento clave…
+  afterMs: 1_500, // …y termina 1,5 s después
+  sendEvery: 2, // se envía a 10 Hz (los eventos del snapshot omitido pasan al siguiente)
+  slowBeforeMs: 900, // cámara lenta alrededor del momento clave (clip de ~8 s reales)
+  slowAfterMs: 300,
+  slowSpeed: 0.35,
+  multiKillMs: 5_000,
+  sniperDistance: 30,
+};

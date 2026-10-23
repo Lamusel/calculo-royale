@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ROOM_CODE_LENGTH } from '@calculo-royale/shared/constants';
 import { EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { QUALITY } from '../game/quality.js';
@@ -9,6 +9,8 @@ import { ClassTopics } from '../ui/HostPanel.jsx';
 import Killfeed from '../ui/Killfeed.jsx';
 import { RadioFeed } from '../ui/Radio.jsx';
 import Results from '../ui/Results.jsx';
+import Replay from '../ui/Replay.jsx';
+import { DuelIntro } from '../ui/Cinema.jsx';
 
 // En el proyector se ve todo el mapa: sin sombras (la caja de sombras sigue a un jugador)
 // y sin niebla
@@ -22,6 +24,10 @@ export default function Spectator() {
   const [client, setClient] = useState(null);
   const [, tick] = useState(0);
   const frameRef = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [], zone: [], airdrop: [] });
+  // Segunda vista para la pantalla partida del duelo final
+  const frameRef2 = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [], zone: [], airdrop: [] });
+  const [replayDone, setReplayDone] = useState(false);
+  const onReplayDone = useCallback(() => setReplayDone(true), []);
 
   useEffect(() => {
     const onInfo = (info) => setRoom(info);
@@ -53,6 +59,7 @@ export default function Spectator() {
 
   useEffect(() => {
     client?.setPhase(room?.phase);
+    if (room?.phase !== 'results') setReplayDone(false);
   }, [client, room?.phase]);
 
   // La interfaz lateral se refresca 2 veces por segundo
@@ -81,16 +88,50 @@ export default function Spectator() {
   }
 
   const following = room.players.find((p) => p.id === client?.followId);
+  const replaying = room.phase === 'results' && Boolean(client?.replay) && !replayDone;
+  // Duelo final (después de la presentación): pantalla partida, una cámara por finalista
+  const split = Boolean(client && room.phase === 'playing' && client.duel && !client.duelIntro());
 
   return (
     <div className="relative flex h-full w-full overflow-hidden bg-stone-900 text-stone-100">
       <div className="relative min-w-0 flex-1">
-        {client && (
+        {replaying && <Replay replay={client.replay} room={room} quality={PROJECTOR_QUALITY} onDone={onReplayDone} />}
+        {client && !replaying && !split && (
           <Scene client={client} roster={room.players} myId={null} phase={room.phase} frameRef={frameRef} quality={PROJECTOR_QUALITY} onFrame={() => {}} overview weather={room.weather} windAngle={room.windAngle} />
         )}
+        {split && (
+          <div className="flex h-full w-full gap-1 bg-black">
+            {client.duel.ids.map((id, i) => {
+              const finalist = room.players.find((p) => p.id === id);
+              return (
+                <div key={id} className="relative h-full min-w-0 flex-1">
+                  <Scene
+                    client={client}
+                    roster={room.players}
+                    myId={null}
+                    phase={room.phase}
+                    frameRef={i === 0 ? frameRef : frameRef2}
+                    quality={PROJECTOR_QUALITY}
+                    onFrame={() => {}}
+                    weather={room.weather}
+                    windAngle={room.windAngle}
+                    followId={id}
+                  />
+                  <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded bg-black/70 px-3 py-1 text-2xl font-black uppercase" style={{ color: finalist?.color }}>
+                    {finalist?.name}
+                  </p>
+                </div>
+              );
+            })}
+            <p className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/70 px-3 py-1 text-3xl font-black text-red-500">
+              VS
+            </p>
+          </div>
+        )}
+        {client && room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
         {client && <Killfeed killfeed={client.killfeed} roster={room.players} myId={null} />}
         {client && <RadioFeed radio={client.radio} />}
-        {client && room.phase === 'results' && <Results results={client.results} mine={null} myId={null} isHost={false} onReset={() => {}} classStats={client.classStats} />}
+        {client && room.phase === 'results' && !replaying && <Results results={client.results} mine={null} myId={null} isHost={false} onReset={() => {}} classStats={client.classStats} />}
       </div>
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-khaki-dark/50 bg-olive-950/95 p-4">
         <div>

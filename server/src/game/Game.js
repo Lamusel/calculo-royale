@@ -10,6 +10,7 @@ import {
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
+import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
   answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
   resetVehicles, updateVehicles,
@@ -35,6 +36,9 @@ export class Game {
     this.vehicles = createVehicles();
     this.leaderId = null;
     this.wind = null;
+    this.duel = null; // { ids, introEndsAt } al quedar 2 vivos
+    this.killTimes = new Map(); // id → momentos de sus bajas recientes (multi-baja)
+    this.recorder = new Recorder();
     resetRadio(this);
     // Eventos del tick en curso (se vacían al empezar cada tick)
     this.shots = [];
@@ -58,6 +62,9 @@ export class Game {
   resetWorld() {
     this.grenades = [];
     this.leaderId = null;
+    this.duel = null;
+    this.killTimes?.clear();
+    this.recorder?.reset();
     if (this.vehicles) resetVehicles(this);
     for (const p of this.room.players.values()) p.question = null;
     resetCrates(this);
@@ -106,6 +113,9 @@ export class Game {
 
   startMatch() {
     this.wind = windOf(this.room);
+    this.duel = null;
+    this.killTimes.clear();
+    this.recorder.reset();
     startMatch(this);
     startRadio(this);
   }
@@ -119,6 +129,7 @@ export class Game {
     if (player.vehicleId !== null) exitVehicle(this, player);
     if (player.engineQuestion) cancelEngine(this, player, 'Caíste en combate');
     onLeaderDeath(this, player);
+    if (this.room.phase === 'playing') this.recorder.consider(scoreKill(this, player));
     onPlayerDeath(this, player);
   }
 
@@ -148,7 +159,11 @@ export class Game {
     this.kills = [];
 
     const players = [...this.room.players.values()];
+    const frozen = duelFrozen(this);
+    if (frozen) for (const v of this.vehicles) v.speed = 0;
     for (const p of players) {
+      // Presentación del duelo final: nadie se mueve
+      if (frozen) p.inputs.length = 0;
       p.processInputs(
         DT,
         (input) => this.handleInput(p, input),
@@ -163,6 +178,7 @@ export class Game {
     updateRadio(this);
     updateVehicles(this, DT);
     updateLeader(this);
+    checkDuel(this);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -174,7 +190,10 @@ export class Game {
     }
 
     for (const kill of this.kills) this.room.broadcast(EVENTS.COMBAT_KILL, kill);
-    this.room.broadcastState(this.snapshot(players));
+    const snapshot = this.snapshot(players);
+    // La partida se graba (últimos segundos) para la repetición de la mejor jugada
+    if (this.room.phase === 'playing') this.recorder.push(snapshot);
+    this.room.broadcastState(snapshot);
     this.sendSelfStates(players);
   }
 

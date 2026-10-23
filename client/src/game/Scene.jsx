@@ -38,9 +38,14 @@ const CAMERA_OFFSET = new THREE.Vector3(0, Math.sin(pitch) * CAMERA_DISTANCE, Ma
 const SUN_OFFSET = new THREE.Vector3(-22, 40, 18);
 const SHADOW_SIZE = 26;
 
-// Calcula una vez por cuadro dónde dibujar todo (antes que el resto de useFrame)
-function FrameDriver({ client, frameRef }) {
-  useFrame(() => client.frame(performance.now(), frameRef.current), -3);
+// Calcula una vez por cuadro dónde dibujar todo (antes que el resto de useFrame).
+// Con followId la cámara sigue siempre a ese jugador (pantalla partida del proyector).
+function FrameDriver({ client, frameRef, followId }) {
+  useFrame(() => {
+    const frame = frameRef.current;
+    client.frame(performance.now(), frame);
+    if (followId !== null && followId !== undefined) frame.follow = frame.others.get(followId) ?? null;
+  }, -3);
   return null;
 }
 
@@ -61,6 +66,21 @@ function CameraRig({ client, frameRef, sun, overview }) {
   useFrame(({ camera }, delta) => {
     const dt = Math.min(delta, 0.1);
     const { me, follow } = frameRef.current;
+    // Cine (presentación del duelo, repetición): la cámara gira alrededor de alguien
+    const cine = client.cinematic?.(performance.now(), frameRef.current);
+    if (cine) {
+      const h = terrainHeight(cine.x, cine.y);
+      camera.position.set(cine.x + Math.cos(cine.angle) * cine.distance, h + cine.height, -cine.y + Math.sin(cine.angle) * cine.distance);
+      camera.lookAt(cine.x, h + 1.2, -cine.y);
+      s.target.set(cine.x, h, -cine.y);
+      s.goal.copy(s.target);
+      if (sun.current) {
+        sun.current.position.copy(s.target).add(SUN_OFFSET);
+        sun.current.target.position.copy(s.target);
+        sun.current.target.updateMatrixWorld();
+      }
+      return;
+    }
     // Proyector sin seguir a nadie: plano general fijo
     if (overview && !follow) {
       camera.position.set(0, Math.sin(OVERVIEW_PITCH) * OVERVIEW_DISTANCE, Math.cos(OVERVIEW_PITCH) * OVERVIEW_DISTANCE);
@@ -173,7 +193,9 @@ function Sun({ sunRef, quality, intensity, color }) {
   );
 }
 
-export default function Scene({ client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false, weather = 'despejado', windAngle = 0 }) {
+export default function Scene({
+  client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false, weather = 'despejado', windAngle = 0, followId = null,
+}) {
   const sun = useRef(null);
   // El clima solo rige durante la partida; el entrenamiento siempre es de día
   const active = phase === 'lobby' ? 'despejado' : weather;
@@ -191,7 +213,7 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       <fog attach="fog" args={[look.sky, ...fog]} />
       <hemisphereLight args={['#dfe9f0', '#4a4632', look.hemi]} />
       <Sun sunRef={sun} quality={quality} intensity={look.sun} color={look.sunColor} />
-      <FrameDriver client={client} frameRef={frameRef} />
+      <FrameDriver client={client} frameRef={frameRef} followId={followId} />
       <CameraRig client={client} frameRef={frameRef} sun={sun} overview={overview} />
       <MouseAim frameRef={frameRef} />
       <PerfMonitor onFrame={onFrame} stats={stats} />

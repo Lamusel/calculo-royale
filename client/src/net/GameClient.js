@@ -16,6 +16,42 @@ let seq = 0;
 const KILLFEED_MS = 6000;
 const vibrate = (pattern) => navigator.vibrate?.(pattern);
 
+// Trazadoras, fogonazos y explosiones de un snapshot (también los usa la repetición)
+export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null) {
+  for (const raw of snap.shots) {
+    const shot = decodeShot(raw);
+    if (shot.shooterId === skipShooter) continue; // ya se dibujó al predecir
+    for (const { angle, dist } of shot.pellets) {
+      effects.push({ type: 'tracer', x: shot.x, y: shot.y, angle, dist, weapon: shot.weaponIndex });
+    }
+    effects.push({ type: 'muzzle', x: shot.x, y: shot.y, angle: shot.pellets[0]?.angle ?? 0, weapon: shot.weaponIndex });
+    lastShot.set(shot.shooterId, now);
+  }
+  for (const [x, y] of snap.explosions) effects.push({ type: 'explosion', x, y });
+}
+
+// Cola de efectos con una copia por vista: el proyector dibuja dos escenas a la vez (duelo)
+export class EffectViews {
+  constructor() {
+    this.views = new Map();
+  }
+
+  add(id) {
+    this.views.set(id, []);
+  }
+
+  remove(id) {
+    this.views.delete(id);
+  }
+
+  // Reparte lo nuevo de `effects` a todas las vistas y devuelve lo pendiente de `id`
+  drain(effects, id) {
+    const fresh = effects.splice(0);
+    for (const queue of this.views.values()) queue.push(...fresh);
+    return this.views.get(id)?.splice(0) ?? fresh;
+  }
+}
+
 export const selfWeaponId = (self) => (self?.slot === 2 && self.primary ? self.primary.id : 'pistol');
 const selfMag = (self) => (selfWeaponId(self) === 'pistol' ? self.pistolMag : self.primary.mag);
 
@@ -59,6 +95,9 @@ export class GameClient {
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
     this.vehicleId = null; // jeep en el que voy
     this.seat = null; // 'driver' | 'passenger'
+    this.duel = null; // { ids, introMs, at } duelo final
+    this.replay = null; // repetición de la mejor jugada (llega justo antes de los resultados)
+    this.effectViews = new EffectViews();
 
     this.handlers = {
       [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = []]) => {
@@ -127,6 +166,13 @@ export class GameClient {
       [EVENTS.GAME_OVER]: (results) => {
         this.results = results;
       },
+      [EVENTS.MATCH_DUEL]: (duel) => {
+        this.duel = { ...duel, at: performance.now() };
+        vibrate([40, 60, 40]);
+      },
+      [EVENTS.MATCH_REPLAY]: (replay) => {
+        this.replay = replay;
+      },
       [EVENTS.RESULTS_SELF]: (mine) => {
         this.privateResults = mine;
         // Ganar sin fallar ninguna pregunta (y habiendo respondido al menos una)
@@ -194,6 +240,12 @@ export class GameClient {
     const input = readInput();
     const now = performance.now();
     if (!this.alive) {
+      input.mx = 0;
+      input.my = 0;
+      input.buttons = 0;
+    }
+    // Presentación del duelo final: quietos (el servidor ignora los inputs)
+    if (this.duelIntro(now)) {
       input.mx = 0;
       input.my = 0;
       input.buttons = 0;
@@ -277,20 +329,28 @@ export class GameClient {
     } else {
       frame.follow = null;
     }
-    this.buffer.drainEvents(now, (snap) => {
-      for (const raw of snap.shots) {
-        const shot = decodeShot(raw);
-        if (shot.shooterId === this.myId) continue; // ya se dibujó al predecir
-        for (const { angle, dist } of shot.pellets) {
-          this.effects.push({ type: 'tracer', x: shot.x, y: shot.y, angle, dist, weapon: shot.weaponIndex });
-        }
-        this.effects.push({ type: 'muzzle', x: shot.x, y: shot.y, angle: shot.pellets[0]?.angle ?? 0, weapon: shot.weaponIndex });
-        this.lastShot.set(shot.shooterId, now);
-      }
-      for (const [x, y] of snap.explosions) this.effects.push({ type: 'explosion', x, y });
-    });
+    this.buffer.drainEvents(now, (snap) => snapshotEffects(snap, this.effects, this.lastShot, now, this.myId));
     this.lastFrame = frame;
     this.killfeed = this.killfeed.filter((k) => now - k.at < KILLFEED_MS);
+  }
+
+  drainEffects(viewId) {
+    return this.effectViews.drain(this.effects, viewId);
+  }
+
+  // ¿Está corriendo la presentación del duelo final?
+  duelIntro(now = performance.now()) {
+    return Boolean(this.duel && now - this.duel.at < this.duel.introMs);
+  }
+
+  // Cámara de cine: durante la presentación del duelo gira alrededor de cada finalista (mitad del tiempo cada uno)
+  cinematic(now, frame) {
+    if (!this.duelIntro(now)) return null;
+    const elapsed = now - this.duel.at;
+    const id = this.duel.ids[elapsed < this.duel.introMs / 2 ? 0 : 1];
+    const pos = id === this.myId && frame.me ? frame.me : frame.others.get(id);
+    if (!pos) return null;
+    return { id, x: pos.x, y: pos.y, angle: elapsed / 700, distance: 6.5, height: 3 };
   }
 
   // Avisa al servidor qué skin usar (con las de honor desbloqueadas en este navegador)
@@ -334,6 +394,11 @@ export class GameClient {
 
   setPhase(phase) {
     this.phase = phase;
+    // El duelo y la repetición son de la partida que terminó
+    if (phase !== 'results') {
+      this.duel = null;
+      this.replay = null;
+    }
   }
 
   dispose() {

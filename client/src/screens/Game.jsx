@@ -16,6 +16,8 @@ import { CrateResult, LockModal } from '../ui/LockModal.jsx';
 import RadarOverlay from '../ui/RadarOverlay.jsx';
 import { RadioFeed, ZoneStatus } from '../ui/Radio.jsx';
 import Results from '../ui/Results.jsx';
+import Replay from '../ui/Replay.jsx';
+import { DuelIntro } from '../ui/Cinema.jsx';
 import TacticalMap, { minimapSize } from '../ui/TacticalMap.jsx';
 import HostPanel from '../ui/HostPanel.jsx';
 import { InterceptCard, OperatorPanel, TransmissionToast } from '../ui/Operator.jsx';
@@ -71,7 +73,7 @@ function BombingWarning({ bombing, me, alive }) {
   );
 }
 
-function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
+function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying }) {
   const view = useClientView(client, frameRef, room.phase);
   const isHost = room.hostId === myId;
   const [panel, setPanel] = useState(false);
@@ -115,7 +117,8 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
         <LockModal question={view.question} onAnswer={(i) => client.answer(i)} onCancel={() => client.cancelQuestion()} />
       )}
       {view.crateResult && <CrateResult result={view.crateResult} onClose={() => (client.crateResult = null)} />}
-      {room.phase === 'results' && (
+      {room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
+      {room.phase === 'results' && !replaying && (
         <Results results={client.results} mine={client.privateResults} myId={myId} isHost={isHost} onReset={resetGame} />
       )}
     </>
@@ -126,6 +129,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
 export default function Game({ room, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
+  const [replayDone, setReplayDone] = useState(false);
   const frameRef = useRef({
     me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [], zone: [], airdrop: [],
   });
@@ -153,7 +157,11 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
 
   useEffect(() => {
     client?.setPhase(room.phase);
+    if (room.phase !== 'results') setReplayDone(false);
   }, [client, room.phase]);
+  const onReplayDone = useCallback(() => setReplayDone(true), []);
+  // Al terminar la partida, primero la repetición (en lugar de la escena en vivo: un solo WebGL)
+  const replaying = room.phase === 'results' && Boolean(client?.replay) && !replayDone;
 
   useEffect(() => {
     const detach = attachKeyboardMouse();
@@ -172,7 +180,8 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
 
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-stone-900">
-      {client && (
+      {replaying && <Replay replay={client.replay} room={room} quality={QUALITY[level]} onDone={onReplayDone} />}
+      {client && !replaying && (
         <Scene
           client={client}
           roster={room.players}
@@ -189,7 +198,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
       {stats && <DebugOverlay stats={stats} quality={QUALITY[level]} />}
       {isTouch && <TouchControls />}
       {client && (
-        <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} />
+        <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} replaying={replaying} />
       )}
       {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
       {banner && <StartBanner />}

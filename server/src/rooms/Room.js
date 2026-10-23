@@ -150,6 +150,9 @@ export class Room {
       })
       .sort((a, b) => b.score - a.score || a.place - b.place);
     this.results = { winnerId, ranking };
+    // Primero la repetición de la mejor jugada: el cliente la muestra antes de los resultados
+    const replay = this.game.recorder.take();
+    if (replay) this.broadcast(EVENTS.MATCH_REPLAY, replay);
     this.broadcast(EVENTS.GAME_OVER, this.results);
     for (const p of players) this.sendPrivateResults(p);
     this.broadcastInfo();

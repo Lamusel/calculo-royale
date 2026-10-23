@@ -18,3 +18,15 @@ body,
     opacity: 0;
   }
 }
+
+/* Nombre del finalista entrando desde la izquierda (duelo final) */
+@keyframes slidein {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

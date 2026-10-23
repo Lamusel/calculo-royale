@@ -44,6 +44,10 @@ export const EVENTS = {
   RADIO_MESSAGE: 'radio:message',
   // Fin de la partida (a todos): { winnerId, ranking: [{ id, name, color, place, kills, correct, answered, score }] }
   GAME_OVER: 'game:over',
+  // Duelo final (a todos, al quedar 2 vivos): { ids: [a, b], introMs }
+  MATCH_DUEL: 'match:duel',
+  // Repetición de la mejor jugada (a todos, justo antes de game:over): { kind, title, focusId, keyTick, frames: [snapshot…] }
+  MATCH_REPLAY: 'match:replay',
   // Resultados privados (solo al dueño): { byTopic, failed: [{ tema, enunciado, opciones, correcta, elegida, explicacion }] }
   RESULTS_SELF: 'results:self',
 
