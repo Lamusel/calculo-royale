@@ -23,6 +23,14 @@ const ghostMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, transp
 const silhouetteGeometry = new THREE.CapsuleGeometry(0.4, 1.0, 3, 8).translate(0, 1.15, 0);
 const silhouetteMaterial = new THREE.MeshBasicMaterial({ color: '#fde047', depthFunc: THREE.GreaterDepth, depthWrite: false });
 
+// Corona del líder: aro dorado con cinco puntas (gira sobre la cabeza)
+const crownGeometry = new THREE.CylinderGeometry(0.3, 0.26, 0.16, 10, 1, true);
+const crownTips = Array.from({ length: 5 }, (_, i) => {
+  const a = (i / 5) * Math.PI * 2;
+  return new THREE.ConeGeometry(0.08, 0.22, 4).translate(Math.cos(a) * 0.28, 0.18, Math.sin(a) * 0.28);
+});
+const crownMaterial = new THREE.MeshLambertMaterial({ color: '#facc15', emissive: '#a16207', side: THREE.DoubleSide });
+
 // Icono de "expuesto" sobre quien está abriendo una caja
 const exposedLabel = textTexture('⚠ ABRIENDO', { color: '#fb923c', size: 44 });
 
@@ -98,6 +106,12 @@ function SoldierAvatar({ player, isMe, vestLevel, register, blobShadow }) {
       <sprite position-y={2.6} scale={[label.aspect * 0.6, 0.6, 1]}>
         <spriteMaterial map={label.texture} depthWrite={false} transparent />
       </sprite>
+      <group ref={set('crown')} position-y={3.65} visible={false}>
+        <mesh geometry={crownGeometry} material={crownMaterial} />
+        {crownTips.map((g, i) => (
+          <mesh key={i} geometry={g} material={crownMaterial} />
+        ))}
+      </group>
       <sprite ref={set('exposed')} position-y={BAR_Y + 0.55} scale={[exposedLabel.aspect * 0.5, 0.5, 1]} visible={false} renderOrder={3}>
         <spriteMaterial map={exposedLabel.texture} depthWrite={false} depthTest={false} transparent />
       </sprite>
@@ -199,6 +213,16 @@ export default function Players({ client, roster, myId, frameRef, quality }) {
       });
 
       const dead = Boolean(info.flags & PLAYER_FLAGS.DEAD);
+      // En el jeep va sentado: sin piernas ni sombra propia
+      const seated = Boolean(info.flags & PLAYER_FLAGS.IN_VEHICLE) && !dead;
+      a.lower.visible = !seated;
+      a.ground.visible = !seated;
+      if (seated) a.body.position.y = 0.12;
+      a.crown.visible = Boolean(info.flags & PLAYER_FLAGS.LEADER) && !dead;
+      if (a.crown.visible) {
+        a.crown.rotation.y = now / 600;
+        a.crown.position.y = 3.65 + Math.sin(now / 300) * 0.06;
+      }
       if (a.silhouette) a.silhouette.visible = !dead;
       a.exposed.visible = Boolean(info.flags & PLAYER_FLAGS.ANSWERING);
       if (a.exposed.visible) a.exposed.material.opacity = 0.65 + 0.35 * Math.sin(now / 120);

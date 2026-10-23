@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
 import { createQualityController, initialQuality, QUALITY } from '../game/quality.js';
 import Scene from '../game/Scene.jsx';
@@ -45,6 +46,21 @@ function DebugOverlay({ stats, quality }) {
   );
 }
 
+// Clima de la partida (y hacia dónde sopla el viento en la tormenta de arena)
+function WeatherChip({ weather, windAngle }) {
+  if (!weather || weather === 'despejado') return null;
+  return (
+    <div className="pointer-events-none absolute right-3 top-12 z-20 flex items-center gap-1.5 rounded bg-black/55 px-2 py-0.5 text-[11px] text-stone-200">
+      {WEATHERS[weather]}
+      {weather === 'arena' && (
+        <span className="inline-block text-orange-300" style={{ transform: `rotate(${-windAngle}rad)` }} title="Viento: desvía las granadas">
+          ➜
+        </span>
+      )}
+    </div>
+  );
+}
+
 // Aviso para quien está dentro del sector que van a bombardear
 function BombingWarning({ bombing, me, alive }) {
   if (!bombing?.length || !me || !alive || sectorOf(me.x, me.y) !== bombing[0]) return null;
@@ -80,7 +96,10 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
         radio={client.radio}
         isTouch={isTouch}
         intel={view.self?.intel}
+        night={room.phase === 'playing' && room.weather === 'noche'}
+        lastShot={client.lastShot}
       />
+      {room.phase === 'playing' && <WeatherChip weather={room.weather} windAngle={room.windAngle} />}
       <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
       <RadioFeed radio={client.radio} />
       <BombingWarning bombing={frameRef.current.bombing} me={view.me} alive={view.self?.alive} />
@@ -163,6 +182,8 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
           quality={QUALITY[level]}
           onFrame={onFrame}
           stats={stats}
+          weather={room.weather}
+          windAngle={room.windAngle}
         />
       )}
       {stats && <DebugOverlay stats={stats} quality={QUALITY[level]} />}

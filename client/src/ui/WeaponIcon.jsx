@@ -10,6 +10,8 @@ const PATHS = {
   // Zona: anillo con una onda; bombardeo: bomba con aletas
   zone: 'M24 1a7 7 0 1 1-0.1 0zm0 3a4 4 0 1 0 0.1 0zM12 8h4v1h-4zM32 8h4v1h-4z',
   bomb: 'M14 5h18l6 3-6 3H14l-3 2V3zM8 6h3v4H8z',
+  // Jeep de perfil
+  jeep: 'M8 6h8l3-4h6v4h12l3 2v4H8zM12 11a3 3 0 1 0 0.1 0zM34 11a3 3 0 1 0 0.1 0z',
 };
 
 export default function WeaponIcon({ weapon, className = 'h-4 w-12' }) {

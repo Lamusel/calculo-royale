@@ -4,7 +4,7 @@ import MathText from './MathText.jsx';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-// Candado de código de una caja de suministro: la pregunta ABCD es el código.
+// Candado de código de una caja de suministro (o código del motor de un jeep, con title): la pregunta ABCD es el código.
 // Las opciones responden al levantar el dedo (pointerup): funciona aunque otro dedo esté en
 // la pantalla y evita elegir por accidente al apoyar el pulgar.
 export function LockModal({ question, onAnswer, onCancel }) {
@@ -25,10 +25,14 @@ export function LockModal({ question, onAnswer, onCancel }) {
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 p-2 backdrop-blur-[2px]">
       <div className="flex max-h-full w-full max-w-3xl flex-col gap-2 overflow-y-auto rounded-lg border-2 border-khaki-dark bg-gradient-to-b from-olive-800 to-olive-950 p-3 text-stone-100 shadow-2xl sm:gap-3 sm:p-4">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-khaki-light">🔒 Candado de código</span>
-          <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase text-black" style={{ background: rarity.color }}>
-            {rarity.name}
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-khaki-light">
+            {question.title ? `🔑 ${question.title}` : '🔒 Candado de código'}
           </span>
+          {!question.title && (
+            <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase text-black" style={{ background: rarity.color }}>
+              {rarity.name}
+            </span>
+          )}
           <span className="truncate text-xs text-stone-300">{question.tema}</span>
           <button
             onPointerUp={onCancel}
@@ -70,7 +74,7 @@ export function LockModal({ question, onAnswer, onCancel }) {
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-300">
           <span className="font-mono text-khaki-light">{Math.ceil(left / 1000)} s</span>
-          <span>Botín posible: {rarity.loot.join(' · ')}</span>
+          <span>{question.title ? 'Al acertar' : 'Botín posible'}: {(question.loot ?? rarity.loot).join(' · ')}</span>
           <span className="ml-auto text-orange-300">⚠ Estás expuesto · moverte cancela</span>
         </div>
       </div>
@@ -91,15 +95,18 @@ export function CrateResult({ result, onClose }) {
   return (
     <div className="absolute left-1/2 top-14 z-40 w-[min(92vw,34rem)] -translate-x-1/2" onPointerUp={onClose}>
       <div className={`rounded-lg border-2 px-4 py-3 text-stone-100 shadow-xl ${outcome.tone}`}>
-        <p className="font-bold uppercase tracking-wider">{outcome.title}</p>
+        <p className="font-bold uppercase tracking-wider">{result.title ?? outcome.title}</p>
         {result.outcome === 'correct' && (
           <>
-            <p className="mt-1 text-sm text-green-200">Botín: {result.loot.join(' · ')}</p>
+            {result.loot.length > 0 && <p className="mt-1 text-sm text-green-200">{result.crateId === null ? '' : 'Botín: '}{result.loot.join(' · ')}</p>}
             {result.radar && <p className="text-sm font-bold text-sky-300">Racha de 3: radar activado 10 s</p>}
-            <MathText text={result.explicacion} className="mt-2 block text-sm text-stone-200" />
+            {result.explicacion && <MathText text={result.explicacion} className="mt-2 block text-sm text-stone-200" />}
           </>
         )}
-        {(result.outcome === 'wrong' || result.outcome === 'timeout') && (
+        {(result.outcome === 'wrong' || result.outcome === 'timeout') && result.engine && (
+          <p className="mt-1 text-sm text-red-200">El motor quedó atascado 10 s. La solución aparece en los resultados al final.</p>
+        )}
+        {(result.outcome === 'wrong' || result.outcome === 'timeout') && !result.engine && (
           <p className="mt-1 text-sm text-red-200">
             La caja quedó bloqueada 15 s y sonó la alarma.{result.lostArmor ? ' Todo o nada: perdiste el chaleco.' : ''} La solución
             aparece en los resultados al final.

@@ -59,8 +59,8 @@ export const PLAYER_COLORS = [
 
 // --- Armas ---
 // Índice de cada arma en snapshots y killfeed (el orden no debe cambiar).
-// 'zone' y 'bomb' solo aparecen en el killfeed (zona y bombardeo).
-export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'zone', 'bomb'];
+// 'zone', 'bomb' y 'jeep' solo aparecen en el killfeed (zona, bombardeo y atropello o explosión).
+export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'zone', 'bomb', 'jeep'];
 
 // intervalMs: tiempo entre disparos · spread: desviación máxima (rad) por bala
 // o apertura total del abanico en la escopeta · range: alcance en unidades
@@ -176,3 +176,40 @@ export const INTERCEPT = { everyMs: 120_000, questionMs: 20_000, winners: 5 };
 // Puntaje final: puestos superados, bajas y aciertos (también de operador e intercepción)
 export const SCORE = { place: 10, kill: 15, correct: 5 };
 export const CLASS_STATS_MS = 2_000;
+
+// --- Mecánicas épicas ---
+// Recompensa al líder: desde esta fase de la zona (índice 1 = fase 2)
+export const LEADER = { fromPhase: 1, checkMs: 1_000 };
+// Puntos durante la partida (el puesto final solo se conoce al terminar)
+export const LIVE_SCORE = { kill: 15, correct: 5 };
+
+// Clima de la partida (el host lo elige o queda aleatorio)
+export const WEATHERS = {
+  despejado: 'Despejado',
+  lluvia: 'Lluvia',
+  niebla: 'Niebla densa',
+  arena: 'Tormenta de arena',
+  noche: 'Noche',
+};
+// Tormenta de arena: el viento acelera las granadas en vuelo (unidades/s²)
+export const WIND_ACCEL = 3;
+// De noche, disparar te muestra en el minimapa de todos este tiempo
+export const NIGHT_REVEAL_MS = 2_000;
+
+// Jeeps: física sencilla compartida (servidor y predicción del conductor)
+export const JEEP = {
+  radius: 1.4,
+  maxSpeed: 15,
+  accel: 12,
+  brake: 22,
+  turnRate: 2.4, // rad/s
+  hp: 300,
+  engineLockMs: 10_000, // motor trabado tras fallar el código
+  questionMs: 30_000,
+  enterRadius: 3,
+  noiseRadius: 35, // con el motor encendido aparece en el minimapa de los cercanos
+  runOverMinSpeed: 4,
+  runOverDamagePerSpeed: 6,
+  explosionRadius: 6,
+  explosionDamage: 100,
+};

@@ -186,6 +186,14 @@ export const SUPPLY_CRATES = [
   { x: -33, y: 36, rarity: 3 },
 ];
 
+// Jeeps (solo en partida): uno por cuadrante, en campo abierto. heading en radianes.
+export const VEHICLE_SPOTS = [
+  { x: 24, y: 22, heading: Math.PI },
+  { x: -20, y: -28, heading: 0.4 },
+  { x: 42, y: -4, heading: Math.PI / 2 },
+  { x: -46, y: 6, heading: -Math.PI / 2 },
+];
+
 // Campo de entrenamiento (solo existe en el lobby): armeros y blancos de práctica
 export const TRAINING = {
   // Caja de práctica: va al final de la lista de cajas del snapshot

@@ -1,6 +1,7 @@
 import { DUMMY_HP, DUMMY_REGEN_MS, INTERACT_RADIUS, RESPAWN_MS, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodePlayerState } from '@calculo-royale/shared/codec';
+import { applyInput } from '@calculo-royale/shared/movement';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 import {
@@ -8,6 +9,11 @@ import {
 } from './crates.js';
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
+import { onLeaderDeath, updateLeader, windOf } from './epic.js';
+import {
+  answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
+  resetVehicles, updateVehicles,
+} from './vehicles.js';
 
 const DT = TICK_MS / 1000;
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -26,6 +32,9 @@ export class Game {
     this.airdropCrate = this.crates[this.crates.length - 1];
     this.alarms = [];
     this.zone = null; // solo durante la partida
+    this.vehicles = createVehicles();
+    this.leaderId = null;
+    this.wind = null;
     resetRadio(this);
     // Eventos del tick en curso (se vacían al empezar cada tick)
     this.shots = [];
@@ -48,12 +57,21 @@ export class Game {
   // Al pasar del lobby a la partida (o volver)
   resetWorld() {
     this.grenades = [];
+    this.leaderId = null;
+    if (this.vehicles) resetVehicles(this);
     for (const p of this.room.players.values()) p.question = null;
     resetCrates(this);
     this.dummies = TRAINING.dummies.map((d) => ({ ...d, hp: DUMMY_HP, lastHitAt: 0 }));
   }
 
   handleInput(player, input) {
+    // Respondiendo el código del motor: moverse cancela
+    if (player.engineQuestion) {
+      if (input.mx !== 0 || input.my !== 0) cancelEngine(this, player, 'Te moviste');
+      return;
+    }
+    // El conductor maneja, no dispara
+    if (player.seat === 'driver') return;
     // Abriendo una caja: quieto; moverse cancela y no se puede disparar
     if (player.question) {
       if (input.mx !== 0 || input.my !== 0) cancelQuestion(this, player, 'Te moviste');
@@ -68,17 +86,26 @@ export class Game {
     if (player.alive) switchWeapon(this, player, slot);
   }
 
-  // Lo más cercano entre armeros (solo en el lobby) y cajas de suministro
+  // Dentro de un jeep: bajarse. Si no, lo más cercano entre armeros (lobby), cajas y jeeps.
   interact(player) {
-    if (!player.alive || player.question) return;
+    if (!player.alive || player.question || player.engineQuestion) return;
+    if (player.vehicleId !== null) {
+      exitVehicle(this, player);
+      return;
+    }
+    const options = [];
     const rack = this.room.phase === 'lobby' ? nearestRack(player.x, player.y, INTERACT_RADIUS) : null;
+    if (rack) options.push({ dist: Math.hypot(rack.x - player.x, rack.y - player.y), use: () => player.giveItem(rack.item) });
     const crate = nearestCrate(this, player.x, player.y);
-    const rackDist = rack ? Math.hypot(rack.x - player.x, rack.y - player.y) : Infinity;
-    if (crate && crate.dist < rackDist) openCrate(this, player, crate.crate);
-    else if (rack) player.giveItem(rack.item);
+    if (crate) options.push({ dist: crate.dist, use: () => openCrate(this, player, crate.crate) });
+    const vehicle = nearestVehicle(this, player.x, player.y);
+    if (vehicle) options.push({ dist: vehicle.dist, use: () => interactVehicle(this, player, vehicle.vehicle) });
+    options.sort((a, b) => a.dist - b.dist);
+    options[0]?.use();
   }
 
   startMatch() {
+    this.wind = windOf(this.room);
     startMatch(this);
     startRadio(this);
   }
@@ -89,6 +116,9 @@ export class Game {
   }
 
   onPlayerDeath(player) {
+    if (player.vehicleId !== null) exitVehicle(this, player);
+    if (player.engineQuestion) cancelEngine(this, player, 'Caíste en combate');
+    onLeaderDeath(this, player);
     onPlayerDeath(this, player);
   }
 
@@ -101,10 +131,12 @@ export class Game {
   }
 
   answerCrate(player, crateId, index) {
+    if (answerEngine(this, player, index)) return;
     answerCrate(this, player, crateId, index);
   }
 
   cancelQuestion(player) {
+    if (cancelEngine(this, player, 'Cancelaste')) return;
     cancelQuestion(this, player, 'Cancelaste');
   }
 
@@ -117,7 +149,11 @@ export class Game {
 
     const players = [...this.room.players.values()];
     for (const p of players) {
-      p.processInputs(DT, (input) => this.handleInput(p, input));
+      p.processInputs(
+        DT,
+        (input) => this.handleInput(p, input),
+        (pl, input, dt) => (pl.vehicleId !== null ? driveInput(this, pl, input, dt) : applyInput(pl, input, dt)),
+      );
       p.recordHistory(this.tick);
       if (p.reloadUntil && this.now >= p.reloadUntil) finishReload(p);
     }
@@ -125,6 +161,8 @@ export class Game {
     updateCrates(this);
     updateMatch(this, DT);
     updateRadio(this);
+    updateVehicles(this, DT);
+    updateLeader(this);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -145,7 +183,9 @@ export class Game {
       const flags =
         (p.alive ? 0 : PLAYER_FLAGS.DEAD) |
         (p.reloadUntil ? PLAYER_FLAGS.RELOADING : 0) |
-        (p.question ? PLAYER_FLAGS.ANSWERING : 0);
+        (p.question || p.engineQuestion ? PLAYER_FLAGS.ANSWERING : 0) |
+        (p.vehicleId !== null ? PLAYER_FLAGS.IN_VEHICLE : 0) |
+        (p.id === this.leaderId ? PLAYER_FLAGS.LEADER : 0);
       return encodePlayerState(p, WEAPON_IDS.indexOf(p.weaponId), flags);
     });
     return [
@@ -160,6 +200,7 @@ export class Game {
       this.zone && this.room.phase === 'playing' ? this.zone.encode(this.now) : [],
       encodeAirdrop(this),
       encodeBombing(this),
+      encodeVehicles(this),
     ];
   }
 

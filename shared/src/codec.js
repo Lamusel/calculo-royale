@@ -4,7 +4,7 @@
 //   viewTick: tick del servidor que el cliente estaba viendo (compensación de lag)
 //   aimDist:  distancia al punto apuntado (alcance de la granada)
 //
-// Snapshot (S → C): [tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing]
+// Snapshot (S → C): [tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles]
 //   players:    [[id, x, y, aim, lastSeq, hp, armorLevel, weaponIndex, flags], ...]
 //   grenades:   [[id, x, y], ...]
 //   dummies:    [hp, ...] (solo en el lobby)
@@ -15,6 +15,7 @@
 //   zone:       [cx, cy, p, q, cx', cy', p', q', fase, ms al siguiente evento, cerrándose] o [] fuera de partida
 //   airdrop:    [x, y, ms para aterrizar] mientras está activo, o []
 //   bombing:    [sector, ms para el impacto] durante el aviso de un bombardeo, o []
+//   vehicles:   [[id, x, y, rumbo, velocidad, vida, conductor, pasajero, estado], ...] (estado: VEHICLE_STATE)
 
 const round2 = (v) => Math.round(v * 100) / 100;
 

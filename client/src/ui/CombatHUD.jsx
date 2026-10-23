@@ -1,10 +1,24 @@
 import { useState } from 'react';
-import { ARMOR_ABSORB, GRENADE, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { ARMOR_ABSORB, GRENADE, JEEP, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
 import WeaponIcon from './WeaponIcon.jsx';
 
 const ammoText = (mag, reserve) => `${mag} / ${reserve === null || reserve === undefined ? '∞' : reserve}`;
+
+// Vida del jeep y asiento (mientras vas en uno)
+function JeepBar({ vehicle }) {
+  const hp = Math.max(0, (vehicle.hp ?? 0) / JEEP.hp);
+  return (
+    <div className="flex w-56 items-center gap-2 sm:w-72">
+      <span className="w-10 text-right font-mono text-[10px] text-orange-300">Jeep</span>
+      <div className="h-2 flex-1 overflow-hidden rounded bg-black/60">
+        <div className={`h-full transition-all ${hp > 0.35 ? 'bg-orange-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} />
+      </div>
+      <span className="font-mono text-[10px] text-stone-300">{vehicle.seat === 'driver' ? 'Conduces' : 'Pasajero'}</span>
+    </div>
+  );
+}
 
 function HealthBar({ self }) {
   const hp = Math.max(0, self.hp / MAX_HP);
@@ -123,6 +137,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
   let cause = weaponName ?? '';
   if (weapon === 'zone') cause = 'La zona te alcanzó';
   else if (weapon === 'bomb') cause = 'Bombardeo de los operadores de radio';
+  else if (weapon === 'jeep') cause = killer && self.killedBy !== myId ? `Atropellado por ${killer.name}` : 'Un jeep te pasó por encima';
   else if (self.killedBy === myId) cause = 'por tu propia granada';
   else if (killer) cause = `por ${killer.name}${weaponName ? ` · ${weaponName}` : ''}`;
   return (
@@ -138,7 +153,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
 
 // Interfaz de combate: vida, armas, botones táctiles, aviso para tomar armas y pantalla de muerte
 export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
-  const { self, reloadProgress, interact, damageFlashAt, deathAt } = view;
+  const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle } = view;
   if (!self) return null;
 
   return (
@@ -152,6 +167,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
 
       {self.alive && (
         <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1.5">
+          {vehicle && <JeepBar vehicle={vehicle} />}
           <HealthBar self={self} />
           <WeaponBar self={self} reloadProgress={reloadProgress} isTouch={isTouch} />
         </div>

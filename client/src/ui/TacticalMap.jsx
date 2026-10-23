@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { MAP_HALF, MAP_SIZE, SECTORS } from '@calculo-royale/shared/constants';
-import { PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
+import { JEEP, MAP_HALF, MAP_SIZE, NIGHT_REVEAL_MS, SECTORS } from '@calculo-royale/shared/constants';
+import { PLAYER_FLAGS, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { HOUSES, OBSTACLES } from '@calculo-royale/shared/mapLayout';
 import { sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
 import MathText from './MathText.jsx';
@@ -8,6 +8,8 @@ import MathText from './MathText.jsx';
 // Mapa táctico: plano cartesiano del mapa con ejes, coordenadas y sectores A1–F6.
 // Muestra la zona actual (borde rojo, afuera sombreado) y la siguiente (blanca punteada),
 // tu posición, alarmas, el lanzamiento aéreo y, con radar, a los enemigos.
+// También: el líder (corona), los jeeps encendidos cercanos (hacen ruido) y, de noche,
+// a quien acaba de disparar (el fogonazo lo delata).
 
 const CONTAINERS = OBSTACLES.filter((o) => o.kind === 'container');
 
@@ -144,6 +146,57 @@ function draw(ctx, size, data, detailed) {
     }
   }
 
+  // Jeeps encendidos con conductor a menos de noiseRadius: se oyen
+  if (data.me) {
+    for (const v of data.vehicles?.values() ?? []) {
+      const near = Math.hypot(v.x - data.me.x, v.y - data.me.y) <= JEEP.noiseRadius;
+      if (!near || v.state !== VEHICLE_STATE.READY || !v.driver || v.id === data.myVehicleId) continue;
+      const r = 5 + 2 * Math.sin(now / 90);
+      ctx.strokeStyle = 'rgba(253, 186, 116, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(X(v.x), Y(v.y), r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#fb923c';
+      ctx.fillRect(X(v.x) - 3, Y(v.y) - 2, 6, 4);
+    }
+  }
+
+  // De noche, quien disparó hace poco queda marcado
+  if (data.night && data.lastShot) {
+    ctx.fillStyle = '#fef08a';
+    for (const [id, at] of data.lastShot) {
+      const p = data.others?.get(id);
+      if (id === data.myId || !p || p.flags & PLAYER_FLAGS.DEAD || now - at > NIGHT_REVEAL_MS) continue;
+      ctx.globalAlpha = 1 - (now - at) / NIGHT_REVEAL_MS;
+      ctx.beginPath();
+      ctx.arc(X(p.x), Y(p.y), 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Líder: corona dorada (todos lo ven)
+  for (const p of data.others?.values() ?? []) {
+    if (!(p.flags & PLAYER_FLAGS.LEADER) || p.flags & PLAYER_FLAGS.DEAD) continue;
+    const x = X(p.x);
+    const y = Y(p.y);
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y + 4);
+    ctx.lineTo(x - 6, y - 3);
+    ctx.lineTo(x - 3, y);
+    ctx.lineTo(x, y - 5);
+    ctx.lineTo(x + 3, y);
+    ctx.lineTo(x + 6, y - 3);
+    ctx.lineTo(x + 6, y + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
   // Tú: flecha amarilla hacia donde apuntas
   if (data.me) {
     const { x, y, aim } = data.me;
@@ -210,7 +263,9 @@ function BigMap({ frameRef, extra, onClose, radio }) {
             Próxima zona: <MathText text={`$${zoneInequality(next)}$`} />
           </p>
         )}
-        <p className="text-xs text-stone-400">Rojo: zona actual · blanco punteado: la siguiente · amarillo: lanzamiento aéreo</p>
+        <p className="text-xs text-stone-400">
+          Rojo: zona actual · blanco punteado: la siguiente · amarillo: lanzamiento aéreo · corona: el líder · naranja: jeep cercano
+        </p>
         {radio.length > 0 && (
           <div className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2">
             {radio.slice(-4).map((m) => (
@@ -229,10 +284,10 @@ function BigMap({ frameRef, extra, onClose, radio }) {
 export const minimapSize = (isTouch) => (isTouch ? 104 : 140);
 
 // Minimapa en la esquina; al tocarlo se abre el mapa grande
-export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, intel }) {
+export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, intel, night = false, lastShot = null }) {
   const [open, setOpen] = useState(false);
   const extra = useRef({});
-  extra.current = { myId, radar, intel };
+  extra.current = { myId, radar, intel, night, lastShot };
   const size = minimapSize(isTouch);
   const ref = useMapCanvas(frameRef, extra, size, false);
   return (

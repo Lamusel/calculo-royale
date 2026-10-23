@@ -1,5 +1,6 @@
 import { TICK_MS } from '@calculo-royale/shared/constants';
 import { applyInput } from '@calculo-royale/shared/movement';
+import { applyVehicleInput, seatPosition } from '@calculo-royale/shared/vehicle';
 
 const DT = TICK_MS / 1000;
 // Si la corrección es mayor que esto (ej. teletransporte al iniciar), se salta sin suavizar
@@ -11,6 +12,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 // Predicción del jugador propio: aplica cada input al instante con el mismo código
 // que el servidor y, al llegar un snapshot, reaplica los inputs aún no confirmados.
+// Al manejar un jeep se predice el jeep (misma física que el servidor) y el jugador va en su asiento.
 export class Predictor {
   constructor() {
     this.state = null; // { x, y, aim } tras el último input
@@ -20,12 +22,20 @@ export class Predictor {
     this.error = { x: 0, y: 0 };
     this.lastFrame = 0;
     this.snapNext = false;
+    this.drive = null; // jeep que maneja: { x, y, heading, speed }
+    this.prevDrive = null;
   }
 
   step(input, now) {
     if (!this.state) return;
     this.prev = { ...this.state };
-    applyInput(this.state, input, DT);
+    if (this.drive) {
+      this.prevDrive = { ...this.drive };
+      applyVehicleInput(this.drive, input, DT);
+      Object.assign(this.state, seatPosition(this.drive, 'driver'));
+    } else {
+      applyInput(this.state, input, DT);
+    }
     this.pending.push(input);
     this.stepAt = now;
   }
@@ -34,6 +44,7 @@ export class Predictor {
   idle(now) {
     if (!this.state) return;
     this.prev = { ...this.state };
+    if (this.drive) this.prevDrive = { ...this.drive };
     this.stepAt = now;
   }
 
@@ -42,21 +53,43 @@ export class Predictor {
     this.snapNext = true;
   }
 
-  reconcile(x, y, lastSeq) {
+  // vehicle: el jeep que manejo según el servidor (o null si voy a pie)
+  reconcile(x, y, lastSeq, vehicle = null) {
     if (!this.state) {
       this.state = { x, y, aim: 0 };
       this.prev = { ...this.state };
       return;
     }
+    // Subir o bajar del jeep cambia el modo: sin suavizar
+    if (Boolean(vehicle) !== Boolean(this.drive)) this.snapNext = true;
     this.pending = this.pending.filter((i) => i.seq > lastSeq);
     const next = { x, y, aim: this.state.aim };
-    for (const input of this.pending) applyInput(next, input, DT);
-
-    const dx = next.x - this.state.x;
-    const dy = next.y - this.state.y;
+    let dx;
+    let dy;
+    if (vehicle) {
+      const drive = { x: vehicle.x, y: vehicle.y, heading: vehicle.heading, speed: vehicle.speed };
+      for (const input of this.pending) applyVehicleInput(drive, input, DT);
+      Object.assign(next, seatPosition(drive, 'driver'));
+      dx = drive.x - (this.drive?.x ?? drive.x);
+      dy = drive.y - (this.drive?.y ?? drive.y);
+      if (this.prevDrive && this.drive) {
+        this.prevDrive.x += dx;
+        this.prevDrive.y += dy;
+        this.prevDrive.heading += drive.heading - this.drive.heading;
+      } else {
+        this.prevDrive = { ...drive };
+      }
+      this.drive = drive;
+    } else {
+      for (const input of this.pending) applyInput(next, input, DT);
+      dx = next.x - this.state.x;
+      dy = next.y - this.state.y;
+      this.drive = null;
+      this.prevDrive = null;
+    }
+    this.prev.x += next.x - this.state.x;
+    this.prev.y += next.y - this.state.y;
     this.state = next;
-    this.prev.x += dx;
-    this.prev.y += dy;
     if (this.snapNext || Math.hypot(dx, dy) > SNAP_DISTANCE) {
       this.error = { x: 0, y: 0 };
       this.snapNext = false;
@@ -76,6 +109,16 @@ export class Predictor {
     this.error.y *= decay;
 
     const t = Math.min((now - this.stepAt) / TICK_MS, 1);
+    if (this.drive) {
+      const p = this.prevDrive ?? this.drive;
+      const jeep = {
+        x: lerp(p.x, this.drive.x, t) + this.error.x,
+        y: lerp(p.y, this.drive.y, t) + this.error.y,
+        heading: p.heading + Math.atan2(Math.sin(this.drive.heading - p.heading), Math.cos(this.drive.heading - p.heading)) * t,
+        speed: this.drive.speed,
+      };
+      return { ...seatPosition(jeep, 'driver'), aim, jeep };
+    }
     return {
       x: lerp(this.prev.x, this.state.x, t) + this.error.x,
       y: lerp(this.prev.y, this.state.y, t) + this.error.y,

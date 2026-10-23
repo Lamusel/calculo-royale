@@ -4,6 +4,7 @@ import { EVENTS } from '@calculo-royale/shared/protocol';
 import { ALL_TOPICS } from '../questions/QuestionBank.js';
 import { classStats } from '../game/radio.js';
 import { buildRecord, saveResults } from '../storage.js';
+import { pickWeather } from '../game/epic.js';
 
 // Puntaje final: puestos superados + bajas + aciertos (también de operador e intercepción)
 export function score(place, total, kills, correct) {
@@ -21,6 +22,9 @@ export class Room {
     this.phase = 'lobby'; // 'lobby' | 'playing' | 'results'
     this.hostId = null;
     this.topics = [...ALL_TOPICS]; // temas de las preguntas (los elige el host en el lobby)
+    this.weatherChoice = 'aleatorio'; // lo elige el host; se resuelve al iniciar
+    this.weather = 'despejado';
+    this.windAngle = 0;
     this.players = new Map(); // id → Player
     this.nextId = 1;
     this.world = new World();
@@ -119,6 +123,7 @@ export class Room {
       p.teleport(spawns[i].x, spawns[i].y);
     });
     this.results = null;
+    Object.assign(this, pickWeather(this.weatherChoice));
     this.game.startMatch();
     this.broadcastInfo();
   }
@@ -193,6 +198,9 @@ export class Room {
       phase: this.phase,
       hostId: this.hostId,
       topics: this.topics,
+      weather: this.weather,
+      weatherChoice: this.weatherChoice,
+      windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),
     };
   }

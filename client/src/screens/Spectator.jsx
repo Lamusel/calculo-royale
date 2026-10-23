@@ -86,7 +86,7 @@ export default function Spectator() {
     <div className="relative flex h-full w-full overflow-hidden bg-stone-900 text-stone-100">
       <div className="relative min-w-0 flex-1">
         {client && (
-          <Scene client={client} roster={room.players} myId={null} phase={room.phase} frameRef={frameRef} quality={PROJECTOR_QUALITY} onFrame={() => {}} overview />
+          <Scene client={client} roster={room.players} myId={null} phase={room.phase} frameRef={frameRef} quality={PROJECTOR_QUALITY} onFrame={() => {}} overview weather={room.weather} windAngle={room.windAngle} />
         )}
         {client && <Killfeed killfeed={client.killfeed} roster={room.players} myId={null} />}
         {client && <RadioFeed radio={client.radio} />}

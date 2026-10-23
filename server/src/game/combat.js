@@ -5,6 +5,9 @@ import { BUTTONS, dummyTargetId, EVENTS } from '@calculo-royale/shared/protocol'
 import { encodeShot } from '@calculo-royale/shared/codec';
 import { hasLineOfSight, overlapsObstacle, raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
+import { JEEP } from '@calculo-royale/shared/constants';
+import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
+import { damageVehicle, vehicleTargetId } from './vehicles.js';
 
 // Margen extra del radio de impacto: hace los disparos un poco más indulgentes
 const HIT_LENIENCY = 0.15;
@@ -25,6 +28,13 @@ export function targetsAt(game, shooter, viewTick) {
   }
   if (game.room.phase === 'lobby') {
     game.dummies.forEach((d, i) => targets.push({ id: dummyTargetId(i), x: d.x, y: d.y, dummy: d }));
+  }
+  // Jeeps (sin compensación de lag); el propio no cuenta: el pasajero dispara desde adentro
+  if (game.room.phase === 'playing') {
+    for (const v of game.vehicles) {
+      if (v.state === VEHICLE_STATE.DESTROYED || v.id === shooter?.vehicleId) continue;
+      targets.push({ id: vehicleTargetId(v.id), x: v.x, y: v.y, vehicle: v, radius: JEEP.radius });
+    }
   }
   return targets;
 }
@@ -86,6 +96,10 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
 }
 
 function damageTarget(game, target, amount, attackerId, weaponIndex) {
+  if (target.vehicle) {
+    damageVehicle(game, target.vehicle, amount, attackerId);
+    return { dealt: amount, killed: false };
+  }
   if (target.dummy) {
     target.dummy.hp = Math.max(0, target.dummy.hp - amount);
     target.dummy.lastHitAt = game.now;
@@ -122,7 +136,7 @@ export function fire(game, p, input) {
     let dist = raycastObstacles(p.x, p.y, dx, dy, w.range);
     let hit = null;
     for (const t of targets) {
-      const d = rayCircle(p.x, p.y, dx, dy, t.x, t.y, PLAYER_RADIUS + HIT_LENIENCY);
+      const d = rayCircle(p.x, p.y, dx, dy, t.x, t.y, t.radius ?? PLAYER_RADIUS + HIT_LENIENCY);
       if (d < dist) {
         dist = d;
         hit = t;
@@ -188,6 +202,11 @@ function explode(game, g) {
   if (game.room.phase === 'lobby') {
     game.dummies.forEach((d, i) => hurt({ id: dummyTargetId(i), dummy: d }, d.x, d.y));
   }
+  if (game.room.phase === 'playing') {
+    for (const v of game.vehicles) {
+      if (v.state !== VEHICLE_STATE.DESTROYED) hurt({ id: vehicleTargetId(v.id), vehicle: v }, v.x, v.y);
+    }
+  }
 }
 
 // Mueve las granadas (rebotan en obstáculos) y detona las que cumplieron su tiempo
@@ -195,6 +214,11 @@ export function updateGrenades(game, dt) {
   const limit = MAP_HALF - GRENADE_RADIUS;
   game.grenades = game.grenades.filter((g) => {
     const speed = Math.hypot(g.vx, g.vy);
+    // Tormenta de arena: el viento empuja las granadas mientras vuelan
+    if (speed > 0 && game.wind) {
+      g.vx += game.wind.x * dt;
+      g.vy += game.wind.y * dt;
+    }
     if (speed > 0) {
       const next = Math.max(0, speed - g.decel * dt);
       g.vx *= next / speed;

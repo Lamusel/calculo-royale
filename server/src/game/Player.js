@@ -62,6 +62,9 @@ export class Player {
     this.transmission = null; // pregunta de operador en curso
     this.intercept = null; // pregunta de intercepción en curso
     this.intel = null; // centro de la próxima zona, si ganó una intercepción
+    this.vehicleId = null; // jeep en el que va
+    this.seat = null; // 'driver' | 'passenger'
+    this.engineQuestion = null; // código del motor pendiente
   }
 
   get weaponId() {
@@ -104,13 +107,13 @@ export class Player {
 
   // Aplica los inputs en cola. El presupuesto sube 1 por tick: en promedio
   // nadie se mueve más rápido que un input por tick aunque envíe más.
-  // onInput recibe cada input ya aplicado (disparos, granadas, recarga).
-  processInputs(dt, onInput) {
+  // `move` mueve al jugador (a pie o en jeep); onInput recibe cada input ya aplicado.
+  processInputs(dt, onInput, move = applyInput) {
     this.inputBudget = Math.min(this.inputBudget + 1, MAX_INPUT_BURST);
     while (this.inputs.length > 0 && this.inputBudget >= 1) {
       const input = this.inputs.shift();
       if (this.alive) {
-        applyInput(this, input, dt);
+        move(this, input, dt);
         onInput(input);
       }
       this.lastSeq = input.seq;
@@ -171,6 +174,7 @@ export class Player {
       operator: this.operator && { mode: this.operator.mode, streak: this.operator.streak, sector: this.operator.sector },
       revived: this.revived,
       intel: this.intel && { cx: this.intel.cx, cy: this.intel.cy },
+      vehicle: this.vehicleId !== null ? { id: this.vehicleId, seat: this.seat } : null,
       killedBy: this.killedBy,
       killedWith: this.killedWith,
     };

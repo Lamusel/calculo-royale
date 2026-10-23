@@ -9,9 +9,11 @@ export const EVENTS = {
   ROOM_CREATE: 'room:create', // { name }
   ROOM_JOIN: 'room:join', // { code, name, token? } — con token reconecta al mismo jugador
   ROOM_LEAVE: 'room:leave',
-  ROOM_INFO: 'room:info', // S → C: { code, phase, hostId, topics, players: [{ id, name, color, skin, connected }] }
+  // S → C: { code, phase, hostId, topics, weather, weatherChoice, windAngle, players: [{ id, name, color, skin, connected }] }
+  ROOM_INFO: 'room:info',
   ROOM_KICKED: 'room:kicked', // S → C: { reason } (la sesión se abrió en otra pestaña)
   ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
+  ROOM_WEATHER: 'room:weather', // C → S (solo host, en el lobby): 'aleatorio' o un clima de WEATHERS
   // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby
   PLAYER_SKIN: 'player:skin',
 
@@ -71,6 +73,8 @@ export const PLAYER_FLAGS = {
   DEAD: 1,
   RELOADING: 2,
   ANSWERING: 4, // abriendo una caja: está quieto y expuesto
+  IN_VEHICLE: 8, // va en un jeep (su posición es la del asiento)
+  LEADER: 16, // líder con recompensa: corona y marca en el minimapa
 };
 
 // Estado de cada caja en el snapshot
@@ -84,3 +88,11 @@ export const CRATE_STATE = {
 
 // En COMBAT_HIT, los blancos de práctica se identifican con números negativos: −(índice + 1)
 export const dummyTargetId = (index) => -(index + 1);
+
+// Estado de cada jeep en el snapshot
+export const VEHICLE_STATE = {
+  LOCKED: 0, // motor apagado: hay que responder el código
+  JAMMED: 1, // motor trabado tras fallar el código
+  READY: 2, // encendido: se puede subir
+  DESTROYED: 3,
+};

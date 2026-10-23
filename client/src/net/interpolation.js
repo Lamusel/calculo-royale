@@ -20,7 +20,7 @@ export class SnapshotBuffer {
     this.lastEventTick = 0;
   }
 
-  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = []) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = [], vehicles = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -31,7 +31,7 @@ export class SnapshotBuffer {
     for (const p of players) byId.set(p[0], p);
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing });
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles: new Map(vehicles.map((v) => [v[0], v])) });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
@@ -45,10 +45,11 @@ export class SnapshotBuffer {
     return (now - this.offset - INTERP_DELAY_MS) / TICK_MS;
   }
 
-  // Llena frame.others, frame.grenades, frame.dummies, frame.crates, frame.alarms, frame.zone y frame.airdrop
+  // Llena frame.others, frame.grenades, frame.vehicles, frame.dummies, frame.crates, frame.alarms, frame.zone y frame.airdrop
   sample(now, frame) {
     frame.others.clear();
     frame.grenades.clear();
+    frame.vehicles ??= new Map();
     const n = this.snaps.length;
     if (n === 0) return;
 
@@ -83,6 +84,22 @@ export class SnapshotBuffer {
     for (const [id, gb] of b.grenades) {
       const ga = a.grenades.get(id) ?? gb;
       frame.grenades.set(id, { x: lerp(ga[1], gb[1], alpha), y: lerp(ga[2], gb[2], alpha) });
+    }
+    // Jeeps: [id, x, y, heading, speed, hp, driver, passenger, state]
+    frame.vehicles.clear();
+    for (const [id, vb] of b.vehicles) {
+      const va = a.vehicles.get(id) ?? vb;
+      frame.vehicles.set(id, {
+        id,
+        x: lerp(va[1], vb[1], alpha),
+        y: lerp(va[2], vb[2], alpha),
+        heading: lerpAngle(va[3], vb[3], alpha),
+        speed: vb[4],
+        hp: vb[5],
+        driver: vb[6],
+        passenger: vb[7],
+        state: vb[8],
+      });
     }
     frame.dummies = b.dummies;
     frame.crates = b.crates;

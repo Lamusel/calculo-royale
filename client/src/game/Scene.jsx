@@ -15,6 +15,8 @@ import MapMesh from './MapMesh.jsx';
 import Players from './Players.jsx';
 import Scenery from './Scenery.jsx';
 import Training from './Training.jsx';
+import Vehicles from './Vehicles.jsx';
+import Weather, { weatherLook } from './Weather.jsx';
 import ZoneMesh from './ZoneMesh.jsx';
 
 // Cámara 3/4: inclinación (grados sobre el horizonte) y distancia al jugador. Fácil de ajustar.
@@ -32,7 +34,6 @@ const OVERVIEW_PITCH = (62 * Math.PI) / 180;
 const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
 const CAMERA_OFFSET = new THREE.Vector3(0, Math.sin(pitch) * CAMERA_DISTANCE, Math.cos(pitch) * CAMERA_DISTANCE);
 
-const SKY = '#a9bfcc';
 // Dirección del sol (desde el suroeste, alto): sombras hacia el noreste
 const SUN_OFFSET = new THREE.Vector3(-22, 40, 18);
 const SHADOW_SIZE = 26;
@@ -140,7 +141,7 @@ function PerfMonitor({ onFrame, stats }) {
   return null;
 }
 
-function Sun({ sunRef, quality }) {
+function Sun({ sunRef, quality, intensity, color }) {
   const scene = useThree((s) => s.scene);
   useEffect(() => {
     const light = sunRef.current;
@@ -157,8 +158,8 @@ function Sun({ sunRef, quality }) {
   return (
     <directionalLight
       ref={sunRef}
-      intensity={2.1}
-      color="#fff4dc"
+      intensity={intensity}
+      color={color}
       castShadow={quality.shadows}
       shadow-bias={-0.0005}
       shadow-normalBias={0.04}
@@ -172,8 +173,13 @@ function Sun({ sunRef, quality }) {
   );
 }
 
-export default function Scene({ client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false }) {
+export default function Scene({ client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false, weather = 'despejado', windAngle = 0 }) {
   const sun = useRef(null);
+  // El clima solo rige durante la partida; el entrenamiento siempre es de día
+  const active = phase === 'lobby' ? 'despejado' : weather;
+  const look = weatherLook(active);
+  // En el proyector (plano general) no se aplica la niebla del clima
+  const fog = !overview && look.fog ? look.fog : quality.fog;
   return (
     <Canvas
       dpr={quality.dpr}
@@ -181,10 +187,10 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       camera={{ fov: CAMERA_FOV, near: 0.5, far: 300, position: CAMERA_OFFSET.toArray() }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
-      <color attach="background" args={[SKY]} />
-      <fog attach="fog" args={[SKY, ...quality.fog]} />
-      <hemisphereLight args={['#dfe9f0', '#4a4632', 1.2]} />
-      <Sun sunRef={sun} quality={quality} />
+      <color attach="background" args={[look.sky]} />
+      <fog attach="fog" args={[look.sky, ...fog]} />
+      <hemisphereLight args={['#dfe9f0', '#4a4632', look.hemi]} />
+      <Sun sunRef={sun} quality={quality} intensity={look.sun} color={look.sunColor} />
       <FrameDriver client={client} frameRef={frameRef} />
       <CameraRig client={client} frameRef={frameRef} sun={sun} overview={overview} />
       <MouseAim frameRef={frameRef} />
@@ -196,6 +202,8 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       <Crates frameRef={frameRef} />
       <ZoneMesh frameRef={frameRef} />
       <BombingMesh frameRef={frameRef} />
+      <Vehicles client={client} frameRef={frameRef} quality={quality} />
+      <Weather weather={active} windAngle={windAngle} client={client} frameRef={frameRef} quality={quality} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} />
       <Grenades frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />

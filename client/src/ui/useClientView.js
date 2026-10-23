@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { INTERACT_RADIUS, ITEM_NAMES, RARITIES, WEAPONS } from '@calculo-royale/shared/constants';
-import { CRATE_STATE } from '@calculo-royale/shared/protocol';
+import { INTERACT_RADIUS, ITEM_NAMES, JEEP, RARITIES, WEAPONS } from '@calculo-royale/shared/constants';
+import { CRATE_STATE, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { nearestRack } from '@calculo-royale/shared/mapLayout';
 import { CRATES, cratePosition } from '../game/crateList.js';
 import { selfWeaponId } from '../net/GameClient.js';
@@ -12,8 +12,18 @@ const CRATE_STATUS = {
   [CRATE_STATE.OPEN]: 'vacía',
 };
 
-// Lo más cercano con lo que se puede interactuar: armero (lobby) o caja visible
-function nearestInteractable(me, phase, crateStates, airdrop) {
+// Qué se puede hacer con un jeep según su estado y sus asientos
+function jeepAction(v) {
+  if (v.state === VEHICLE_STATE.LOCKED) return { label: 'Encender jeep (código del motor)', enabled: true, color: '#fb923c' };
+  if (v.state === VEHICLE_STATE.JAMMED) return { label: 'Motor atascado', enabled: false };
+  if (!v.driver) return { label: 'Conducir jeep', enabled: true, color: '#fb923c' };
+  if (!v.passenger) return { label: 'Subir de pasajero', enabled: true, color: '#fb923c' };
+  return { label: 'Jeep lleno', enabled: false };
+}
+
+// Lo más cercano con lo que se puede interactuar: armero (lobby), caja visible o jeep
+function nearestInteractable(me, phase, crateStates, airdrop, vehicles, inVehicle) {
+  if (inVehicle) return { label: 'Bajarse del jeep', enabled: true, color: '#fb923c' };
   let best = null;
   let bestDist = INTERACT_RADIUS;
   const rack = phase === 'lobby' ? nearestRack(me.x, me.y, INTERACT_RADIUS) : null;
@@ -35,6 +45,12 @@ function nearestInteractable(me, phase, crateStates, airdrop) {
       color: rarity.color,
     };
   });
+  for (const v of vehicles?.values() ?? []) {
+    const d = Math.hypot(v.x - me.x, v.y - me.y);
+    if (v.state === VEHICLE_STATE.DESTROYED || d > JEEP.enterRadius || d > bestDist) continue;
+    bestDist = d;
+    best = jeepAction(v);
+  }
   return best;
 }
 
@@ -46,7 +62,7 @@ export function useClientView(client, frameRef, phase) {
     let deathAt = 0;
     const read = () => {
       const now = performance.now();
-      const { me, others, crates, airdrop } = frameRef.current;
+      const { me, others, crates, airdrop, vehicles } = frameRef.current;
       const self = client.self;
       if (self && !self.alive && !deathAt) deathAt = now;
       if (!self || self.alive) deathAt = 0;
@@ -63,7 +79,11 @@ export function useClientView(client, frameRef, phase) {
         killfeed: [...client.killfeed],
         damageFlashAt: client.damageFlashAt,
         deathAt,
-        interact: me && self?.alive && !client.question ? nearestInteractable(me, phase, crates ?? [], airdrop) : null,
+        interact:
+          me && self?.alive && !client.question
+            ? nearestInteractable(me, phase, crates ?? [], airdrop, vehicles, client.vehicleId !== null)
+            : null,
+        vehicle: client.vehicleId !== null ? { ...vehicles?.get(client.vehicleId), seat: client.seat } : null,
         question: client.question,
         crateResult: result,
         radarLeft: Math.max(0, Math.ceil((client.radarEndsAt - now) / 1000)),

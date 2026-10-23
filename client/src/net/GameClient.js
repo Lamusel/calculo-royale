@@ -4,6 +4,7 @@ import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/cod
 import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
+import { seatPosition } from '@calculo-royale/shared/vehicle';
 import { actions, currentAim, inputState, readInput, resetInput } from '../input/inputState.js';
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
@@ -56,12 +57,22 @@ export class GameClient {
     this.privateResults = null; // aciertos por tema y preguntas falladas (solo mías)
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
+    this.vehicleId = null; // jeep en el que voy
+    this.seat = null; // 'driver' | 'passenger'
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop]) => {
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop);
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = []]) => {
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles);
+        // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
+        const driving = vehicles.find((v) => v[6] === this.myId);
+        const riding = vehicles.find((v) => v[7] === this.myId);
+        this.vehicleId = (driving ?? riding)?.[0] ?? null;
+        this.seat = driving ? 'driver' : riding ? 'passenger' : null;
         const me = players.find((p) => p[0] === this.myId);
-        if (me) this.predictor.reconcile(me[1], me[2], me[4]);
+        if (me) {
+          const jeep = driving && { x: driving[1], y: driving[2], heading: driving[3], speed: driving[4] };
+          this.predictor.reconcile(me[1], me[2], me[4], jeep);
+        }
       },
       [EVENTS.PONG]: ({ clientTime }) => {
         this.latency = Date.now() - clientTime;
@@ -187,6 +198,11 @@ export class GameClient {
       input.my = 0;
       input.buttons = 0;
     }
+    // El pasajero no camina: solo apunta y dispara
+    if (this.seat === 'passenger') {
+      input.mx = 0;
+      input.my = 0;
+    }
 
     // Toque rápido: se apunta localmente al mismo objetivo que elegirá el servidor
     const me = this.predictor.state;
@@ -201,8 +217,8 @@ export class GameClient {
 
     const moving = input.mx !== 0 || input.my !== 0;
     const aimChanged = this.lastSentAim === null || Math.abs(angleDiff(input.aim, this.lastSentAim)) > 0.02;
-    // Quieto, sin girar y sin botones: no hace falta enviar nada
-    if (!moving && !aimChanged && !input.buttons) {
+    // Quieto, sin girar y sin botones: no hace falta enviar nada (salvo al manejar: el jeep frena con inputs)
+    if (!moving && !aimChanged && !input.buttons && this.seat !== 'driver') {
       this.predictor.idle(now);
       return;
     }
@@ -219,6 +235,7 @@ export class GameClient {
   predictFire(input, now) {
     const me = this.predictor.state;
     if (!me || !this.self || !(input.buttons & BUTTONS.FIRE) || input.buttons & BUTTONS.GRENADE) return;
+    if (this.seat === 'driver') return; // el conductor no dispara
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
     const w = WEAPONS[id];
@@ -243,6 +260,11 @@ export class GameClient {
     frame.me = this.predictor.render(now, currentAim());
     this.buffer.sample(now, frame);
     frame.meInfo = frame.others.get(this.myId) ?? null;
+    // De pasajero voy sentado en el jeep tal como se ve (interpolado)
+    const ride = this.seat === 'passenger' ? frame.vehicles.get(this.vehicleId) : null;
+    if (ride && frame.me) Object.assign(frame.me, seatPosition(ride, 'passenger'));
+    frame.myVehicleId = this.vehicleId;
+    frame.mySeat = this.seat;
     // Caído (o en el proyector): la cámara sigue a quien te eliminó o a otro vivo
     const dead = this.self && !this.self.alive && this.phase === 'playing';
     if (dead || (this.spectator && this.followId !== null)) {

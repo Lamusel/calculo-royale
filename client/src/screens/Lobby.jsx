@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { MAX_PLAYERS, TOPICS } from '@calculo-royale/shared/constants';
+import { MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -79,6 +79,35 @@ function TopicPicker({ room, isHost, onClose }) {
   );
 }
 
+const WEATHER_ICONS = { aleatorio: '🎲', despejado: '☀️', lluvia: '🌧️', niebla: '🌫️', arena: '🌪️', noche: '🌙' };
+
+// Clima de la próxima partida: el host lo elige, los demás lo ven
+function WeatherPicker({ room, isHost }) {
+  const choice = room.weatherChoice ?? 'aleatorio';
+  const options = { aleatorio: 'Clima al azar', ...WEATHERS };
+  if (!isHost) {
+    return (
+      <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200" title="Clima de la partida">
+        {WEATHER_ICONS[choice]} {options[choice]}
+      </span>
+    );
+  }
+  return (
+    <select
+      value={choice}
+      onChange={(e) => socket.emit(EVENTS.ROOM_WEATHER, e.target.value)}
+      className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100"
+      title="Clima de la partida"
+    >
+      {Object.entries(options).map(([id, name]) => (
+        <option key={id} value={id} className="bg-olive-900">
+          {WEATHER_ICONS[id]} {name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
@@ -113,6 +142,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
           <button onClick={() => setShowTopics(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">
             Temas {topicCount}/{Object.keys(TOPICS).length}
           </button>
+          <WeatherPicker room={room} isHost={isHost} />
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">
               Iniciar
