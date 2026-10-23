@@ -13,6 +13,8 @@ const COUNT = Number(countArg) || 40;
 const SECONDS = Number(secondsArg) || 180;
 const url = process.env.SERVER_URL || `http://localhost:${SERVER_PORT}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// Máximo sin desplegar el arreglo (con cientos de miles de muestras, Math.max(...l) desborda la pila)
+const maxOf = (list) => list.reduce((m, v) => (v > m ? v : m), -Infinity);
 const pct = (list, p) => (list.length ? [...list].sort((a, b) => a - b)[Math.min(list.length - 1, Math.floor(list.length * p))] : null);
 
 const rtts = [];
@@ -103,8 +105,8 @@ clearInterval(pingTimer);
 const summary = {
   clientes: COUNT,
   segundos: SECONDS,
-  ping: { p50: pct(rtts, 0.5), p95: pct(rtts, 0.95), max: Math.max(...rtts) },
-  snapshotsMs: { p50: Math.round(pct(gaps, 0.5)), p95: Math.round(pct(gaps, 0.95)), max: Math.round(Math.max(...gaps)) },
+  ping: { p50: pct(rtts, 0.5), p95: pct(rtts, 0.95), max: maxOf(rtts) },
+  snapshotsMs: { p50: Math.round(pct(gaps, 0.5)), p95: Math.round(pct(gaps, 0.95)), max: Math.round(maxOf(gaps)) },
   cpuPercent: { avg: Math.round(samples.reduce((t, s) => t + (s.cpuPercent ?? 0), 0) / samples.length), max: Math.max(...samples.map((s) => s.cpuPercent ?? 0)) },
   rssMb: Math.max(...samples.map((s) => s.memoryMb?.rss ?? 0)),
   tickMs: { avg: Math.round((samples.reduce((t, s) => t + (s.tick?.avgMs ?? 0), 0) / samples.length) * 100) / 100, max: Math.max(...samples.map((s) => s.tick?.maxMs ?? 0)) },

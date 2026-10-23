@@ -8,13 +8,13 @@ import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { currentAim } from '../input/inputState.js';
 
 // Clima de la partida. Cielo, niebla y luces por clima; partículas según la calidad.
-// La niebla cuenta desde la cámara, que va a ~25 m del jugador: el "cerca" nunca baja de ahí.
+// La niebla cuenta desde la cámara, que va a ~30 m del jugador: el "cerca" nunca baja de ahí.
 export const WEATHER_LOOK = {
   despejado: { sky: '#a9bfcc', hemi: 1.2, sun: 2.1, sunColor: '#fff4dc', fog: null },
-  lluvia: { sky: '#6d7a86', hemi: 0.85, sun: 0.85, sunColor: '#d6e0e8', fog: [30, 72] },
-  niebla: { sky: '#c2c7c5', hemi: 1.05, sun: 0.7, sunColor: '#eef0f2', fog: [19, 36] },
-  arena: { sky: '#c49c62', hemi: 0.95, sun: 1.1, sunColor: '#ffc978', fog: [19, 40] },
-  noche: { sky: '#0b1322', hemi: 0.16, sun: 0.3, sunColor: '#9db4ff', fog: [32, 80] },
+  lluvia: { sky: '#6d7a86', hemi: 0.85, sun: 0.85, sunColor: '#d6e0e8', fog: [35, 77] },
+  niebla: { sky: '#c2c7c5', hemi: 1.05, sun: 0.7, sunColor: '#eef0f2', fog: [24, 41] },
+  arena: { sky: '#c49c62', hemi: 0.95, sun: 1.1, sunColor: '#ffc978', fog: [24, 45] },
+  noche: { sky: '#0b1322', hemi: 0.16, sun: 0.3, sunColor: '#9db4ff', fog: [37, 85] },
 };
 
 export const weatherLook = (weather) => WEATHER_LOOK[weather] ?? WEATHER_LOOK.despejado;

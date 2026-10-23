@@ -196,7 +196,8 @@ function Furniture({ frameRef }) {
   const byKind = useMemo(() => Object.fromEntries(KINDS.map((k) => [k, FURNITURE.filter((f) => f.kind === k)])), []);
   const models = useMemo(() => Object.fromEntries(KINDS.map((k) => [k, furnitureModel(k)])), []);
   const refs = useRef({});
-  const state = useMemo(() => ({ at: 0, near: '' }), []);
+  // near: null para que el primer cálculo siempre corra (si no, las instancias quedan en el origen)
+  const state = useMemo(() => ({ at: 0, near: null }), []);
   useFrame(() => {
     const now = performance.now();
     if (now - state.at < 300) return;

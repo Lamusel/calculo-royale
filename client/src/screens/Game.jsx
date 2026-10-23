@@ -4,6 +4,7 @@ import { sectorOf } from '@calculo-royale/shared/zone';
 import { createQualityController, initialQuality, QUALITY } from '../game/quality.js';
 import Scene from '../game/Scene.jsx';
 import { loadSkinSystem } from '../game/character/Character.js';
+import { unlockAudio } from '../audio/sound.js';
 import { isExternalSkin } from '../game/character/skins/index.js';
 import { debugSkinsEnabled } from '../game/character/debug.js';
 import { attachKeyboardMouse } from '../input/KeyboardMouse.js';
@@ -198,6 +199,17 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
   const onReplayDone = useCallback(() => setReplayDone(true), []);
   // Al terminar la partida, primero la repetición (en lugar de la escena en vivo: un solo WebGL)
   const replaying = room.phase === 'results' && Boolean(client?.replay) && !replayDone;
+
+  // El audio solo puede arrancar después de un toque o una tecla (regla de los navegadores)
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    addEventListener('pointerdown', unlock);
+    addEventListener('keydown', unlock);
+    return () => {
+      removeEventListener('pointerdown', unlock);
+      removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     const detach = attachKeyboardMouse();

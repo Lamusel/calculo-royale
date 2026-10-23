@@ -3,9 +3,9 @@
 export const QUALITY_LEVELS = ['low', 'medium', 'high'];
 
 export const QUALITY = {
-  high: { name: 'alta', dpr: [1, 1.5], shadows: true, shadowMapSize: 2048, particles: 1, bushes: true, fog: [45, 105] },
-  medium: { name: 'media', dpr: [1, 1.25], shadows: true, shadowMapSize: 1024, particles: 0.7, bushes: true, fog: [40, 95] },
-  low: { name: 'baja', dpr: 1, shadows: false, shadowMapSize: 512, particles: 0.35, bushes: false, fog: [32, 78] },
+  high: { name: 'alta', dpr: [1, 1.5], shadows: true, shadowMapSize: 2048, particles: 1, bushes: true, fog: [50, 110] },
+  medium: { name: 'media', dpr: [1, 1.25], shadows: true, shadowMapSize: 1024, particles: 0.7, bushes: true, fog: [45, 100] },
+  low: { name: 'baja', dpr: 1, shadows: false, shadowMapSize: 512, particles: 0.35, bushes: false, fog: [37, 83] },
 };
 
 const WINDOW_MS = 2000; // cada medición promedia 2 s

@@ -9,6 +9,7 @@ import { actions, currentAim, inputState, press, readInput, resetInput } from '.
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
+import { setListener, sound, updateEngine } from '../audio/sound.js';
 
 // Contador global: si se recrea el cliente sin recargar, las secuencias siguen creciendo
 let seq = 0;
@@ -17,17 +18,21 @@ const KILLFEED_MS = 6000;
 const vibrate = (pattern) => navigator.vibrate?.(pattern);
 
 // Trazadoras, fogonazos y explosiones de un snapshot (también los usa la repetición)
-export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null) {
+export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null, audible = false) {
   for (const raw of snap.shots) {
     const shot = decodeShot(raw);
     if (shot.shooterId === skipShooter) continue; // ya se dibujó al predecir
+    if (audible) sound.shot(shot.weaponIndex, shot.x, shot.y);
     for (const { angle, dist } of shot.pellets) {
       effects.push({ type: 'tracer', x: shot.x, y: shot.y, angle, dist, weapon: shot.weaponIndex });
     }
     effects.push({ type: 'muzzle', x: shot.x, y: shot.y, angle: shot.pellets[0]?.angle ?? 0, weapon: shot.weaponIndex });
     lastShot.set(shot.shooterId, now);
   }
-  for (const [x, y] of snap.explosions) effects.push({ type: 'explosion', x, y });
+  for (const [x, y] of snap.explosions) {
+    effects.push({ type: 'explosion', x, y });
+    if (audible) sound.explosion(x, y);
+  }
 }
 
 // Cola de efectos con una copia por vista: el proyector dibuja dos escenas a la vez (duelo)
@@ -116,7 +121,12 @@ export class GameClient {
         if (me) {
           const flags = me[8];
           // Despliegue: en el bus (o eligiendo punto), en caída libre o con paracaídas
-          this.deploying = flags & PLAYER_FLAGS.IN_BUS ? 'bus' : flags & PLAYER_FLAGS.FALLING ? 'fall' : flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
+          const deploying = flags & PLAYER_FLAGS.IN_BUS ? 'bus' : flags & PLAYER_FLAGS.FALLING ? 'fall' : flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
+          if (deploying !== this.deploying) {
+            if (deploying === 'fall') sound.jump();
+            if (deploying === 'chute') sound.parachute();
+          }
+          this.deploying = deploying;
           this.altitude = me[9] ?? 0;
           const jeep = driving && { x: driving[1], y: driving[2], heading: driving[3], speed: driving[4] };
           const air = this.deploying === 'fall' || this.deploying === 'chute' ? this.deploying : null;
@@ -140,6 +150,8 @@ export class GameClient {
       },
       [EVENTS.CRATE_RESULT]: (result) => {
         this.question = null;
+        if (result.outcome === 'correct') sound.lockOpen();
+        else if (result.outcome !== 'cancelled') sound.lockFail();
         this.crateResult = { ...result, at: performance.now() };
         if (result.outcome === 'correct') {
           this.achieve('correct');
@@ -150,6 +162,8 @@ export class GameClient {
       },
       [EVENTS.RADIO_MESSAGE]: (message) => {
         this.radio.push({ ...message, at: performance.now() });
+        if (message.kind === 'bombing') sound.siren();
+        else sound.radio();
         if (this.radio.length > 6) this.radio.shift();
         vibrate(25);
       },
@@ -183,6 +197,8 @@ export class GameClient {
       },
       [EVENTS.AMMO_RESULT]: (r) => {
         if (this.ammoQuestion?.id === r.id) this.ammoQuestion = null;
+        if (r.correct) sound.reload();
+        else if (!r.cancelled) sound.lockFail();
         this.ammoResult = { ...r, at: performance.now() };
         if (r.correct) this.achieve('correct');
         if (!r.cancelled) vibrate(r.correct ? [20, 30, 20] : 120);
@@ -245,6 +261,7 @@ export class GameClient {
     }
     if (self.radar && !prev?.radar) this.radarEndsAt = now + RADAR_MS;
     if (!self.radar) this.radarEndsAt = 0;
+    if (self.reloadLeft && !(prev?.reloadLeft > 0)) sound.reload();
     this.self = self;
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
     this.ammoCooldownEndsAt = self.ammoCooldownLeft ? now + self.ammoCooldownLeft : 0;
@@ -322,6 +339,7 @@ export class GameClient {
     const packet = encodeInput({ ...input, seq: ++seq, viewTick: this.buffer.renderTick(now) });
     // Se predice con los mismos valores redondeados que recibe el servidor
     const sent = decodeInput(packet);
+    if (sent.buttons & BUTTONS.GRENADE && this.self?.grenades > 0) sound.grenadeThrow();
     this.predictor.step(sent, now);
     this.predictFire(sent, now);
     this.lastSentAim = input.aim;
@@ -351,6 +369,7 @@ export class GameClient {
     }
     this.effects.push({ type: 'muzzle', x: me.x, y: me.y, angle: input.aim, weapon });
     this.lastShot.set(this.myId, now);
+    sound.shot(weapon, me.x, me.y);
   }
 
   // Se llama una vez por cuadro; escribe en `frame` para no crear objetos nuevos
@@ -379,7 +398,8 @@ export class GameClient {
     } else {
       frame.follow = null;
     }
-    this.buffer.drainEvents(now, (snap) => snapshotEffects(snap, this.effects, this.lastShot, now, this.myId));
+    this.buffer.drainEvents(now, (snap) => snapshotEffects(snap, this.effects, this.lastShot, now, this.myId, !this.spectator));
+    this.updateAudio(frame);
     this.lastFrame = frame;
     this.killfeed = this.killfeed.filter((k) => now - k.at < KILLFEED_MS);
   }
@@ -401,6 +421,24 @@ export class GameClient {
     const pos = id === this.myId && frame.me ? frame.me : frame.others.get(id);
     if (!pos) return null;
     return { id, x: pos.x, y: pos.y, angle: elapsed / 700, distance: 6.5, height: 3 };
+  }
+
+  // Oyente donde está el jugador (o a quien sigue la cámara) y motor del jeep más cercano en marcha
+  updateAudio(frame) {
+    const at = frame.follow ?? frame.me;
+    if (!at || this.spectator) return;
+    setListener(at.x, at.y);
+    let nearest = null;
+    let best = Infinity;
+    for (const v of frame.vehicles?.values() ?? []) {
+      if (!v.driver || Math.abs(v.speed) < 0.5) continue;
+      const d = Math.hypot(v.x - at.x, v.y - at.y);
+      if (d < best) {
+        best = d;
+        nearest = v;
+      }
+    }
+    updateEngine(nearest);
   }
 
   // Avisa al servidor qué skin usar (con las de honor desbloqueadas en este navegador)

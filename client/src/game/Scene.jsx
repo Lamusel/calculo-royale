@@ -25,8 +25,10 @@ import ZoneMesh from './ZoneMesh.jsx';
 
 // Cámara 3/4: inclinación (grados sobre el horizonte) y distancia al jugador. Fácil de ajustar.
 export const CAMERA_PITCH_DEG = 50;
-const CAMERA_DISTANCE = 25;
-const CAMERA_FOV = 48;
+// Campo de visión angosto y cámara más lejos (misma área visible): menos deformación de
+// perspectiva en los bordes, donde los soldados parecían acostados
+const CAMERA_DISTANCE = 30.5;
+const CAMERA_FOV = 40;
 // La cámara se adelanta un poco hacia donde apunta el jugador
 const LOOK_AHEAD = 2.5;
 // Al apuntar con el francotirador la cámara se aleja un poco y se desplaza hacia la mira

@@ -9,6 +9,7 @@ import { Character } from './character/Character.js';
 import { characterStats, CharacterDebug, debugSkinsEnabled } from './character/debug.js';
 import { textTexture } from './labels.js';
 import { modelMaterial } from './models/build.js';
+import { sound } from '../audio/sound.js';
 import { parachuteGeometry } from './models/parachute.js';
 
 // Cada jugador: raíz de juego (posición, anillo, nombre, vida, chaleco, corona: siempre
@@ -214,6 +215,7 @@ export default function Players({ client, roster, myId, frameRef, quality, night
         dt,
         (x, y) => {
           if (quality.particles > 0.5) client.effects.push({ type: 'dust', x, y });
+          if (!client.spectator) sound.footstep(x, y);
         },
       );
 

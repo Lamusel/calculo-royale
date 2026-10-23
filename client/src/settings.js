@@ -1,7 +1,7 @@
-// Ajustes del jugador guardados en el navegador (menú Opciones): brillo y, más adelante, volumen.
+// Ajustes del jugador guardados en el navegador (menú Opciones): brillo y volumen.
 
 const KEY = 'calculo-royale:ajustes';
-const DEFAULTS = { brightness: 1 };
+const DEFAULTS = { brightness: 1, volume: 0.7 };
 export const BRIGHTNESS_RANGE = [0.6, 1.8];
 
 function load(storage = globalThis.localStorage) {
