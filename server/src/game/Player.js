@@ -1,5 +1,6 @@
 import { ARMOR_ABSORB, GRENADE, MAX_HP, MAX_INPUT_BURST, WEAPONS } from '@calculo-royale/shared/constants';
 import { applyInput } from '@calculo-royale/shared/movement';
+import { DEFAULT_SKIN } from '@calculo-royale/shared/skins';
 
 // Ticks de historia de posiciones para la compensación de lag
 const HISTORY_TICKS = 10;
@@ -10,6 +11,7 @@ export class Player {
     this.name = name;
     this.color = color;
     this.token = token;
+    this.skin = DEFAULT_SKIN;
 
     this.x = 0;
     this.y = 0;
@@ -175,6 +177,6 @@ export class Player {
   }
 
   info() {
-    return { id: this.id, name: this.name, color: this.color, connected: this.connected };
+    return { id: this.id, name: this.name, color: this.color, skin: this.skin, connected: this.connected };
   }
 }

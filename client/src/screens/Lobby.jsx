@@ -4,6 +4,7 @@ import { MAX_PLAYERS, TOPICS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
+import SkinPicker from '../ui/SkinPicker.jsx';
 
 const isLocalhost = () => ['localhost', '127.0.0.1'].includes(location.hostname);
 
@@ -79,9 +80,11 @@ function TopicPicker({ room, isHost, onClose }) {
 }
 
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
-export default function Lobby({ room, myId, isTouch }) {
+export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
+  const [showSkins, setShowSkins] = useState(false);
+  const me = room.players.find((p) => p.id === myId);
   const topicCount = room.topics?.length ?? Object.keys(TOPICS).length;
   const [error, setError] = useState('');
   const url = useJoinUrl(room.code);
@@ -104,6 +107,9 @@ export default function Lobby({ room, myId, isTouch }) {
           <span className="text-sm text-stone-300">
             {room.players.length}/{MAX_PLAYERS}
           </span>
+          <button onClick={() => setShowSkins(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-khaki-light">
+            Skin
+          </button>
           <button onClick={() => setShowTopics(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">
             Temas {topicCount}/{Object.keys(TOPICS).length}
           </button>
@@ -137,6 +143,7 @@ export default function Lobby({ room, myId, isTouch }) {
 
       {showInvite && <BigInvite room={room} url={url} onClose={() => setShowInvite(false)} />}
       {showTopics && <TopicPicker room={room} isHost={isHost} onClose={() => setShowTopics(false)} />}
+      {showSkins && <SkinPicker color={me?.color ?? '#f97316'} onChoose={onSkin} onClose={() => setShowSkins(false)} />}
     </>
   );
 }

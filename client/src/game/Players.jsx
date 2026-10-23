@@ -60,9 +60,9 @@ function SoldierAvatar({ player, isMe, vestLevel, register, blobShadow }) {
       }),
     [player.name, player.connected, isMe],
   );
-  const torso = torsoGeometry(player.color, vestLevel);
-  const arms = armsGeometry(player.color);
-  const leg = legGeometry();
+  const torso = torsoGeometry(player.color, vestLevel, player.skin);
+  const arms = armsGeometry(player.color, player.skin);
+  const leg = legGeometry(player.skin);
 
   return (
     <group ref={set('group')} visible={false}>

@@ -170,7 +170,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
       {client && (
         <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} />
       )}
-      {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} />}
+      {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
       {banner && <StartBanner />}
       {isTouch && <RotateDevice />}
     </div>

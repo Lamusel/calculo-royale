@@ -7,6 +7,7 @@ import { TRAINING } from '@calculo-royale/shared/mapLayout';
 import { actions, currentAim, inputState, readInput, resetInput } from '../input/inputState.js';
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
+import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
 
 // Contador global: si se recrea el cliente sin recargar, las secuencias siguen creciendo
 let seq = 0;
@@ -30,6 +31,8 @@ export class GameClient {
     this.intercept = null; // pregunta de intercepción pendiente
     this.transmissionResult = null;
     this.classStats = null;
+    this.unlocks = []; // skins de honor recién desbloqueadas: [{ id, at }]
+    this.operatorStreak = 0;
     this.phase = phase;
     this.buffer = new SnapshotBuffer();
     this.predictor = new Predictor();
@@ -70,6 +73,7 @@ export class GameClient {
       },
       [EVENTS.CRATE_QUESTION]: (question) => {
         this.question = { ...question, receivedAt: performance.now() };
+        this.lastCrateRarity = question.rarity;
         this.crateResult = null;
         resetInput();
         vibrate(20);
@@ -77,7 +81,11 @@ export class GameClient {
       [EVENTS.CRATE_RESULT]: (result) => {
         this.question = null;
         this.crateResult = { ...result, at: performance.now() };
-        if (result.outcome === 'correct') vibrate([20, 40, 20]);
+        if (result.outcome === 'correct') {
+          this.achieve('correct');
+          if (this.lastCrateRarity === 3) this.achieve('legendary');
+          vibrate([20, 40, 20]);
+        }
         else if (result.outcome !== 'cancelled') vibrate(150);
       },
       [EVENTS.RADIO_MESSAGE]: (message) => {
@@ -95,6 +103,11 @@ export class GameClient {
         if (r.kind === 'operator' && this.transmission?.id === r.id) this.transmission = null;
         if (r.kind === 'intercept' && this.intercept?.id === r.id) this.intercept = null;
         this.transmissionResult = { ...r, at: performance.now() };
+        if (r.correct) this.achieve('correct');
+        if (r.kind === 'operator') {
+          this.operatorStreak = r.correct ? this.operatorStreak + 1 : 0;
+          this.achieve('operatorStreak', this.operatorStreak);
+        }
         vibrate(r.correct ? [20, 30, 20] : 120);
       },
       [EVENTS.CLASS_STATS]: (stats) => {
@@ -105,6 +118,9 @@ export class GameClient {
       },
       [EVENTS.RESULTS_SELF]: (mine) => {
         this.privateResults = mine;
+        // Ganar sin fallar ninguna pregunta (y habiendo respondido al menos una)
+        const answered = Object.values(mine.byTopic ?? {}).reduce((n, t) => n + t.total, 0);
+        if (this.results?.winnerId === this.myId && answered > 0 && mine.failed.length === 0) this.achieve('flawlessWin');
       },
       [EVENTS.COMBAT_KILL]: ([killer, victim, weapon]) => {
         this.killfeed.push({ killer, victim, weapon, at: performance.now() });
@@ -119,6 +135,7 @@ export class GameClient {
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
     socket.emit(EVENTS.PING, Date.now());
     if (this.spectator) return;
+    this.sendSkin(loadSkin());
     this.inputTimer = setInterval(() => this.sendInput(), TICK_MS);
     // El primer estado privado pudo llegar antes de que este cliente escuchara
     socket.emit(EVENTS.PLAYER_SELF);
@@ -252,6 +269,15 @@ export class GameClient {
     });
     this.lastFrame = frame;
     this.killfeed = this.killfeed.filter((k) => now - k.at < KILLFEED_MS);
+  }
+
+  // Avisa al servidor qué skin usar (con las de honor desbloqueadas en este navegador)
+  sendSkin(skin) {
+    this.socket.emit(EVENTS.PLAYER_SKIN, { skin, unlocked: unlockedSkins(loadProgress()) });
+  }
+
+  achieve(type, value) {
+    for (const id of recordEvent(type, value)) this.unlocks.push({ id, at: performance.now() });
   }
 
   answerTransmission(id, index) {

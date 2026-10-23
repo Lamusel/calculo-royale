@@ -1,6 +1,7 @@
 import { NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
+import { canUseSkin } from '@calculo-royale/shared/skins';
 import { Room } from './Room.js';
 
 const fail = (error) => ({ ok: false, error });
@@ -123,6 +124,17 @@ export class RoomManager {
     const valid = [...new Set(topics.filter((t) => TOPICS[t]))];
     if (valid.length === 0) return;
     room.topics = valid;
+    room.broadcastInfo();
+  }
+
+  // Skin del jugador: solo en el lobby y solo del catálogo (las de honor, si las desbloqueó)
+  setSkin(socket, data) {
+    const room = this.roomOf(socket);
+    const player = this.playerOf(socket);
+    if (!room || !player || room.phase !== 'lobby') return;
+    const unlocked = Array.isArray(data?.unlocked) ? data.unlocked.map(String) : [];
+    if (!canUseSkin(data?.skin, unlocked) || player.skin === data.skin) return;
+    player.skin = data.skin;
     room.broadcastInfo();
   }
 

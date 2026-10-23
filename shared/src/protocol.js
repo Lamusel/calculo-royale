@@ -9,9 +9,11 @@ export const EVENTS = {
   ROOM_CREATE: 'room:create', // { name }
   ROOM_JOIN: 'room:join', // { code, name, token? } — con token reconecta al mismo jugador
   ROOM_LEAVE: 'room:leave',
-  ROOM_INFO: 'room:info', // S → C: { code, phase, hostId, players: [{ id, name, color, connected }] }
+  ROOM_INFO: 'room:info', // S → C: { code, phase, hostId, topics, players: [{ id, name, color, skin, connected }] }
   ROOM_KICKED: 'room:kicked', // S → C: { reason } (la sesión se abrió en otra pestaña)
   ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
+  // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby
+  PLAYER_SKIN: 'player:skin',
 
   // Partida
   GAME_START: 'game:start', // C → S (solo host), con ack
