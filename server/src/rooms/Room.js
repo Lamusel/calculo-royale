@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS } from '@calculo-royale/shared/constants';
+import { MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS, SCORE } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { ALL_TOPICS } from '../questions/QuestionBank.js';
+import { classStats } from '../game/radio.js';
+import { buildRecord, saveResults } from '../storage.js';
+
+// Puntaje final: puestos superados + bajas + aciertos (también de operador e intercepción)
+export function score(place, total, kills, correct) {
+  return (total - place) * SCORE.place + kills * SCORE.kill + correct * SCORE.correct;
+}
 import { Game } from '../game/Game.js';
 import { Player } from '../game/Player.js';
 import { World } from '../game/World.js';
@@ -123,20 +130,36 @@ export class Room {
     const winner = this.players.get(winnerId);
     if (winner) winner.place = 1;
     const ranking = players
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        color: p.color,
-        place: p.place ?? players.length,
-        kills: p.kills,
-        correct: p.stats.correct,
-        answered: p.stats.answered,
-      }))
-      .sort((a, b) => a.place - b.place || b.kills - a.kills);
+      .map((p) => {
+        const place = p.place ?? players.length;
+        return {
+          id: p.id,
+          name: p.name,
+          color: p.color,
+          place,
+          kills: p.kills,
+          correct: p.stats.correct,
+          answered: p.stats.answered,
+          score: score(place, players.length, p.kills, p.stats.correct),
+        };
+      })
+      .sort((a, b) => b.score - a.score || a.place - b.place);
     this.results = { winnerId, ranking };
     this.broadcast(EVENTS.GAME_OVER, this.results);
     for (const p of players) this.sendPrivateResults(p);
     this.broadcastInfo();
+    const stats = classStats(this.game);
+    this.sendClassStats(stats);
+    saveResults(buildRecord(this, stats))
+      .then((r) => console.log(`[sala ${this.code}] resultados guardados (${r.where}${r.file ? `: ${r.file}` : ''})`))
+      .catch((err) => console.error('[resultados] no se pudieron guardar:', err));
+  }
+
+  // Estadísticas de la clase en vivo: al host y a las vistas de proyector
+  sendClassStats(stats) {
+    const host = this.players.get(this.hostId);
+    if (host) this.emitTo(host, EVENTS.CLASS_STATS, stats);
+    this.io.to(`spec:${this.code}`).emit(EVENTS.CLASS_STATS, stats);
   }
 
   sendPrivateResults(player) {

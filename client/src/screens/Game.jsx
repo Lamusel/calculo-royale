@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { sectorOf } from '@calculo-royale/shared/zone';
 import { createQualityController, initialQuality, QUALITY } from '../game/quality.js';
 import Scene from '../game/Scene.jsx';
 import { attachKeyboardMouse } from '../input/KeyboardMouse.js';
@@ -15,6 +16,8 @@ import RadarOverlay from '../ui/RadarOverlay.jsx';
 import { RadioFeed, ZoneStatus } from '../ui/Radio.jsx';
 import Results from '../ui/Results.jsx';
 import TacticalMap, { minimapSize } from '../ui/TacticalMap.jsx';
+import HostPanel from '../ui/HostPanel.jsx';
+import { InterceptCard, OperatorPanel, TransmissionToast } from '../ui/Operator.jsx';
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
 import Lobby from './Lobby.jsx';
@@ -42,9 +45,22 @@ function DebugOverlay({ stats, quality }) {
   );
 }
 
+// Aviso para quien está dentro del sector que van a bombardear
+function BombingWarning({ bombing, me, alive }) {
+  if (!bombing?.length || !me || !alive || sectorOf(me.x, me.y) !== bombing[0]) return null;
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-1/3 z-30 -translate-x-1/2 animate-pulse rounded bg-red-700/90 px-4 py-2 text-center font-black uppercase tracking-wider text-white">
+      ¡Bombardeo en {bombing[0]} en {Math.ceil(bombing[1] / 1000)} s! Sal del sector
+    </div>
+  );
+}
+
 function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
   const view = useClientView(client, frameRef, room.phase);
   const isHost = room.hostId === myId;
+  const [panel, setPanel] = useState(false);
+  const operating = room.phase === 'playing' && view.self && !view.self.alive;
+  const followName = room.players.find((p) => p.id === client.followId)?.name;
   return (
     <>
       <HUD
@@ -54,11 +70,26 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave }) {
         onLeave={onLeave}
         onReset={resetGame}
         onFullscreen={isTouch && canFullscreen() ? enterLandscape : null}
+        onPanel={() => setPanel(true)}
       />
       <Killfeed killfeed={view.killfeed} roster={room.players} myId={myId} />
-      <TacticalMap frameRef={frameRef} myId={myId} radar={view.radarLeft > 0} radio={client.radio} isTouch={isTouch} />
+      <TacticalMap
+        frameRef={frameRef}
+        myId={myId}
+        radar={view.radarLeft > 0}
+        radio={client.radio}
+        isTouch={isTouch}
+        intel={view.self?.intel}
+      />
       <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
       <RadioFeed radio={client.radio} />
+      <BombingWarning bombing={frameRef.current.bombing} me={view.me} alive={view.self?.alive} />
+      {!operating && <InterceptCard client={client} />}
+      <TransmissionToast result={client.transmissionResult} />
+      {operating && (
+        <OperatorPanel client={client} self={view.self} roster={room.players} others={view.others} followName={followName} />
+      )}
+      {panel && <HostPanel stats={client.classStats} code={room.code} onClose={() => setPanel(false)} />}
       <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} />
       {view.radarLeft > 0 && <RadarOverlay me={view.me} others={view.others} myId={myId} secondsLeft={view.radarLeft} />}
       {view.question && (

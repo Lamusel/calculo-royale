@@ -42,6 +42,7 @@ export class Zone {
     this.from = this.current;
     this.target = this.current;
     this.phase = -1;
+    this.upcoming = null; // zona de la fase siguiente, ya decidida pero sin anunciar
     this.state = 'idle'; // 'idle' | 'waiting' | 'shrinking' | 'final'
     this.stateEndsAt = 0;
   }
@@ -54,7 +55,8 @@ export class Zone {
   beginPhase(i, now) {
     this.phase = i;
     this.from = { ...this.current };
-    this.target = nextZone(this.current, ZONE_PHASES[i], this.rand);
+    this.target = this.upcoming ?? nextZone(this.current, ZONE_PHASES[i], this.rand);
+    this.upcoming = null;
     this.state = 'waiting';
     this.stateEndsAt = now + ZONE_PHASES[i].waitMs / this.timeScale;
     return { type: 'announce', phase: i, zone: this.target, waitMs: ZONE_PHASES[i].waitMs / this.timeScale };
@@ -81,6 +83,22 @@ export class Zone {
       }
     }
     return events;
+  }
+
+  // Zona de la fase siguiente (sin anunciar): la reciben antes quienes interceptan una transmisión.
+  // Se decide una sola vez y es la que se anunciará después.
+  peekUpcoming() {
+    const next = this.phase + 1;
+    if (this.state === 'idle' || next >= ZONE_PHASES.length) return null;
+    this.upcoming ??= nextZone(this.target, ZONE_PHASES[next], this.rand);
+    return this.upcoming;
+  }
+
+  // ms hasta el próximo anuncio de zona (o null si ya no habrá más)
+  msToNextAnnounce(now) {
+    if (this.phase + 1 >= ZONE_PHASES.length) return null;
+    const shrink = ZONE_PHASES[this.phase].shrinkMs / this.timeScale;
+    return this.state === 'waiting' ? this.stateEndsAt - now + shrink : this.stateEndsAt - now;
   }
 
   // Daño por segundo fuera de la zona: el de la fase que se está cerrando (o la anterior)

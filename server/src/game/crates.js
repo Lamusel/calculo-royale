@@ -123,7 +123,8 @@ export function openCrate(game, player, crate) {
   return true;
 }
 
-function recordStats(player, q, correct, chosen) {
+// Registra una respuesta (caja, transmisión o intercepción) para los resultados y el ranking
+export function recordStats(player, q, correct, chosen) {
   const s = player.stats;
   const t = (s.byTopic[q.tema] ??= { ok: 0, total: 0 });
   t.total++;

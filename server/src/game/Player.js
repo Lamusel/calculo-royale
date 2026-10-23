@@ -35,6 +35,7 @@ export class Player {
     this.stats = { byTopic: {}, failed: [], correct: 0, answered: 0 };
     this.seenQuestions = new Set();
     this.place = null; // posición final (1 = ganador)
+    this.revived = false; // ya usó su reanimación de operador
   }
 
   resetCombat() {
@@ -55,6 +56,10 @@ export class Player {
     this.question = null; // { crateId, q, expiresAt } mientras abre una caja
     this.streak = 0;
     this.radarUntil = 0;
+    this.operator = null; // { mode: 'revive'|'votes', streak, sector, nextAt } mientras está caído
+    this.transmission = null; // pregunta de operador en curso
+    this.intercept = null; // pregunta de intercepción en curso
+    this.intel = null; // centro de la próxima zona, si ganó una intercepción
   }
 
   get weaponId() {
@@ -161,6 +166,9 @@ export class Player {
       streak: this.streak,
       radar: this.radarUntil > now,
       answering: this.question ? this.question.crateId : null,
+      operator: this.operator && { mode: this.operator.mode, streak: this.operator.streak, sector: this.operator.sector },
+      revived: this.revived,
+      intel: this.intel && { cx: this.intel.cx, cy: this.intel.cy },
       killedBy: this.killedBy,
       killedWith: this.killedWith,
     };

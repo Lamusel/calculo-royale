@@ -1,4 +1,5 @@
 import { TOPICS } from '@calculo-royale/shared/constants';
+import { ClassTopics } from './HostPanel.jsx';
 import MathText from './MathText.jsx';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -50,7 +51,9 @@ function FailedQuestion({ q }) {
 }
 
 // Pantalla de resultados: ganador, ranking, aciertos por tema y las preguntas falladas resueltas
-export default function Results({ results, mine, myId, isHost, onReset }) {
+// Con myId = null (proyector) se muestran los aciertos de la clase en vez de los propios
+export default function Results({ results, mine, myId, isHost, onReset, classStats }) {
+  const spectator = myId === null;
   if (!results) return null;
   const winner = results.ranking.find((r) => r.id === results.winnerId);
   const me = results.ranking.find((r) => r.id === myId);
@@ -61,9 +64,9 @@ export default function Results({ results, mine, myId, isHost, onReset }) {
           <p className="text-2xl font-black uppercase tracking-wider text-khaki sm:text-3xl">
             {winner ? `🏆 Gana ${winner.name}` : 'Fin de la partida'}
           </p>
-          {me && <p className="rounded bg-white/10 px-3 py-1 font-mono">Tu posición: #{me.place}</p>}
+          {me && <p className="rounded bg-white/10 px-3 py-1 font-mono">Tu puesto: {me.place}° · {me.score} pts</p>}
           <div className="ml-auto">
-            {isHost ? (
+            {spectator ? null : isHost ? (
               <button onClick={onReset} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
                 Volver al lobby
               </button>
@@ -81,18 +84,20 @@ export default function Results({ results, mine, myId, isHost, onReset }) {
                 <tr>
                   <th className="pb-1">#</th>
                   <th className="pb-1">Jugador</th>
+                  <th className="pb-1 text-right">Puesto</th>
                   <th className="pb-1 text-right">Bajas</th>
                   <th className="pb-1 text-right">Aciertos</th>
                   {results.ranking[0]?.score !== undefined && <th className="pb-1 text-right">Puntos</th>}
                 </tr>
               </thead>
               <tbody>
-                {results.ranking.map((r) => (
+                {results.ranking.map((r, i) => (
                   <tr key={r.id} className={r.id === myId ? 'font-bold text-khaki-light' : ''}>
-                    <td className="py-0.5">{r.place}</td>
+                    <td className="py-0.5">{i + 1}</td>
                     <td className="py-0.5" style={{ color: r.id === myId ? undefined : r.color }}>
                       {r.name}
                     </td>
+                    <td className="py-0.5 text-right">{r.place}°</td>
                     <td className="py-0.5 text-right">{r.kills}</td>
                     <td className="py-0.5 text-right">
                       {r.correct}/{r.answered}
@@ -104,12 +109,15 @@ export default function Results({ results, mine, myId, isHost, onReset }) {
             </table>
           </div>
           <div className="rounded border border-white/10 bg-black/30 p-3">
-            <p className="mb-2 font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">Tus aciertos por tema</p>
-            <TopicBars byTopic={mine?.byTopic} />
+            <p className="mb-2 font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">
+              {spectator ? 'Acierto de la clase por tema' : 'Tus aciertos por tema'}
+            </p>
+            {spectator ? <ClassTopics stats={classStats} /> : <TopicBars byTopic={mine?.byTopic} />}
           </div>
         </div>
+        <p className="text-xs text-stone-400">Puntos: 10 por cada puesto superado, 15 por baja y 5 por acierto (cajas, transmisiones e intercepciones).</p>
 
-        <div className="flex flex-col gap-2">
+        {!spectator && <div className="flex flex-col gap-2">
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">
             Preguntas que fallaste ({mine?.failed?.length ?? 0})
           </p>
@@ -118,7 +126,7 @@ export default function Results({ results, mine, myId, isHost, onReset }) {
           ) : (
             <p className="text-sm text-stone-400">Ninguna. ¡Bien!</p>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );

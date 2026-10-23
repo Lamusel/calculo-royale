@@ -19,10 +19,17 @@ const selfMag = (self) => (selfWeaponId(self) === 'pistol' ? self.pistolMag : se
 
 // Conecta la red con la escena: envía inputs a 20 Hz, guarda snapshots, predice al
 // jugador propio (movimiento y disparos) y deja efectos en cola para la escena.
+// Con myId = null es solo espectador (vista para proyector): no envía nada.
 export class GameClient {
   constructor(socket, myId, phase) {
     this.socket = socket;
     this.myId = myId;
+    this.spectator = myId === null;
+    this.followId = null; // a quién sigue la cámara cuando estás caído (o en el proyector)
+    this.transmission = null; // pregunta de operador de radio pendiente
+    this.intercept = null; // pregunta de intercepción pendiente
+    this.transmissionResult = null;
+    this.classStats = null;
     this.phase = phase;
     this.buffer = new SnapshotBuffer();
     this.predictor = new Predictor();
@@ -78,6 +85,21 @@ export class GameClient {
         if (this.radio.length > 6) this.radio.shift();
         vibrate(25);
       },
+      [EVENTS.TRANSMISSION]: (t) => {
+        const entry = { ...t, receivedAt: performance.now() };
+        if (t.kind === 'operator') this.transmission = entry;
+        else this.intercept = entry;
+        vibrate(15);
+      },
+      [EVENTS.TRANSMISSION_RESULT]: (r) => {
+        if (r.kind === 'operator' && this.transmission?.id === r.id) this.transmission = null;
+        if (r.kind === 'intercept' && this.intercept?.id === r.id) this.intercept = null;
+        this.transmissionResult = { ...r, at: performance.now() };
+        vibrate(r.correct ? [20, 30, 20] : 120);
+      },
+      [EVENTS.CLASS_STATS]: (stats) => {
+        this.classStats = stats;
+      },
       [EVENTS.GAME_OVER]: (results) => {
         this.results = results;
       },
@@ -94,9 +116,10 @@ export class GameClient {
     actions.switchWeapon = (slot) => socket.emit(EVENTS.WEAPON_SWITCH, slot);
     actions.interact = () => socket.emit(EVENTS.INTERACT);
 
-    this.inputTimer = setInterval(() => this.sendInput(), TICK_MS);
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
     socket.emit(EVENTS.PING, Date.now());
+    if (this.spectator) return;
+    this.inputTimer = setInterval(() => this.sendInput(), TICK_MS);
     // El primer estado privado pudo llegar antes de que este cliente escuchara
     socket.emit(EVENTS.PLAYER_SELF);
   }
@@ -203,6 +226,18 @@ export class GameClient {
     frame.me = this.predictor.render(now, currentAim());
     this.buffer.sample(now, frame);
     frame.meInfo = frame.others.get(this.myId) ?? null;
+    // Caído (o en el proyector): la cámara sigue a quien te eliminó o a otro vivo
+    const dead = this.self && !this.self.alive && this.phase === 'playing';
+    if (dead || (this.spectator && this.followId !== null)) {
+      const followed = frame.others.get(this.followId);
+      if (!followed || followed.flags & PLAYER_FLAGS.DEAD) {
+        const killer = frame.others.get(this.self?.killedBy);
+        this.followId = killer && !(killer.flags & PLAYER_FLAGS.DEAD) ? this.self.killedBy : (this.followable(frame)[0] ?? null);
+      }
+      frame.follow = frame.others.get(this.followId) ?? null;
+    } else {
+      frame.follow = null;
+    }
     this.buffer.drainEvents(now, (snap) => {
       for (const raw of snap.shots) {
         const shot = decodeShot(raw);
@@ -217,6 +252,28 @@ export class GameClient {
     });
     this.lastFrame = frame;
     this.killfeed = this.killfeed.filter((k) => now - k.at < KILLFEED_MS);
+  }
+
+  answerTransmission(id, index) {
+    this.socket.emit(EVENTS.TRANSMISSION_ANSWER, { id, index });
+  }
+
+  voteSector(sector) {
+    this.socket.emit(EVENTS.VOTE_SECTOR, sector);
+  }
+
+  // Jugadores vivos que se pueden seguir con la cámara
+  followable(frame = this.lastFrame) {
+    if (!frame) return [];
+    return [...frame.others].filter(([id, p]) => id !== this.myId && !(p.flags & PLAYER_FLAGS.DEAD)).map(([id]) => id);
+  }
+
+  // Cambia a quién sigue la cámara (+1 siguiente, −1 anterior)
+  cycleFollow(step) {
+    const ids = this.followable();
+    if (ids.length === 0) return;
+    const i = ids.indexOf(this.followId);
+    this.followId = ids[(i + step + ids.length) % ids.length];
   }
 
   answer(index) {

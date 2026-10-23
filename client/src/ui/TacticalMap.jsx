@@ -109,6 +109,30 @@ function draw(ctx, size, data, detailed) {
     ctx.strokeRect(X(data.airdrop[0]) - 4, Y(data.airdrop[1]) - 4, 8, 8);
   }
 
+  // Bombardeo anunciado: el sector en rojo
+  if (data.bombing?.length) {
+    const name = data.bombing[0];
+    const col = name.charCodeAt(0) - 65;
+    const row = Number(name.slice(1)) - 1;
+    const cell = size / SECTORS;
+    ctx.fillStyle = `rgba(255, 30, 30, ${0.35 + 0.25 * Math.sin(now / 100)})`;
+    ctx.fillRect(col * cell, row * cell, cell, cell);
+  }
+
+  // Centro de la próxima zona, si ganaste una intercepción
+  if (data.intel) {
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    const ix = X(data.intel.cx);
+    const iy = Y(data.intel.cy);
+    ctx.beginPath();
+    ctx.moveTo(ix - 6, iy);
+    ctx.lineTo(ix + 6, iy);
+    ctx.moveTo(ix, iy - 6);
+    ctx.lineTo(ix, iy + 6);
+    ctx.stroke();
+  }
+
   // Enemigos (solo con radar)
   if (data.radar) {
     ctx.fillStyle = '#f87171';
@@ -205,10 +229,10 @@ function BigMap({ frameRef, extra, onClose, radio }) {
 export const minimapSize = (isTouch) => (isTouch ? 104 : 140);
 
 // Minimapa en la esquina; al tocarlo se abre el mapa grande
-export default function TacticalMap({ frameRef, myId, radar, radio, isTouch }) {
+export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, intel }) {
   const [open, setOpen] = useState(false);
   const extra = useRef({});
-  extra.current = { myId, radar };
+  extra.current = { myId, radar, intel };
   const size = minimapSize(isTouch);
   const ref = useMapCanvas(frameRef, extra, size, false);
   return (

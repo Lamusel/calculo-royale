@@ -42,6 +42,17 @@ export const EVENTS = {
   GAME_OVER: 'game:over',
   // Resultados privados (solo al dueño): { byTopic, failed: [{ tema, enunciado, opciones, correcta, elegida, explicacion }] }
   RESULTS_SELF: 'results:self',
+
+  // Operadores de radio e intercepciones
+  // S → C: { id, kind: 'operator'|'intercept', tema, enunciado, opciones, timeLimitMs } (sin la respuesta)
+  TRANSMISSION: 'radio:transmission',
+  TRANSMISSION_ANSWER: 'radio:answer', // C → S: { id, index }
+  // S → C: { id, kind, correct, explicacion, revived?, intel?: { cx, cy }, late? }
+  TRANSMISSION_RESULT: 'radio:result',
+  VOTE_SECTOR: 'radio:vote', // C → S: sector elegido para el bombardeo ('C3')
+  // S → C (host y espectadores): { byTopic, alive, total, operators, votes }
+  CLASS_STATS: 'class:stats',
+  ROOM_SPECTATE: 'room:spectate', // C → S con ack: { code } (vista para proyector, sin jugador)
 };
 
 // Botones dentro del input (máscara de bits)

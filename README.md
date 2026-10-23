@@ -98,7 +98,7 @@ Principio: quien entiende el cálculo juega mejor, y quien no, lo aprende jugand
 |---|---|
 | Cliente | React + Vite + Tailwind, **React Three Fiber** + drei (Three.js), nipplejs (joysticks), KaTeX (fórmulas), qrcode.react (QR de la sala) |
 | Servidor | Node + Express + **Socket.io**, servidor autoritativo |
-| Datos | Banco de preguntas en JSON dentro del repo; Supabase para resultados y reportes (fase 6) |
+| Datos | Banco de preguntas en JSON dentro del repo; resultados en Supabase (opcional) o en JSON local |
 | Despliegue | Cliente en Vercel, servidor en Render (+ UptimeRobot para evitar que se duerma) |
 | Modelos 3D | **100 % procedurales por código** (geometría low-poly, colores por vértice, texturas de canvas). Sin paquetes externos |
 
@@ -138,7 +138,8 @@ calculo-royale/
 │       │   ├── crates.js      # cajas de suministro, botín, racha y radar
 │       │   ├── Zone.js        # fases de la zona (elipses), cierre y daño
 │       │   ├── match.js       # transmisiones del mando, lanzamiento aéreo y victoria
-│       │   ├── radio.js       # operadores de radio, votos y bombardeos
+│       │   ├── radio.js       # operadores de radio, votos, bombardeos e intercepciones
+│       ├── storage.js         # resultados: Supabase si hay variables, si no JSON local
 │       │   └── loot.js
 │       └── questions/
 │           ├── QuestionBank.js
@@ -243,7 +244,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **3. Arte base** (alcance mínimo) ✅ | Soldado procedural completo con animaciones, terreno natural, cámara 3/4, sol con sombras, niebla, efectos, paredes semitransparentes, calidad automática. Solo dos zonas: **pueblo** y **patio de contenedores** | El juego ya "se ve" final en PC y celular |
 | **4. Cajas de suministro** ✅ | Banco JSON, modal de candado con KaTeX, validación en servidor, rarezas, botín, racha y radar, Todo o nada | Abrir caja, responder y recibir botín |
 | **5. Zona y victoria** ✅ | Transmisiones del mando con la desigualdad, mapa táctico con coordenadas, daño fuera de zona, lanzamientos aéreos, último en pie gana, resultados con tus errores resueltos. *Opcional: #3* | Partida completa de principio a fin |
-| **6. Operadores de radio y clase** | Vista espectador, reanimación, votos y bombardeo por sector, interceptar transmisión, ranking, panel del profe con mapa de calor, reporte (Supabase) | El profe ve estadísticas al final |
+| **6. Operadores de radio y clase** ✅ | Vista espectador, reanimación, votos y bombardeo por sector, interceptar transmisión, ranking, panel del profe con mapa de calor, reporte (Supabase) | El profe ve estadísticas al final |
 | **7. Pulido y carga** | Base militar, bosque y trincheras; sonidos; despliegue; división del bundle; prueba con 40 bots; ajuste en celulares de gama baja; lo que haya quedado pendiente de arte | Prueba de carga estable con 40 conexiones |
 | *Backlog* | #4 campos vectoriales, #6 centro de masa | |
 
@@ -279,6 +280,16 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Victoria:** último en pie gana (con 2 o más jugadores). Pantalla de resultados: posición, bajas, aciertos por tema y cada pregunta fallada con su solución en KaTeX (solo la ve su dueño). El host vuelve al lobby.
 - **Pruebas:** zona (contención, interpolación, daño, desigualdad), sectores, lanzamiento aéreo, victoria, posiciones y resultados privados.
 
+#### Fase 6: operadores de radio y clase
+- **Al morir en partida:** vista espectador (sigue a quien te eliminó, o a otro vivo; se puede cambiar) y panel de operador de radio con transmisiones (preguntas de 30 s, una tras otra).
+- **Reanimación:** si caíste en las fases 1 o 2 de la zona y no la has usado, 3 aciertos seguidos te reaniman una vez dentro de la zona con pistola y 75 de vida (50 + venda). Un fallo reinicia la cuenta.
+- **Bombardeo por votos:** si no puedes reanimar, eliges un sector en la cuadrícula A1–F6 y cada acierto le suma un voto. Cada 60 s el sector más votado recibe un bombardeo (aviso de 5 s con el sector marcado en rojo, luego daño en todo el sector). Nunca el mismo sector dos veces seguidas; desactivado con 5 vivos o menos.
+- **Interceptar transmisión enemiga:** cada 2 minutos, pregunta rápida para todos los vivos sin detenerse (panel pequeño). Los 5 primeros en acertar reciben en privado el centro de la próxima zona antes del anuncio público.
+- **Ranking final:** puntos = 10 por puesto superado + 15 por baja + 5 por acierto (incluidos los de operador e intercepciones).
+- **Vista para proyector:** `/espectador?code=ABCD` muestra el mapa completo, vivos, killfeed, transmisiones y aciertos por tema en vivo. **Panel del host** con el porcentaje de acierto por tema de la clase en vivo.
+- **Resultados guardados:** con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` se guardan en Supabase; sin ellas, en `server/data/resultados/*.json`. El juego funciona igual en ambos casos.
+- **Pruebas:** reanimación, votos y bombardeo, intercepción, puntaje, estadísticas de clase y guardado local.
+
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
 
@@ -296,6 +307,7 @@ npm run dev:client # solo cliente
 npm run build      # build de producción del cliente (client/dist)
 npm run bots -- ABCD 5   # 5 bots caminando al azar en la sala ABCD (Ctrl+C para sacarlos)
 npm run bots -- ABCD 5 --armados   # bots que disparan al jugador visible más cercano
+npm run bots -- ABCD 5 --cazar     # además caminan hacia el jugador vivo más cercano
 npm run tunnel     # URL pública para el celular (con npm run dev corriendo)
 npm test           # pruebas de combate y colisiones (node:test)
 ```
@@ -336,6 +348,33 @@ SERVER_URL=http://localhost:3002 npm run bots -- <CÓDIGO> 3 --armados
 5. En el campo de entrenamiento hay armeros (escopeta, rifle, francotirador, granadas, chaleco) y blancos de práctica. Lo que se toma ahí no pasa a la partida.
 6. Recargar una pestaña: vuelve al mismo jugador, en la misma posición.
 
+### Vista para proyector y panel del profe
+
+- **Proyector:** abrir `/espectador?code=ABCD` (por ejemplo `http://localhost:5173/espectador?code=ABCD` o con la URL del túnel). Muestra todo el mapa, vivos, killfeed, transmisiones y el acierto de la clase por tema; se puede seguir a un jugador con ◀ ▶.
+- **Panel del profe:** botón **Panel** arriba a la derecha durante la partida (solo el host): acierto por tema de menor a mayor, vivos y operadores, y el enlace del proyector.
+
+### Guardar resultados en Supabase (opcional)
+
+Sin configurar nada, cada partida terminada se guarda en `server/data/resultados/<fecha>-<código>.json` (ignorado por git). Para usar Supabase:
+
+1. Crear la tabla en el editor SQL de Supabase:
+
+```sql
+create table partidas (
+  id bigint generated always as identity primary key,
+  codigo text not null,
+  fecha timestamptz not null,
+  temas text[],
+  ganador text,
+  ranking jsonb,     -- [{ id, name, place, kills, correct, answered, score }]
+  por_tema jsonb,    -- { tema: { ok, total } } de toda la clase
+  jugadores jsonb    -- [{ nombre, puesto, bajas, aciertos, respuestas, por_tema, falladas }]
+);
+```
+
+2. En `server/.env`: `SUPABASE_URL=https://<proyecto>.supabase.co` y `SUPABASE_SERVICE_KEY=<service role key>` (la clave de servicio va solo en el servidor, nunca en el cliente).
+3. Si Supabase falla, la partida se guarda igual en el JSON local y el juego sigue.
+
 ### Variables de entorno (opcionales en desarrollo)
 
 Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.env` solo si hace falta cambiar algo.
@@ -346,7 +385,8 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 | `CLIENT_ORIGIN` | server | Orígenes CORS permitidos, separados por coma. Vacío = cualquiera |
 | `VITE_SERVER_URL` | client | URL del servidor en producción. Vacío = mismo origen (proxy de Vite) |
 | `CR_SERVER_URL` | client (Vite) | A dónde apunta el proxy de desarrollo. Vacío = `http://localhost:3001` |
-| `CR_TIME_SCALE` | server | **Solo pruebas.** Acelera la zona y el lanzamiento aéreo (ej. `12` = partida de ~1 min) |
+| `CR_TIME_SCALE` | server | **Solo pruebas.** Acelera la zona, el lanzamiento aéreo, bombardeos e intercepciones (ej. `12` = partida de ~1 min) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | server | Opcional: guardar resultados en Supabase (ver arriba) |
 
 ### Probar desde el celular (recomendado: túnel)
 
@@ -368,7 +408,7 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 | 3 | ✅ Completa | Cámara 3/4 a 50°, sol con sombras que siguen al jugador, niebla, soldado procedural animado (chaleco visible por nivel), armas procedurales, caminos, matorrales, cerca del borde, casas con techo que se oculta, contenedores corrugados, oclusión con silueta, casquillos/chispas/sangre/polvo/humo, sacudida de cámara, hit marker, calidad automática y `?debug=1`. Falta verlo en un celular real |
 | 4 | ✅ Completa | Banco provisional de 40 preguntas verificadas numéricamente, 4 generadores, 27 cajas con candado (KaTeX), botín por rareza, bloqueo y alarma, racha y radar, Todo o nada, temas por sala. Falta probar en celular |
 | 5 | ✅ Completa | Zona en 5 fases (una elíptica) anunciada por el mando con su desigualdad, daño fuera, mapa táctico con ejes y sectores, GPS con sector, lanzamiento aéreo en paracaídas, último en pie gana, resultados con preguntas falladas resueltas. Falta probar en celular |
-| 6 | Pendiente | |
+| 6 | ✅ Completa | Operadores de radio (reanimación y votos), bombardeo por sectores, intercepción, ranking por puntos, vista de proyector, panel del profe y resultados guardados (Supabase o JSON local). Falta probar en celular |
 | 7 | Pendiente | |
 
 ### Bitácora
@@ -384,3 +424,4 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 - 2026-10-23: **fase 3 completa (arte base).** Cámara 3/4 a 50° (`CAMERA_PITCH_DEG` en `Scene.jsx`) con leve adelanto hacia la mira. Sol direccional con sombras cuya caja sigue al jugador (proyectan soldados, casas, contenedores y granadas), cielo y niebla. Modelos 100 % por código con `models/build.js` (piezas con color por vértice fusionadas con `mergeGeometries` de Three.js, sin dependencias nuevas): soldado con piernas, torso, brazos y arma separados (unas 5 llamadas de dibujo), uniforme oliva y color del jugador en banda del casco, brazalete y parche de la mochila; chaleco 1–3 visible (placas, bolsillos, cuello y hombreras). Animación procedural: piernas hacia donde camina, torso hacia la mira, zancada y balanceo según la velocidad, brazos arriba al disparar o apuntar, retroceso por arma, recarga y caída al morir; silueta amarilla del jugador propio cuando algo lo tapa. Armas procedurales en manos, armeros y granadas. Terreno con caminos (`PATHS`), pasto seco, matorrales con instancing y cerca baja en el borde. Casas desde `HOUSES` con zócalo, cornisa, dintel y techo a dos aguas que se oculta al entrar; contenedores corrugados con puertas y franjas; cajas con listones, barriles con aros, rocas facetadas, cercas. Oclusión: lo que tapa al jugador desde la cámara se desvanece. Efectos: casquillos (cartuchos rojos en la escopeta), chispas en paredes, sangre al impactar, polvo al caminar, humo de granada, sacudida de cámara por daño y explosiones, hit marker ✕. Calidad automática (alta/media/baja según FPS; `?calidad=baja` la fuerza, `?debug=1` muestra FPS, llamadas de dibujo y triángulos): en Edge headless con render por software (13–18 fps) bajó sola a "baja" con ~70 llamadas de dibujo y ~29 mil triángulos. 6 pruebas nuevas (oclusión, caminos, calidad). Decisiones menores: sin pisos de madera en las casas (el terreno inclinado los atravesaba), sin ventanas (serían solo decorativas y confundirían: las balas no pasan), sin mechones de pasto (rendimiento). Corregido: entrar a una sala borraba `?debug` y `?calidad` de la URL. Pendiente de verificar en celular: en una captura un bot que caminaba de lado pareció acostado; el código no rota el cuerpo mientras está vivo, pero conviene mirarlo.
 - 2026-10-23: **fase 4 completa (cajas de suministro).** Banco PROVISIONAL de 40 preguntas en 9 temas y 4 dificultades (`server/src/questions/bank/*.json`); `tests/questions.test.js` recalcula cada respuesta correcta de forma independiente (Simpson en 1, 2 y 3 dimensiones, muestreo para Lagrange, derivadas numéricas) y comprueba que ningún distractor también sea correcto: las 40 pasaron a la primera. 4 generadores paramétricos probados con 300 semillas cada uno. `QuestionBank` elige por temas de la sala y dificultad de la rareza (la más cercana si falta), prefiere preguntas no vistas por ese jugador y baraja las opciones por jugador; la respuesta correcta vive solo en el servidor (una prueba revisa que el mensaje al cliente no la incluya). 26 cajas en `SUPPLY_CRATES` (rareza fija por lugar: campo, casas, contenedores, doradas en la plaza y el patio) y una de práctica en el campo de entrenamiento (no cuenta en estadísticas, se vuelve a cerrar a los 4 s). Modal de candado con KaTeX (rareza, tema, tiempo, 4 opciones grandes que responden al levantar el dedo, botín posible, cancelar). Mientras responde: quieto, icono "⚠ ABRIENDO" sobre el soldado; moverse o morir cancela sin bloquear. Acierto: botín (venda, botiquín, munición, granada, armas, chaleco) y explicación. Fallo o tiempo: caja bloqueada 15 s, luz roja y columna de alarma visible 3 s para todos; la pregunta queda guardada para los resultados. Racha de 3 = radar 10 s (flechas en el borde hacia los enemigos). Doradas: Todo o nada (dos tiradas épicas, o pierdes el chaleco). El host elige los temas en el lobby. 24 pruebas nuevas (50 en total). Dependencia: `katex` (ya estaba en el stack). Decisiones menores: las cajas no tienen colisión (simplifica la predicción del movimiento), la curación se aplica al instante (sin inventario de consumibles), durante una pregunta no se puede disparar, y al fallar no se muestra la respuesta en ese momento (aparece en los resultados al final). Corregidos: la caja de práctica quedaba junto al armero del francotirador (E tomaba el arma) y un reemplazo de `slate-` por `stone-` había roto el centrado del panel del lobby (`translate-x`).
 - 2026-10-23: **fase 5 completa (zona y victoria).** `Zone.js`: 5 fases (aviso 60 s, cierre 45 s, ~9 min) con radios 58 → 40 → 27 (elipse 35×20, idea #3) → 15 → 6; cada zona nueva cabe dentro de la anterior (probado con 500 partidas simuladas); centro y semiejes enteros para que la desigualdad sea legible. Todas las zonas son elipses (`shared/src/zone.js`: contención, interpolación, desigualdad en LaTeX y sectores A1–F6). El mando transmite (`radio:message`) cada zona nueva con su desigualdad, el cierre, la última zona y el lanzamiento aéreo. Daño fuera de la zona 2 → 14 por segundo (20 al final), sin chaleco; muerte por zona con icono propio en el killfeed. Cliente: muro translúcido de la zona y franja blanca de la siguiente; minimapa en canvas (casas, contenedores, ejes, sectores, zona actual sombreada, siguiente punteada, alarmas, lanzamiento aéreo, enemigos con radar) que al tocarlo abre el mapa grande con coordenadas, tu sector, la próxima desigualdad y el historial de transmisiones; aviso "FUERA DE LA ZONA" con la desigualdad a la que volver; GPS con sector. Lanzamiento aéreo a los 4 min: coordenadas enteras dentro de la zona siguiente y sin obstáculos, cae en paracaídas 20 s y queda como caja dorada. Victoria: último vivo (y conectado) con 2 o más jugadores; posición por orden de caída; pantalla de resultados con ranking, aciertos por tema y cada pregunta fallada con tu respuesta, la correcta y la solución (solo la ve su dueño; se reenvía al reconectar). El host vuelve al lobby. 9 pruebas nuevas (59 en total) y una partida completa acelerada en Edge con 3 bots armados (zona, elipse, lanzamiento aéreo, ganador y resultados, sin errores de consola). Para probar rápido: `CR_TIME_SCALE` (solo pruebas) y `CR_SERVER_URL` para una segunda copia. Los bots ahora caminan hacia la zona si quedan afuera. Decisiones menores: sin región en polares (la elipse cubre la idea #3 de forma simple), los jugadores desconectados no cuentan para la victoria, con un solo jugador no hay victoria automática (pruebas en solitario).
+- 2026-10-23: **fase 6 completa (operadores de radio y clase).** `radio.js`: al caer en partida se pasa a operador de radio con vista espectador (la cámara sigue a quien te eliminó u otro vivo, ◀ ▶ para cambiar) y transmisiones de 30 s una tras otra. Si caíste en las fases 1 o 2 de la zona y no has usado la reanimación: 3 aciertos seguidos te reaniman una vez dentro de la zona con pistola y 75 de vida (un fallo reinicia la cuenta). Si no: eliges sector en la cuadrícula A1–F6 y cada acierto es un voto; cada 60 s el más votado recibe un bombardeo (aviso de 5 s con columna roja en la escena, sector rojo en el minimapa y aviso grande a quien está dentro; 70 de daño en todo el sector). Nunca el mismo sector dos veces seguidas; desactivado con 5 vivos o menos. Intercepción cada 2 min para todos los vivos, sin detenerse (tarjeta compacta que no tapa los joysticks): los 5 primeros reciben el centro de la próxima zona (la zona siguiente se decide una sola vez y es la que después se anuncia; se salta la ronda si el anuncio está demasiado cerca para que sirva). Ranking por puntos: 10 por puesto superado, 15 por baja, 5 por acierto (cajas, transmisiones e intercepciones). Vista para proyector en `/espectador?code=ABCD` (mapa completo, vivos, killfeed, transmisiones, acierto de la clase por tema, seguir jugadores) y panel del profe con el acierto por tema en vivo (`class:stats` cada 2 s). Resultados guardados al terminar: Supabase si hay `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`, si no (o si falla) `server/data/resultados/*.json`; dependencia `@supabase/supabase-js` (estaba en el stack), cargada solo si hay variables. `client/vercel.json` para que `/espectador` funcione desplegado. 9 pruebas nuevas (68 en total) y partida acelerada en Edge con bots `--cazar` (nuevo modo: caminan hacia el vivo más cercano): intercepción, caída del host, panel de operador con transmisión y cámara siguiendo a otro jugador, proyector y resultados con puntos, sin errores de consola. Decisiones menores: reanimación con 75 de vida ("pistola y venda" = 50 + 25, sin inventario de consumibles); la reanimación cae directamente en la zona (sin animación de paracaídas, pasa a la fase 7); el sector por defecto para votar es donde caíste; la sirena del bombardeo queda para la fase 7 (sonidos).

@@ -9,7 +9,7 @@ import { Zone } from './Zone.js';
 
 const ZONE_INDEX = WEAPON_IDS.indexOf('zone');
 // Solo para pruebas: CR_TIME_SCALE=10 hace la zona y el lanzamiento aéreo 10 veces más rápidos
-const TIME_SCALE = Math.max(1, Number(globalThis.process?.env.CR_TIME_SCALE) || 1);
+export const TIME_SCALE = Math.max(1, Number(globalThis.process?.env.CR_TIME_SCALE) || 1);
 
 export function radio(game, kind, title, text, durationMs = 9000) {
   game.room.broadcast(EVENTS.RADIO_MESSAGE, { kind, title, text, durationMs });

@@ -3,7 +3,7 @@ import { sectorOf } from '@calculo-royale/shared/zone';
 // Barra superior: GPS con sector (las coordenadas que usa el mando), latencia y botones
 const fmt = (v) => (Math.abs(v) < 0.5 ? '0' : Math.round(v).toString().replace('-', '−'));
 
-export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscreen }) {
+export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscreen, onPanel }) {
   const { me, latency } = view;
 
   return (
@@ -18,6 +18,11 @@ export default function HUD({ view, isHost, phase, onLeave, onReset, onFullscree
       </div>
 
       <div className="absolute right-3 top-3 z-20 flex gap-2">
+        {isHost && phase !== 'lobby' && (
+          <button onClick={onPanel} className="rounded bg-black/55 px-3 py-1.5 text-sm text-khaki-light">
+            Panel
+          </button>
+        )}
         {isHost && phase === 'playing' && (
           <button onClick={onReset} className="rounded bg-black/55 px-3 py-1.5 text-sm text-khaki-light">
             Volver al lobby

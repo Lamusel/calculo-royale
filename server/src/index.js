@@ -57,6 +57,9 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.ROOM_TOPICS, (topics) => rooms.setTopics(socket, topics));
   socket.on(EVENTS.CRATE_ANSWER, (data) => rooms.crateAnswer(socket, data));
   socket.on(EVENTS.CRATE_CANCEL, () => rooms.crateCancel(socket));
+  socket.on(EVENTS.ROOM_SPECTATE, (data, ack) => reply(ack, rooms.spectate(socket, data)));
+  socket.on(EVENTS.TRANSMISSION_ANSWER, (data) => rooms.transmissionAnswer(socket, data));
+  socket.on(EVENTS.VOTE_SECTOR, (sector) => rooms.vote(socket, sector));
 
   socket.on('disconnect', () => rooms.disconnect(socket));
 });

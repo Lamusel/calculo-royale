@@ -6,6 +6,7 @@ import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, currentAim, inputState } from '../input/inputState.js';
 import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
+import BombingMesh from './BombingMesh.jsx';
 import Buildings from './Buildings.jsx';
 import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
@@ -24,6 +25,9 @@ const CAMERA_FOV = 48;
 const LOOK_AHEAD = 2.5;
 // Al apuntar con el francotirador la cámara se aleja un poco y se desplaza hacia la mira
 const SNIPER_ZOOM = 1.15;
+// Vista del proyector sin nadie a quien seguir: todo el mapa desde arriba
+const OVERVIEW_DISTANCE = 112;
+const OVERVIEW_PITCH = (62 * Math.PI) / 180;
 
 const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
 const CAMERA_OFFSET = new THREE.Vector3(0, Math.sin(pitch) * CAMERA_DISTANCE, Math.cos(pitch) * CAMERA_DISTANCE);
@@ -48,19 +52,33 @@ function sniperLook() {
 
 // Cámara que sigue al jugador, se adelanta hacia la mira y tiembla al recibir daño.
 // El sol (y su caja de sombras) sigue al mismo punto.
-function CameraRig({ client, frameRef, sun }) {
+function CameraRig({ client, frameRef, sun, overview }) {
   const s = useMemo(
     () => ({ target: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3(), lookGoal: new THREE.Vector3(), zoom: 1 }),
     [],
   );
   useFrame(({ camera }, delta) => {
     const dt = Math.min(delta, 0.1);
-    const { me } = frameRef.current;
-    if (me) s.goal.set(me.x, terrainHeight(me.x, me.y), -me.y);
+    const { me, follow } = frameRef.current;
+    // Proyector sin seguir a nadie: plano general fijo
+    if (overview && !follow) {
+      camera.position.set(0, Math.sin(OVERVIEW_PITCH) * OVERVIEW_DISTANCE, Math.cos(OVERVIEW_PITCH) * OVERVIEW_DISTANCE);
+      camera.lookAt(0, 0, 4);
+      s.target.set(0, 0, 0);
+      if (sun.current) {
+        sun.current.position.copy(SUN_OFFSET);
+        sun.current.target.position.set(0, 0, 0);
+        sun.current.target.updateMatrixWorld();
+      }
+      return;
+    }
+    // Caído: la cámara sigue al jugador observado
+    const focusOn = follow ?? me;
+    if (focusOn) s.goal.set(focusOn.x, terrainHeight(focusOn.x, focusOn.y), -focusOn.y);
     s.target.lerp(s.goal, 1 - Math.exp(-12 * dt));
 
-    const aim = currentAim();
-    const extra = sniperLook();
+    const aim = follow ? follow.aim : currentAim();
+    const extra = follow ? 0 : sniperLook();
     const amount = LOOK_AHEAD + extra;
     s.lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount);
     s.look.lerp(s.lookGoal, 1 - Math.exp(-5 * dt));
@@ -154,7 +172,7 @@ function Sun({ sunRef, quality }) {
   );
 }
 
-export default function Scene({ client, roster, myId, phase, frameRef, quality, onFrame, stats }) {
+export default function Scene({ client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false }) {
   const sun = useRef(null);
   return (
     <Canvas
@@ -168,7 +186,7 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       <hemisphereLight args={['#dfe9f0', '#4a4632', 1.2]} />
       <Sun sunRef={sun} quality={quality} />
       <FrameDriver client={client} frameRef={frameRef} />
-      <CameraRig client={client} frameRef={frameRef} sun={sun} />
+      <CameraRig client={client} frameRef={frameRef} sun={sun} overview={overview} />
       <MouseAim frameRef={frameRef} />
       <PerfMonitor onFrame={onFrame} stats={stats} />
       <MapMesh />
@@ -177,6 +195,7 @@ export default function Scene({ client, roster, myId, phase, frameRef, quality, 
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
       <ZoneMesh frameRef={frameRef} />
+      <BombingMesh frameRef={frameRef} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} />
       <Grenades frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />

@@ -1,6 +1,7 @@
 // Bots de prueba: se unen a una sala y caminan al azar.
-// Uso: npm run bots -- <CÓDIGO> [cantidad] [--armados]   (ej. npm run bots -- ABCD 5 --armados)
+// Uso: npm run bots -- <CÓDIGO> [cantidad] [--armados | --cazar]   (ej. npm run bots -- ABCD 5 --armados)
 // Con --armados disparan con pistola al jugador visible más cercano.
+// Con --cazar además caminan hacia el jugador vivo más cercano (para probar combate solo).
 // Variable opcional SERVER_URL (por defecto http://localhost:3001)
 import { io } from 'socket.io-client';
 import { SERVER_PORT, TICK_MS } from '@calculo-royale/shared/constants';
@@ -9,7 +10,8 @@ import { encodeInput } from '@calculo-royale/shared/codec';
 import { findAutoTarget } from '@calculo-royale/shared/combat';
 
 const args = process.argv.slice(2);
-const armed = args.includes('--armados');
+const hunt = args.includes('--cazar');
+const armed = hunt || args.includes('--armados');
 const [code, countArg] = args.filter((a) => !a.startsWith('--'));
 const count = Number(countArg) || 5;
 const url = process.env.SERVER_URL || `http://localhost:${SERVER_PORT}`;
@@ -58,6 +60,11 @@ function spawnBot(n) {
           .filter((p) => p[0] !== myId && !(p[8] & PLAYER_FLAGS.DEAD))
           .map((p) => ({ id: p[0], x: p[1], y: p[2] }));
         const target = findAutoTarget(me[1], me[2], BOT_RANGE, others);
+        // Cazador: camina hacia el vivo más cercano, esté o no a la vista
+        if (hunt && others.length) {
+          const prey = others.reduce((a, b) => (Math.hypot(a.x - me[1], a.y - me[2]) < Math.hypot(b.x - me[1], b.y - me[2]) ? a : b));
+          if (Math.hypot(prey.x - me[1], prey.y - me[2]) > 6) dir = Math.atan2(prey.y - me[2], prey.x - me[1]) + (Math.random() - 0.5) * 0.6;
+        }
         if (target) {
           // Puntería imperfecta para que no sean imbatibles
           aim = Math.atan2(target.y - me[2], target.x - me[1]) + (Math.random() - 0.5) * 0.25;

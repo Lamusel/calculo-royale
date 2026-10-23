@@ -1,5 +1,6 @@
 import { NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
+import { EVENTS } from '@calculo-royale/shared/protocol';
 import { Room } from './Room.js';
 
 const fail = (error) => ({ ok: false, error });
@@ -133,6 +134,28 @@ export class RoomManager {
   crateCancel(socket) {
     const player = this.playerOf(socket);
     if (player) this.roomOf(socket).game.cancelQuestion(player);
+  }
+
+  // Vista para proyector: recibe todo lo de la sala sin ser jugador
+  spectate(socket, data) {
+    const room = this.rooms.get(cleanCode(data?.code));
+    if (!room) return fail('No existe una sala con ese código');
+    socket.join(room.code);
+    socket.join(`spec:${room.code}`);
+    socket.data.spectating = room.code;
+    socket.emit(EVENTS.ROOM_INFO, room.info());
+    if (room.phase === 'results' && room.results) socket.emit(EVENTS.GAME_OVER, room.results);
+    return { ok: true, code: room.code };
+  }
+
+  transmissionAnswer(socket, data) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.answerTransmission(player, data?.id, data?.index);
+  }
+
+  vote(socket, sector) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.voteSector(player, String(sector));
   }
 
   requestSelf(socket) {

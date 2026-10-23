@@ -78,6 +78,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   target.reloadUntil = 0;
   // Posición final: los que siguen vivos + 1
   if (game.room.phase === 'playing') target.place = aliveCount(game) + 1;
+  game.onPlayerDeath?.(target);
   const attacker = game.room.players.get(attackerId);
   if (attacker && attacker !== target) attacker.kills++;
   game.kills.push([attackerId, target.id, weaponIndex]);

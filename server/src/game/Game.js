@@ -7,6 +7,7 @@ import {
   answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates,
 } from './crates.js';
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
+import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 
 const DT = TICK_MS / 1000;
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -25,6 +26,7 @@ export class Game {
     this.airdropCrate = this.crates[this.crates.length - 1];
     this.alarms = [];
     this.zone = null; // solo durante la partida
+    resetRadio(this);
     // Eventos del tick en curso (se vacían al empezar cada tick)
     this.shots = [];
     this.explosions = [];
@@ -78,10 +80,24 @@ export class Game {
 
   startMatch() {
     startMatch(this);
+    startRadio(this);
   }
 
   stopMatch() {
     stopMatch(this);
+    resetRadio(this);
+  }
+
+  onPlayerDeath(player) {
+    onPlayerDeath(this, player);
+  }
+
+  answerTransmission(player, id, index) {
+    answerTransmission(this, player, id, index);
+  }
+
+  voteSector(player, sector) {
+    voteSector(this, player, sector);
   }
 
   answerCrate(player, crateId, index) {
@@ -108,6 +124,7 @@ export class Game {
     updateGrenades(this, DT);
     updateCrates(this);
     updateMatch(this, DT);
+    updateRadio(this);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -142,6 +159,7 @@ export class Game {
       this.alarms.map((a) => [a.x, a.y]),
       this.zone && this.room.phase === 'playing' ? this.zone.encode(this.now) : [],
       encodeAirdrop(this),
+      encodeBombing(this),
     ];
   }
 

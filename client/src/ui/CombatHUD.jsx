@@ -196,7 +196,8 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch }) {
         </div>
       )}
 
-      {!self.alive && <DeathScreen self={self} phase={phase} deathAt={deathAt} roster={roster} myId={myId} />}
+      {/* En partida, el caído pasa a operador de radio (otro panel); aquí solo el lobby y los resultados */}
+      {!self.alive && phase !== 'playing' && <DeathScreen self={self} phase={phase} deathAt={deathAt} roster={roster} myId={myId} />}
     </>
   );
 }

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@calculo-royale/shared": "*",
+    "@supabase/supabase-js": "^2.118.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "socket.io": "^4.7.5"

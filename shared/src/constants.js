@@ -161,3 +161,18 @@ export const AIRDROP = { atMs: 240_000, fallMs: 20_000, rarity: 3 };
 
 // Cuadrícula militar de sectores: 6 × 6 (A1 arriba a la izquierda)
 export const SECTORS = 6;
+
+// --- Operadores de radio (los caídos siguen jugando) ---
+export const OPERATOR = {
+  firstDelayMs: 2_000, // tras caer, primera transmisión
+  questionMs: 30_000,
+  gapMs: 2_500, // entre una transmisión y la siguiente
+  reviveStreak: 3, // aciertos seguidos para reanimar
+  revivePhases: 2, // solo si caíste en las fases 1 y 2 de la zona
+  reviveHp: 75, // 50 de vida + la venda
+};
+export const BOMBING = { everyMs: 60_000, warningMs: 5_000, damage: 70, disabledAtAlive: 5 };
+export const INTERCEPT = { everyMs: 120_000, questionMs: 20_000, winners: 5 };
+// Puntaje final: puestos superados, bajas y aciertos (también de operador e intercepción)
+export const SCORE = { place: 10, kill: 15, correct: 5 };
+export const CLASS_STATS_MS = 2_000;

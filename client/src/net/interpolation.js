@@ -20,7 +20,7 @@ export class SnapshotBuffer {
     this.lastEventTick = 0;
   }
 
-  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = []) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -31,7 +31,7 @@ export class SnapshotBuffer {
     for (const p of players) byId.set(p[0], p);
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop });
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
@@ -88,6 +88,7 @@ export class SnapshotBuffer {
     frame.crates = b.crates;
     frame.alarms = b.alarms;
     frame.airdrop = b.airdrop;
+    frame.bombing = b.bombing;
     // La zona se interpola para que el muro se cierre suave
     if (b.zone.length && a.zone.length) {
       frame.zone = b.zone.map((v, i) => (i < 4 ? lerp(a.zone[i], v, alpha) : v));
