@@ -131,9 +131,9 @@ function seatOf(id, frame) {
   return null;
 }
 
-// Nivel de detalle: en calidad baja y de noche (linternas), siempre el más bajo y sin sombras
+// Nivel de detalle: con el detalle lejano recortado (calidad baja) y de noche (linternas), siempre el más bajo y sin sombras
 export function lodFor(distance, quality, night) {
-  if (quality.name === 'baja' || night) return 2;
+  if (quality.farLod || night) return 2;
   return distance > LOD_DISTANCES[1] ? 2 : distance > LOD_DISTANCES[0] ? 1 : 0;
 }
 

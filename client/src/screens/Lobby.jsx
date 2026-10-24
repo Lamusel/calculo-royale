@@ -147,10 +147,10 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
 
   return (
     <>
-      <div className="absolute left-1/2 top-3 z-20 flex max-w-[60vw] -translate-x-1/2 flex-col items-center gap-2">
-        <div className="flex items-center gap-3 rounded-lg bg-black/60 px-4 py-2 text-stone-100 backdrop-blur">
+      <div className="absolute left-1/2 top-3 z-20 flex w-max max-w-[62vw] -translate-x-1/2 flex-col items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-lg bg-black/60 px-3 py-2 text-stone-100 backdrop-blur">
           <button onClick={() => setShowInvite(true)} className="flex items-center gap-3" title="Mostrar código y QR">
-            <span className="font-mono text-2xl font-black tracking-[0.2em] text-khaki">{room.code}</span>
+            <span className="font-mono text-[clamp(1.1rem,3.2vw,1.5rem)] font-black tracking-[0.2em] text-khaki">{room.code}</span>
             <span className="rounded-lg bg-white/10 px-2 py-1 text-xs">QR</span>
           </button>
           <span className="text-sm text-stone-300">

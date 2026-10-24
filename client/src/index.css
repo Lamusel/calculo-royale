@@ -9,6 +9,26 @@ body,
   overscroll-behavior: none;
 }
 
+/* Tamaño base fluido: todo lo que usa rem (casi toda la interfaz) se achica en pantallas bajas
+   (celular acostado) y crece hasta 17 px en pantallas grandes; --ui-scale es la opción "Escala de interfaz" */
+html {
+  font-size: calc(clamp(13.5px, 11px + 0.7vmin, 17px) * var(--ui-scale, 1));
+}
+
+/* Capa de la interfaz del juego: dentro de las zonas seguras. No captura toques ella misma
+   (la escena de abajo los recibe); sus hijos sí, salvo los marcados pointer-events-none */
+.safe-layer {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  right: env(safe-area-inset-right);
+  bottom: env(safe-area-inset-bottom);
+  left: env(safe-area-inset-left);
+  pointer-events: none;
+}
+.safe-layer > :not(.pointer-events-none) {
+  pointer-events: auto;
+}
+
 /* Destello rojo al recibir daño */
 @keyframes damage {
   from {
@@ -29,4 +49,14 @@ body,
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Fórmulas largas: nunca se salen de su caja (se desplazan de lado si hace falta) */
+.katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.katex {
+  max-width: 100%;
 }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
-import { createQualityController, initialQuality, QUALITY } from '../game/quality.js';
+import { createQualityController, initialQuality } from '../game/quality.js';
+import { onSettings, settings } from '../settings.js';
 import Scene from '../game/Scene.jsx';
 import { loadSkinSystem } from '../game/character/Character.js';
 import { unlockAudio } from '../audio/sound.js';
@@ -52,7 +53,7 @@ function DebugOverlay({ stats, quality }) {
   }, []);
   return (
     <div className="pointer-events-none absolute bottom-24 left-3 z-30 rounded bg-black/70 px-2 py-1 font-mono text-[10px] text-lime-300">
-      {stats.fps} fps · {stats.calls} draws · {(stats.triangles / 1000).toFixed(0)}k tris · calidad {quality.name}
+      {stats.fps} fps · {stats.calls} draws · {(stats.triangles / 1000).toFixed(0)}k tris · calidad {quality.name}{quality.step ? ` −${quality.step} (${quality.cut})` : ''} · dpr {quality.dpr}
     </div>
   );
 }
@@ -161,6 +162,30 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
   );
 }
 
+// Aviso único (por navegador) cuando la calidad automática ya recortó todo y sigue lento
+const SLOW_KEY = 'cr-aviso-lento';
+function showSlowWarningOnce(show) {
+  try {
+    if (localStorage.getItem(SLOW_KEY)) return;
+    localStorage.setItem(SLOW_KEY, '1');
+  } catch {
+    // sin almacenamiento: se avisa igual, una vez por sesión (el controlador ya avisa una sola vez)
+  }
+  show(true);
+}
+
+function SlowWarning({ onClose }) {
+  return (
+    <div className="pointer-events-auto absolute left-1/2 top-14 z-40 w-[min(92vw,26rem)] -translate-x-1/2 rounded-lg border border-orange-400/70 bg-black/85 p-3 text-[clamp(12px,3.2vw,14px)] text-stone-100">
+      <p className="font-bold text-orange-300">Tu dispositivo va lento</p>
+      <p className="mt-1 text-stone-300">Ya bajamos los gráficos al mínimo. Cierra otras apps o pestañas y, si puedes, conecta el cargador.</p>
+      <button onClick={onClose} className="mt-2 rounded bg-khaki px-3 py-1 font-bold text-olive-950">
+        Entendido
+      </button>
+    </div>
+  );
+}
+
 // Pantalla de la sala: la misma escena sirve para el campo de entrenamiento y para la partida
 export default function Game({ room, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
@@ -171,12 +196,19 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
   });
   const isTouch = isTouchDevice();
 
-  // Calidad automática: el controlador mide FPS cada cuadro y cambia el nivel si hace falta
-  const quality = useMemo(() => createQualityController(initialQuality(location.search, isTouch)), [isTouch]);
-  const [level, setLevel] = useState(quality.level);
+  // Calidad: manual (Opciones) o automática (el controlador mide FPS y recorta de a un paso)
+  const [qualityMode, setQualityMode] = useState(settings.quality);
+  useEffect(() => onSettings((s) => setQualityMode(s.quality)), []);
+  const [slowWarning, setSlowWarning] = useState(false);
+  const quality = useMemo(
+    () => createQualityController({ ...initialQuality(location.search, isTouch, qualityMode), onSlow: () => showSlowWarningOnce(setSlowWarning) }),
+    [isTouch, qualityMode],
+  );
+  const [profile, setProfile] = useState(quality.profile);
+  useEffect(() => setProfile(quality.profile), [quality]);
   const onFrame = useCallback((now) => {
     const changed = quality.frame(now);
-    if (changed) setLevel(changed);
+    if (changed) setProfile(changed);
   }, [quality]);
   const stats = useMemo(() => (new URLSearchParams(location.search).has('debug') ? { frames: [] } : null), []);
   const skinDebug = useMemo(() => debugSkinsEnabled(), []);
@@ -219,7 +251,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
     };
   }, []);
 
-  // Al iniciar la partida se descargan las skins externas elegidas (mientras, se ve el soldado gris)
+  // Al iniciar la partida se descargan las skins externas elegidas (mientras, se ve la skin base)
   useEffect(() => {
     if (room.phase !== 'playing') return;
     const skins = room.players.map((p) => p.skin);
@@ -237,7 +269,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
 
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-stone-900">
-      {replaying && <Replay replay={client.replay} room={room} quality={QUALITY[level]} onDone={onReplayDone} />}
+      {replaying && <Replay replay={client.replay} room={room} quality={profile} onDone={onReplayDone} />}
       {client && !replaying && (
         <Scene
           client={client}
@@ -245,21 +277,25 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
           myId={myId}
           phase={room.phase}
           frameRef={frameRef}
-          quality={QUALITY[level]}
+          quality={profile}
           onFrame={onFrame}
           stats={stats}
           weather={room.weather}
           windAngle={room.windAngle}
         />
       )}
-      {stats && <DebugOverlay stats={stats} quality={QUALITY[level]} />}
+      {stats && <DebugOverlay stats={stats} quality={profile} />}
       {skinDebug && <SkinDebugOverlay roster={room.players} />}
-      {isTouch && <TouchControls />}
-      {client && (
-        <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} replaying={replaying} />
-      )}
-      {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
-      {banner && <StartBanner />}
+      {/* Interfaz dentro de las zonas seguras (muesca, barra de gestos); la escena 3D ocupa toda la pantalla */}
+      <div className="safe-layer">
+        {isTouch && <TouchControls />}
+        {client && (
+          <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} replaying={replaying} />
+        )}
+        {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
+        {banner && <StartBanner />}
+        {slowWarning && <SlowWarning onClose={() => setSlowWarning(false)} />}
+      </div>
       {isTouch && <RotateDevice />}
       {/* Fórmula invisible: precarga las fuentes de KaTeX para que la primera pregunta no salga vacía */}
       <MathText text={FONT_WARMUP} className="pointer-events-none invisible absolute" />

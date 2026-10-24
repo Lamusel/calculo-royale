@@ -1,6 +1,7 @@
 import { ZONE_PHASES } from '@calculo-royale/shared/constants';
 import { insideZone, zoneInequality } from '@calculo-royale/shared/zone';
 import MathText from './MathText.jsx';
+import { currentMessage } from './messageQueue.js';
 
 const KIND_STYLE = {
   zone: 'border-orange-400',
@@ -9,21 +10,23 @@ const KIND_STYLE = {
   airdrop: 'border-yellow-400',
 };
 
-// Transmisión del centro de mando: la última, mientras dure
+// Transmisión del centro de mando: una a la vez, por prioridad (messageQueue.js), bajo la barra superior
 export function RadioFeed({ radio }) {
   const now = performance.now();
-  const last = radio[radio.length - 1];
-  if (!last || now - last.at > last.durationMs) return null;
-  const fading = now - last.at > last.durationMs - 800;
+  const current = currentMessage(radio, now);
+  if (!current) return null;
+  const last = current.message;
+  const fading = now > current.end - 800;
   return (
     <div
-      className={`pointer-events-none absolute left-1/2 top-3 z-30 w-[min(94vw,36rem)] -translate-x-1/2 transition-opacity duration-700 ${
+      className={`pointer-events-none absolute left-1/2 z-30 w-[min(64vw,36rem)] -translate-x-1/2 transition-opacity duration-700 ${
         fading ? 'opacity-0' : 'opacity-100'
       }`}
+      style={{ top: 'calc(max(0.5rem, env(safe-area-inset-top)) + 2.6rem)' }}
     >
       <div className={`rounded border-l-4 bg-black/75 px-3 py-2 text-stone-100 shadow-lg ${KIND_STYLE[last.kind] ?? 'border-khaki'}`}>
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-khaki-light">📻 Centro de mando · {last.title}</p>
-        <MathText text={last.text} className="text-sm leading-snug sm:text-base" />
+        <MathText text={last.text} className="block max-h-[4.5em] overflow-hidden text-[clamp(0.75rem,2.2vw,1rem)] leading-snug" />
       </div>
     </div>
   );

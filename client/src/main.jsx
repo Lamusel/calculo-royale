@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import 'katex/dist/katex.min.css';
 import './index.css';
+import { applyUiScale } from './settings.js';
+
+applyUiScale();
 
 // Pantallas que no son el juego: se descargan solo si se abren (import dinámico)
 const Spectator = lazy(() => import('./screens/Spectator.jsx'));

@@ -255,7 +255,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **14. Despliegue en bus** ✅ | Bus volador amarillo y verde que cruza el mapa; cada uno salta cuando quiere, caída libre y paracaídas dirigibles; alternativa "elegir punto" en el lobby | Todos caen desde el bus |
 | **15. Pulido y carga** ✅ | Sonidos por código con volumen, revisar el bot acostado, prueba de carga con 40 bots contra Render, rendimiento en celular con el mapa grande | Prueba de carga estable con 40 conexiones |
 | **16. Selector de skins con retratos** ✅ | Registro único, skins externas guiadas por las carpetas reales (manifiesto en el build), retratos 2D con respaldo, selector sin GLB, precarga y respaldo en partida | Elegir una externa por su retrato y verla en partida |
-| **17. Gráficos estables y responsive** | Calidad automática que recorta en orden (resolución, sombras, decoración, niebla) con histéresis, calidad manual y escala de interfaz en Opciones, toda la interfaz con `clamp()` y zonas seguras, cola de mensajes | Se ve digno en un celular antiguo y nada se sale de la pantalla |
+| **17. Gráficos estables y responsive** ✅ | Calidad automática que recorta en orden (resolución, sombras, decoración, niebla) con histéresis, calidad manual y escala de interfaz en Opciones, toda la interfaz con `clamp()` y zonas seguras, cola de mensajes | Se ve digno en un celular antiguo y nada se sale de la pantalla |
 | **18. Botín de battle royale y mapa más grande** | Mapa de ~280 m con terminal, mercado, estadio, cañón y aeródromo; botín en el suelo, inventario, miras, curación con tiempo, accesorios, mochila, casco y caja de botín al morir | Saquear y equiparse como en un battle royale |
 | **19. Audio total** | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
 | **20. Modo presentación y modo fácil** | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
@@ -385,6 +385,13 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Partida:** solo viaja `skinId` (validado en el servidor); al iniciar se precargan los GLB de la sala con caché; si uno falla, la skin procedural base al instante y `console.warn`.
 - **Ajuste:** cada externa revisada en `/skins` (caminar, apuntar, conducir, bus, paracaídas y victoria) y su línea ajustada; en modo A se sienta en el jeep (baja) y se inclina en la caída.
 - **Pruebas:** manifiesto (character.glb, otro .glb, carpeta vacía), registro sin espacios vacíos, validación del servidor, respaldo de retrato y de GLB, que el selector no pida ningún GLB.
+
+#### Fase 17: gráficos estables y responsive
+- **Calidad automática menos agresiva** (`client/src/game/quality.js`): en lugar de saltar entre alta, media y baja, una escalera de recortes de a un paso y en orden: resolución (dpr 1,25 → 1 → 0,85 → 0,75, nunca menos), sombras (mapa de 1024 y luego sin sombras), partículas y decoración lejana (arbustos), y por último niebla más cerca y detalle lejano. Histéresis: recorta solo tras 5 s seguidos bajo 28 FPS, como mucho un cambio cada 10 s, y devuelve un paso tras 20 s seguidos sobre 55 FPS (nunca por encima del inicial).
+- **Calidad manual** en Opciones: Auto, Alta, Media o Baja (guardada en el navegador; `?calidad=` sigue mandando).
+- **Aviso único** si ya no queda nada por recortar y sigue lento (una vez por navegador).
+- **Interfaz responsive:** tamaño base fluido con `clamp()` (todo lo que usa rem se adapta), escala de interfaz Pequeña, Normal o Grande en Opciones, capa de interfaz dentro de `env(safe-area-inset-*)`, mensajes del Mando en una cola con prioridad (uno a la vez, bajo la barra superior), fórmulas KaTeX que nunca se salen, barra del lobby que se acomoda en dos filas.
+- **Capturas** en 640×360, 740×360, 844×390, 915×412, 1024×768, 1366×768 y 1920×1080 (fuera del repo), con un detector de elementos que se salen de la pantalla.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -614,7 +621,7 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | 14 | ✅ Completa | Bus volador amarillo y verde con globo y hélice, ruta en el mapa, salto con Espacio o ¡Saltar!, caída libre y paracaídas dirigibles, reanimación en paracaídas, modo "elegir punto" en el lobby. Falta tu imagen en `client/public/assets/bus/costado.png` |
 | 15 | ✅ Completa | Sonidos sintetizados con volumen, "bot acostado" resuelto (era la perspectiva), muebles fantasma en el centro corregidos, `/health` con métricas, prueba de carga de 40 clientes contra Render estable. Falta medir FPS en un celular real |
 | 16 | ✅ Completa | Externas leídas de las carpetas reales (2B, Furina, Ghost, Luffy), selector con retratos y sin GLB, respaldo a la skin base, ajustes revisados en `/skins`. Falta probar en un celular real |
-| 17 | Pendiente | |
+| 17 | ✅ Completa | Calidad por pasos con histéresis, calidad y escala manuales, zonas seguras, cola del Mando. Falta medir FPS en un celular real |
 | 18 | Pendiente | |
 | 19 | Pendiente | |
 | 20 | Pendiente | |
@@ -660,3 +667,16 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | Caminar, apuntar, conducir, pasajero, caída, paracaídas y victoria en `/skins` | PASS |
 | Build y 143 pruebas | PASS |
 | Celular real | Pendiente (no hay uno conectado a esta máquina) |
+- 2026-10-23: **fase 17 completa (gráficos estables y responsive).** *Calidad:* `quality.js` arma una escalera de perfiles desde el nivel inicial (`qualitySteps`) aplicando los recortes en el orden pedido y saltando los que no cambian nada; el controlador mide por ventanas de 1 s y recorta un paso solo después de 5 s seguidos bajo 28 FPS, con 10 s mínimos entre cambios, y devuelve un paso tras 20 s fluidos. Antes bastaban 4 s bajo 40 FPS para pasar de media a baja de golpe. El nivel de detalle lejano ya no depende del nombre "baja" sino del recorte `farLod`. *Opciones* (`client/src/ui/Options.jsx`, `client/src/settings.js`): Calidad Auto/Alta/Media/Baja y Escala de la interfaz Pequeña/Normal/Grande (0,85, 1 y 1,18), guardadas con el brillo y el volumen; "Restablecer" vuelve todo a lo normal. Si el automático ya llegó al último paso y sigue lento, sale una vez (por navegador) "Tu dispositivo va lento" con consejos. *Responsive:* `html` toma `clamp(13.5px, 11px + 0.7vmin, 17px)` por la escala (celular acostado ~13,5 px, PC hasta 17 px); la interfaz del juego va en `.safe-layer` (pegada a `env(safe-area-inset-*)`, sin capturar toques ella misma: la escena 3D sigue a pantalla completa); `safePadding()` para capas de pantalla completa (Opciones, selector de skins). *Cola de mensajes* (`client/src/ui/messageQueue.js`, prioridades en `shared/src/constants.js`): el Mando muestra un mensaje a la vez; bombardeo (3) interrumpe a cierre, zona, última zona y duelo (2), que interrumpen a líder, interceptación y lanzamiento (1) y a reanimación (0); el interrumpido antes de 2,5 s vuelve a la cola con lo que le faltaba y los que esperan más de 15 s se descartan. Antes solo se veía el último y uno nuevo pisaba al anterior. La caja de radio bajó para no tapar la barra superior (a 640×360 el texto se montaba sobre los botones). KaTeX: `.katex-display` con desplazamiento lateral y nunca más ancho que su caja. Barra del lobby: se acomoda en dos filas (en escala Grande a 640×360 se salía por los dos lados). *Verificado en Edge* (táctil hasta 915 px, mouse desde 1024 px): inicio, lobby, Opciones, selector, despliegue, partida y pregunta de candado con KaTeX en las 7 resoluciones, más escala Grande a 640×360, sin elementos fuera de pantalla según el detector; capturas fuera del repo (carpeta temporal de la sesión). 7 pruebas nuevas (148 en total).
+
+| Validación fase 17 | Estado |
+|---|---|
+| Recortes en orden; dpr nunca menor que 0,75; sombras recién con el dpr al mínimo (prueba) | PASS |
+| Histéresis: 5 s bajo 28 FPS y un cambio cada 10 s como mucho (prueba) | PASS |
+| Aviso único al no quedar nada por recortar (prueba) | PASS |
+| Calidad manual y `?calidad=` fijan el nivel (prueba) | PASS |
+| Cola del Mando: turnos, interrupción y descarte (prueba) | PASS |
+| 7 resoluciones sin nada fuera de pantalla, KaTeX dentro (Edge) | PASS |
+| Escala Grande a 640×360 (Edge) | PASS |
+| Build y 148 pruebas | PASS |
+| FPS en celular real y zonas seguras en un teléfono con muesca | Pendiente (no hay uno conectado a esta máquina) |

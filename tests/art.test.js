@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { findOccluders, insideRect } from '../client/src/game/occlusion.js';
 import { distanceToPaths } from '../client/src/game/paths.js';
-import { createQualityController, initialQuality } from '../client/src/game/quality.js';
+import { createQualityController, initialQuality, MIN_DPR, qualitySteps } from '../client/src/game/quality.js';
 
 const wall = (id, minX, maxX, minY, maxY, height = 3.2) => ({ id, minX, maxX, minY, maxY, height });
 
@@ -36,28 +36,64 @@ test('distancia a los caminos', () => {
   assert.equal(distanceToPaths(-4, 3, paths), 5);
 });
 
-test('la calidad baja si los FPS caen y vuelve a subir hasta el nivel inicial', () => {
+test('calidad automática: recorta en orden, nunca baja de 0,75 de resolución', () => {
+  const steps = qualitySteps('high');
+  const cuts = steps.slice(1).map((p) => p.cut);
+  const order = ['resolución', 'sombras', 'partículas y decoración', 'niebla y detalle lejano'];
+  assert.deepEqual([...new Set(cuts)], order);
+  for (let i = 1; i < steps.length; i++) assert.ok(steps[i].dpr <= steps[i - 1].dpr);
+  assert.equal(steps.at(-1).dpr, MIN_DPR);
+  assert.equal(steps.at(-1).shadows, false);
+  assert.equal(steps.at(-1).bushes, false);
+  assert.equal(steps.at(-1).farLod, true);
+  // Las sombras recién se tocan cuando la resolución ya llegó al mínimo
+  const firstShadow = steps.findIndex((p) => p.cut === 'sombras');
+  assert.equal(steps[firstShadow - 1].dpr, MIN_DPR);
+});
+
+test('histéresis: baja solo tras 5 s seguidos bajo 28 FPS y como mucho un cambio cada 10 s', () => {
   const q = createQualityController({ initial: 'medium' });
   let t = 0;
   const run = (fps, seconds) => {
-    let changed = null;
+    const changes = [];
     for (let i = 0; i < fps * seconds; i++) {
       t += 1000 / fps;
-      changed = q.frame(t) ?? changed;
+      const p = q.frame(t);
+      if (p) changes.push(p);
     }
-    return changed;
+    return changes;
   };
-  assert.equal(run(25, 5), 'low');
-  assert.equal(q.level, 'low');
-  assert.equal(run(60, 14), 'medium');
-  run(60, 30);
-  assert.equal(q.level, 'medium', 'no sube por encima del nivel inicial');
+  // Un bajón de 3 s no cambia nada
+  assert.deepEqual(run(20, 3), []);
+  assert.deepEqual(run(60, 2), []);
+  // 12 s lentos: un solo paso (el siguiente tendría que esperar 10 s más 5 s lentos)
+  const slow = run(20, 12);
+  assert.equal(slow.length, 1);
+  assert.equal(slow[0].cut, 'resolución');
+  assert.equal(q.profile.step, 1);
+  // 30 s lentos más: a lo sumo 3 cambios
+  assert.ok(run(20, 30).length <= 3);
+  const reached = q.profile.step;
+  // Con 25 s fluidos devuelve un paso
+  assert.equal(run(60, 25).length, 1);
+  assert.equal(q.profile.step, reached - 1);
 });
 
-test('?calidad=baja fuerza el nivel y nunca cambia', () => {
+test('aviso único si ya no queda nada por recortar', () => {
+  let warnings = 0;
+  const q = createQualityController({ initial: 'low', onSlow: () => warnings++ });
+  for (let t = 0; t < 300000; t += 50) q.frame(t);
+  assert.equal(q.profile.step, qualitySteps('low').length - 1);
+  assert.equal(warnings, 1);
+});
+
+test('?calidad=baja o la opción manual fijan el nivel y nunca cambia', () => {
   const { initial, forced } = initialQuality('?calidad=baja', true);
   assert.equal(initial, 'medium');
   const q = createQualityController({ initial, forced });
-  assert.equal(q.level, 'low');
-  for (let t = 0; t < 20000; t += 16) assert.equal(q.frame(t), null);
+  assert.equal(q.profile.name, 'baja');
+  for (let t = 0; t < 20000; t += 50) assert.equal(q.frame(t), null);
+  assert.equal(initialQuality('', false, 'medium').forced, 'medium');
+  assert.equal(initialQuality('', true, 'auto').forced, null);
+  assert.equal(initialQuality('?calidad=alta', true, 'low').forced, 'high', 'la URL manda sobre la opción');
 });

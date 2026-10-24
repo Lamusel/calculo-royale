@@ -263,3 +263,9 @@ export const DEPLOY = {
   pointAltitude: 30, // desde dónde se cae en paracaídas al elegir punto
   reviveAltitude: 24, // reanimación de operador: cae en paracaídas
 };
+
+// Cola de mensajes del Mando (cliente): el de mayor prioridad interrumpe al que se está mostrando;
+// los demás esperan su turno (hasta RADIO_MAX_WAIT_MS) en lugar de pisarse
+export const RADIO_PRIORITY = { bombing: 3, closing: 2, final: 2, zone: 2, duel: 2, airdrop: 1, intercept: 1, leader: 1, revive: 0 };
+export const RADIO_MAX_WAIT_MS = 15000;
+export const RADIO_MIN_SHOW_MS = 2500; // si lo interrumpen antes, vuelve a la cola con lo que le faltaba
