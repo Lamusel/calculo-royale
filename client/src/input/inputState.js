@@ -38,6 +38,8 @@ export const actions = {
   switchWeapon: () => {},
   interact: () => {},
   useItem: () => {},
+  phrase: () => {},
+  phraseMenu: () => {},
   requestAmmo: () => {},
   jump: () => {},
 };

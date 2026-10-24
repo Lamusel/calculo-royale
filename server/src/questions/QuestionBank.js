@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { optionCount, TOPICS } from '@calculo-royale/shared/constants';
+import aritmetica from './basic/aritmetica.js';
 import derivadaEnPunto from './basic/derivadaEnPunto.js';
 import limiteSustitucion from './basic/limiteSustitucion.js';
 import reglaPotencia from './basic/reglaPotencia.js';
@@ -49,7 +50,9 @@ export function shuffleOptions(q, rand = Math.random) {
 // `seen` evita repetir preguntas del banco al mismo jugador: antes de repetir, prefiere
 // una no vista de la dificultad más cercana.
 // count: número de opciones (por defecto según la dificultad pedida, ver optionCount)
-export function drawQuestion({ topics = ALL_TOPICS, difficulty, rand = Math.random, seen = new Set(), count = optionCount(difficulty) }) {
+// easy: modo fácil de la sala (aritmética básica, no cuenta para los logros)
+export function drawQuestion({ topics = ALL_TOPICS, difficulty, rand = Math.random, seen = new Set(), count = optionCount(difficulty), easy = false }) {
+  if (easy) return drawEasyQuestion(difficulty, rand, count);
   const allowed = new Set(topics.length ? topics : ALL_TOPICS);
   const pool = [
     ...BANK.filter((q) => allowed.has(q.tema)),
@@ -69,8 +72,14 @@ export function drawQuestion({ topics = ALL_TOPICS, difficulty, rand = Math.rand
   return shuffleOptions(question, rand);
 }
 
-// Pregunta rápida de "Obtener balas" (dificultad 1, 2 opciones)
-export function drawQuickQuestion(rand = Math.random) {
+// Modo fácil: aritmética con la dificultad pedida
+export function drawEasyQuestion(difficulty = 1, rand = Math.random, count = optionCount(difficulty)) {
+  return shuffleOptions(aritmetica.generar(rand, count, difficulty), rand);
+}
+
+// Pregunta rápida de "Obtener balas" (dificultad 1, 2 opciones); en modo fácil, una suma
+export function drawQuickQuestion(rand = Math.random, easy = false) {
+  if (easy) return drawEasyQuestion(1, rand);
   const g = QUICK_GENERATORS[Math.floor(rand() * QUICK_GENERATORS.length)];
   return shuffleOptions(g.generar(rand, optionCount(g.dificultad)), rand);
 }

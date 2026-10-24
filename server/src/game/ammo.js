@@ -12,7 +12,7 @@ let nextAmmoId = 1;
 export function requestAmmo(game, player) {
   if (!player.alive || player.ammoQuestion || player.question || player.engineQuestion) return;
   if (game.now < player.ammoCooldownUntil) return;
-  const q = drawQuickQuestion();
+  const q = drawQuickQuestion(Math.random, game.room.easy);
   player.ammoQuestion = { id: nextAmmoId++, q, expiresAt: game.now + AMMO.questionMs };
   game.room.emitTo(player, EVENTS.AMMO_QUESTION, {
     id: player.ammoQuestion.id,

@@ -4,6 +4,35 @@ import MathText from './MathText.jsx';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
+// Descarga el CSV de la partida (llega al anfitrión y al proyector; no necesita Supabase)
+export function downloadCsv({ filename, csv }) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Medallas de la partida (una por categoría)
+function Medals({ medals, myId }) {
+  if (!medals?.length) return null;
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {medals.map((m) => (
+        <div key={m.id} className={`rounded border p-2 ${m.playerId === myId ? 'border-khaki bg-khaki/15' : 'border-white/10 bg-black/30'}`}>
+          <p className="text-xl leading-none">{m.icon}</p>
+          <p className="mt-1 text-[0.7rem] uppercase tracking-wider text-stone-400">{m.name}</p>
+          <p className="truncate font-bold">{m.playerName}</p>
+          <p className="font-mono text-xs text-khaki-light">
+            {m.value} {m.unit}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TopicBars({ byTopic }) {
   const entries = Object.entries(byTopic ?? {});
   if (entries.length === 0) return <p className="text-sm text-stone-400">No abriste cajas en esta partida.</p>;
@@ -52,7 +81,7 @@ function FailedQuestion({ q }) {
 
 // Pantalla de resultados: ganador, ranking, aciertos por tema y las preguntas falladas resueltas
 // Con myId = null (proyector) se muestran los aciertos de la clase en vez de los propios
-export default function Results({ results, mine, myId, isHost, onReset, classStats }) {
+export default function Results({ results, mine, myId, isHost, onReset, classStats, csv }) {
   const spectator = myId === null;
   if (!results) return null;
   const winner = results.ranking.find((r) => r.id === results.winnerId);
@@ -65,7 +94,13 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
             {winner ? `🏆 Gana ${winner.name}` : 'Fin de la partida'}
           </p>
           {me && <p className="rounded bg-white/10 px-3 py-1 font-mono">Tu puesto: {me.place}° · {me.score} pts</p>}
-          <div className="ml-auto">
+          {results.easy && <p className="rounded bg-amber-800/70 px-2 py-1 text-xs text-amber-100">Modo fácil · no cuenta para logros</p>}
+          <div className="ml-auto flex items-center gap-2">
+            {csv && (spectator || isHost) && (
+              <button onClick={() => downloadCsv(csv)} className="rounded bg-black/50 px-3 py-2 text-sm text-khaki-light">
+                ⬇ CSV
+              </button>
+            )}
             {spectator ? null : isHost ? (
               <button onClick={onReset} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
                 Volver al lobby
@@ -75,6 +110,8 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
             )}
           </div>
         </div>
+
+        <Medals medals={results.medals} myId={myId} />
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded border border-white/10 bg-black/30 p-3">
@@ -96,6 +133,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                     <td className="py-0.5">{i + 1}</td>
                     <td className="py-0.5" style={{ color: r.id === myId ? undefined : r.color }}>
                       {r.name}
+                      {r.bot && <span className="ml-1 text-[10px] text-stone-500">bot</span>}
                     </td>
                     <td className="py-0.5 text-right">{r.place}°</td>
                     <td className="py-0.5 text-right">{r.kills}</td>

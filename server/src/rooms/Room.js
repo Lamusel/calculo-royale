@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS, SCORE } from '@calculo-royale/shared/constants';
+import { BOTS, MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS, SCORE } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { ALL_TOPICS } from '../questions/QuestionBank.js';
 import { classStats } from '../game/radio.js';
-import { buildRecord, saveResults } from '../storage.js';
+import { buildRecord, recordToCsv, saveResults } from '../storage.js';
+import { awardMedals } from '../game/medals.js';
+import { resetBot } from '../game/bots.js';
 import { pickWeather } from '../game/epic.js';
 
 // Puntaje final: puestos superados + bajas + aciertos (también de operador e intercepción)
@@ -26,6 +28,7 @@ export class Room {
     this.deployMode = 'bus'; // despliegue: 'bus' | 'punto' (lo elige el host)
     this.weather = 'despejado';
     this.windAngle = 0;
+    this.easy = false; // modo fácil: preguntas de aritmética (no cuenta para los logros; el CSV lo marca)
     this.players = new Map(); // id → Player
     this.nextId = 1;
     this.world = new World();
@@ -35,6 +38,30 @@ export class Room {
 
   get isFull() {
     return this.players.size >= MAX_PLAYERS;
+  }
+
+  // Personas en la sala (sin contar bots)
+  get humans() {
+    return [...this.players.values()].filter((p) => !p.bot);
+  }
+
+  // Completar con bots hasta N jugadores en total (0 = quitarlos). Solo en el lobby.
+  fillBots(target) {
+    const goal = Math.max(0, Math.min(MAX_PLAYERS, Math.floor(Number(target) || 0)));
+    for (const p of [...this.players.values()]) {
+      if (p.bot && (goal === 0 || this.players.size > goal)) this.removePlayer(p.id);
+    }
+    let n = [...this.players.values()].filter((p) => p.bot).length;
+    while (goal > 0 && this.players.size < goal && n < BOTS.max) {
+      n++;
+      const bot = new Player({ id: this.nextId++, name: `${BOTS.nameBase} ${n}`, color: this.pickColor(), token: randomUUID() });
+      bot.bot = true;
+      bot.connected = true;
+      const spawn = this.world.lobbySpawn();
+      bot.teleport(spawn.x, spawn.y);
+      this.players.set(bot.id, bot);
+    }
+    this.broadcastInfo();
   }
 
   findByToken(token) {
@@ -84,6 +111,7 @@ export class Room {
     if (this.phase === 'results' && this.results) {
       socket.emit(EVENTS.GAME_OVER, this.results);
       this.sendPrivateResults(player);
+      if (player.id === this.hostId && this.lastCsv) socket.emit(EVENTS.RESULTS_CSV, this.lastCsv);
     }
   }
 
@@ -102,10 +130,11 @@ export class Room {
     this.players.delete(id);
     this.game.forgetPlayer(id);
     if (this.hostId === id) {
-      const next = [...this.players.values()].find((p) => p.connected) ?? this.players.values().next().value;
+      const next = this.humans.find((p) => p.connected) ?? this.humans[0];
       this.hostId = next ? next.id : null;
     }
-    if (this.players.size === 0) {
+    // Sin personas la sala se cierra (los bots no la mantienen viva)
+    if (this.humans.length === 0) {
       this.destroy();
       return;
     }
@@ -119,6 +148,7 @@ export class Room {
     const players = [...this.players.values()];
     const spawns = this.world.gameSpawns(players.length);
     players.forEach((p, i) => {
+      if (p.bot) resetBot(p);
       p.resetStats();
       p.resetCombat();
       p.teleport(spawns[i].x, spawns[i].y);
@@ -149,10 +179,11 @@ export class Room {
           correct: p.stats.correct,
           answered: p.stats.answered,
           score: score(place, players.length, p.kills, p.stats.correct),
+          bot: p.bot || undefined,
         };
       })
       .sort((a, b) => b.score - a.score || a.place - b.place);
-    this.results = { winnerId, ranking };
+    this.results = { winnerId, ranking, medals: awardMedals(players), easy: this.easy || undefined };
     // Primero la repetición de la mejor jugada: el cliente la muestra antes de los resultados
     const replay = this.game.recorder.take();
     if (replay) this.broadcast(EVENTS.MATCH_REPLAY, replay);
@@ -161,7 +192,14 @@ export class Room {
     this.broadcastInfo();
     const stats = classStats(this.game);
     this.sendClassStats(stats);
-    saveResults(buildRecord(this, stats))
+    const record = buildRecord(this, stats);
+    // CSV para el profe (sin Supabase): al anfitrión y al proyector
+    const csv = { filename: `calculo-royale-${this.code}-${record.fecha.slice(0, 16).replace(/[:T]/g, '-')}.csv`, csv: recordToCsv(record) };
+    this.lastCsv = csv;
+    const host = this.players.get(this.hostId);
+    if (host) this.emitTo(host, EVENTS.RESULTS_CSV, csv);
+    this.io.to(`spec:${this.code}`).emit(EVENTS.RESULTS_CSV, csv);
+    saveResults(record)
       .then((r) => console.log(`[sala ${this.code}] resultados guardados (${r.where}${r.file ? `: ${r.file}` : ''})`))
       .catch((err) => console.error('[resultados] no se pudieron guardar:', err));
   }
@@ -207,6 +245,7 @@ export class Room {
       weather: this.weather,
       weatherChoice: this.weatherChoice,
       deployMode: this.deployMode,
+      easy: this.easy,
       windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),
     };

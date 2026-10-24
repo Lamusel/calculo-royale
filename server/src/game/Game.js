@@ -11,6 +11,7 @@ import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
+import { driveBots } from './bots.js';
 import { clearLoot, deathBox, nearestLoot, pickUp, spawnGroundLoot, syncLoot, updateHealing, useItem } from './loot.js';
 import { recordTick } from '../metrics.js';
 import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
@@ -216,6 +217,7 @@ export class Game {
     this.explosions = [];
     this.kills = [];
 
+    driveBots(this);
     const players = [...this.room.players.values()];
     const frozen = duelFrozen(this);
     if (frozen) for (const v of this.vehicles) v.speed = 0;
@@ -296,7 +298,7 @@ export class Game {
   // El estado privado (munición, vida exacta) se envía solo al dueño y solo si cambió
   sendSelfStates(players) {
     for (const p of players) {
-      if (!p.connected) continue;
+      if (!p.connected || p.bot) continue;
       // Los tiempos restantes cambian cada tick: solo cuenta si hay o no (el cliente lleva la cuenta)
       const { reloadLeft, ammoCooldownLeft, healing, drinkLeft, ...rest } = p.selfState(this.now);
       const key = JSON.stringify(rest) + (reloadLeft > 0) + (ammoCooldownLeft > 0) + (healing?.item ?? '') + (drinkLeft > 0);

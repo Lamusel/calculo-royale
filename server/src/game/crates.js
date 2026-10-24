@@ -95,7 +95,7 @@ export function nearestCrate(game, x, y) {
 export function openCrate(game, player, crate) {
   if (player.question || crate.state !== CRATE_STATE.CLOSED) return false;
   const rarity = RARITIES[crate.rarity];
-  const q = drawQuestion({ topics: game.room.topics, difficulty: rarity.difficulty, seen: player.seenQuestions });
+  const q = drawQuestion({ topics: game.room.topics, difficulty: rarity.difficulty, seen: player.seenQuestions, easy: game.room.easy });
   player.question = { crateId: crate.id, q, expiresAt: game.now + rarity.timeMs };
   crate.state = CRATE_STATE.BUSY;
   crate.busyBy = player.id;

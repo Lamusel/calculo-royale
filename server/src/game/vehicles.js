@@ -93,7 +93,7 @@ export function exitVehicle(game, player) {
 }
 
 function askEngine(game, player, v) {
-  const q = drawQuestion({ topics: game.room.topics, difficulty: 2, seen: player.seenQuestions });
+  const q = drawQuestion({ topics: game.room.topics, difficulty: 2, seen: player.seenQuestions, easy: game.room.easy });
   player.engineQuestion = { vehicleId: v.id, q, expiresAt: game.now + JEEP.questionMs };
   game.room.emitTo(player, EVENTS.CRATE_QUESTION, {
     crateId: null,

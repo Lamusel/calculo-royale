@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from '@calculo-royale/shared/constants';
 import { createRoom, joinRoom, loadName, saveName } from '../net/session.js';
+import Intro, { Credits, shouldShowIntro } from '../ui/Intro.jsx';
+import Logo from '../ui/Logo.jsx';
 
 const codeFromUrl = () =>
   (new URLSearchParams(location.search).get('code') ?? '').toUpperCase().slice(0, ROOM_CODE_LENGTH);
@@ -39,6 +41,9 @@ export default function Home({ connected, notice, onEnter }) {
   const [code, setCode] = useState(codeFromUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [intro, setIntro] = useState(shouldShowIntro);
+  const [credits, setCredits] = useState(false);
+  const endIntro = useCallback(() => setIntro(false), []);
 
   const canJoin = connected && !busy && name.trim() && code.length === ROOM_CODE_LENGTH;
 
@@ -63,11 +68,15 @@ export default function Home({ connected, notice, onEnter }) {
     <main className="flex min-h-full items-center justify-center overflow-y-auto bg-gradient-to-br from-olive-950 via-stone-900 to-olive-900 p-4 text-stone-100">
       <div className="flex w-full max-w-3xl flex-col items-center gap-6 sm:flex-row sm:items-stretch sm:gap-10">
         <div className="flex flex-col items-center justify-center gap-2 text-center sm:items-start sm:text-left">
+          <Logo className="h-[clamp(4rem,14vmin,6rem)] w-[clamp(4rem,14vmin,6rem)]" />
           <h1 className="text-4xl font-black uppercase tracking-tight sm:text-5xl">
             Cálculo <span className="text-khaki">Royale</span>
           </h1>
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-stone-400">Battle royale militar · Cálculo Multivariable</p>
           <WakeUp connected={connected} />
+          <button type="button" onClick={() => setCredits(true)} className="mt-1 text-xs text-stone-400 underline">
+            Créditos
+          </button>
         </div>
 
         <form
@@ -114,6 +123,8 @@ export default function Home({ connected, notice, onEnter }) {
           {(error || notice) && <p className="text-center text-sm text-red-400">{error || notice}</p>}
         </form>
       </div>
+      {credits && <Credits onClose={() => setCredits(false)} />}
+      {intro && <Intro onDone={endIntro} />}
     </main>
   );
 }

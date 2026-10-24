@@ -15,6 +15,11 @@ export const EVENTS = {
   ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
   ROOM_DEPLOY: 'room:deploy', // C → S (solo host, en el lobby): 'bus' | 'punto'
   ROOM_WEATHER: 'room:weather', // C → S (solo host, en el lobby): 'aleatorio' o un clima de WEATHERS
+  ROOM_EASY: 'room:easy', // C → S (solo host, en el lobby): true | false — preguntas de aritmética
+  ROOM_BOTS: 'room:bots', // C → S (solo host, en el lobby): completar con bots hasta N jugadores (0 = quitarlos)
+  QUICK_PHRASE: 'phrase:say', // C → S: índice en QUICK_PHRASES
+  PHRASE: 'phrase', // S → C: { id, index }
+  RESULTS_CSV: 'results:csv', // S → C (host y proyector): { filename, csv }
   // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby
   PLAYER_SKIN: 'player:skin',
 

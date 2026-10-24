@@ -148,6 +148,7 @@ export function pickUp(game, player, entry) {
     game.room.broadcast?.(EVENTS.LOOT_ADD, [encode(rest)]);
   }
   dropAround(game, player.x, player.y, drops);
+  player.pickups = (player.pickups ?? 0) + names.length;
   game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, { names });
   return names;
 }

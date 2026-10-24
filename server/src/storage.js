@@ -42,11 +42,13 @@ export function buildRecord(room, classStats) {
     codigo: room.code,
     fecha: new Date().toISOString(),
     temas: room.topics,
+    modo_facil: Boolean(room.easy), // las partidas en modo fácil no cuentan como evaluación
     ganador: room.results.ranking.find((r) => r.id === room.results.winnerId)?.name ?? null,
     ranking: room.results.ranking,
     por_tema: classStats.byTopic,
     jugadores: [...room.players.values()].map((p) => ({
       nombre: p.name,
+      bot: Boolean(p.bot),
       puesto: p.place,
       bajas: p.kills,
       aciertos: p.stats.correct,
@@ -55,4 +57,36 @@ export function buildRecord(room, classStats) {
       falladas: p.stats.failed.map((f) => f.enunciado),
     })),
   };
+}
+
+// CSV de una partida (fase 20): una fila por jugador, para abrir en Excel o Google Sheets sin
+// Supabase. Separado por punto y coma (Excel en español) y con BOM para las tildes.
+const csvCell = (v) => {
+  const text = v === null || v === undefined ? '' : String(v);
+  return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+export function recordToCsv(record) {
+  const header = ['fecha', 'sala', 'modo', 'jugador', 'tipo', 'puesto', 'bajas', 'aciertos', 'respuestas', 'porcentaje', 'puntaje', 'temas_fallados'];
+  const scoreOf = new Map(record.ranking.map((r) => [r.name, r.score]));
+  const rows = [...record.jugadores]
+    .sort((a, b) => (a.puesto ?? 99) - (b.puesto ?? 99))
+    .map((j) => [
+      record.fecha,
+      record.codigo,
+      record.modo_facil ? 'fácil (no cuenta)' : 'normal',
+      j.nombre,
+      j.bot ? 'bot' : 'estudiante',
+      j.puesto ?? '',
+      j.bajas,
+      j.aciertos,
+      j.respuestas,
+      j.respuestas ? Math.round((j.aciertos / j.respuestas) * 100) : '',
+      scoreOf.get(j.nombre) ?? '',
+      Object.entries(j.por_tema ?? {})
+        .filter(([, t]) => t.total > t.correct)
+        .map(([tema]) => tema)
+        .join(', '),
+    ]);
+  return `﻿${[header, ...rows].map((row) => row.map(csvCell).join(';')).join('\r\n')}\r\n`;
 }

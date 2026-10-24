@@ -2,6 +2,7 @@ import { DEPLOY_MODES, NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TO
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { canUseSkin } from '@calculo-royale/shared/skins';
+import { sayPhrase } from '../game/phrases.js';
 import { Room } from './Room.js';
 
 const fail = (error) => ({ ok: false, error });
@@ -138,6 +139,28 @@ export class RoomManager {
   deployPoint(socket, data) {
     const player = this.playerOf(socket);
     if (player) this.roomOf(socket).game.chooseDeployPoint(player, Number(data?.x), Number(data?.y));
+  }
+
+  // Modo fácil (solo el host, en el lobby)
+  setEasy(socket, easy) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby') return;
+    room.easy = Boolean(easy);
+    room.broadcastInfo();
+  }
+
+  // Completar con bots hasta N (solo el host, en el lobby)
+  setBots(socket, target) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby') return;
+    room.fillBots(target);
+  }
+
+  // Frase rápida con antispam
+  phrase(socket, index) {
+    const room = this.roomOf(socket);
+    const player = this.playerOf(socket);
+    if (room && player) sayPhrase(room, player, index, Date.now());
   }
 
   // Clima de la próxima partida (solo el host, en el lobby)

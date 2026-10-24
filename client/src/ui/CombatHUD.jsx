@@ -48,7 +48,7 @@ function HealthBar({ self }) {
 
 // Botón que reacciona al tocar (pointerdown): en el celular un `click` no llega
 // si hay otro dedo en la pantalla (por ejemplo, en el joystick de movimiento)
-export function TouchButton({ onPress, className, style, children }) {
+export function TouchButton({ onPress, className, style, title, children }) {
   return (
     <button
       onPointerDown={(e) => {
@@ -57,6 +57,7 @@ export function TouchButton({ onPress, className, style, children }) {
       }}
       className={className}
       style={style}
+      title={title}
     >
       {children}
     </button>

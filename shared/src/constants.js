@@ -129,7 +129,7 @@ export const TOPICS = {
 };
 
 // Nombres de todos los temas que pueden aparecer en las estadísticas (los elegibles + el de las balas)
-export const TOPIC_NAMES = { ...TOPICS, basicas: 'Derivadas y límites (balas)' };
+export const TOPIC_NAMES = { ...TOPICS, basicas: 'Derivadas y límites (balas)', facil: 'Aritmética (modo fácil)' };
 
 // Opciones por pregunta según la dificultad: con 4 era demasiado en medio de un tiroteo
 export const optionCount = (difficulty) => (difficulty <= 2 ? 2 : 3);
@@ -343,3 +343,12 @@ export const ATTACHMENTS = {
 };
 // Mira: cuánto se adelanta la cámara al apuntar (metros); el francotirador ya trae la suya
 export const SCOPES = { none: 0, reddot: 3, scope2x: 8, scope4x: 14 };
+
+// --- Modo presentación (fase 20) ---
+// Bots del servidor ("Completar con bots hasta N"): puntería imperfecta y alcance de disparo
+export const BOTS = { max: 39, range: 16, aimError: 0.3, fireChance: 0.45, ammoRefillMs: 8_000, nameBase: 'Bot' };
+// Frases rápidas (índice fijo) y antispam: una cada 2,5 s y como mucho 4 cada 20 s
+export const QUICK_PHRASES = ['¡Aquí!', '¡Cuidado!', 'Necesito balas', '¡Bien hecho!', 'Vamos a la zona', '¡Gracias!'];
+export const PHRASE_LIMIT = { gapMs: 2_500, windowMs: 20_000, max: 4, showMs: 3_500 };
+// Director de cámara del proyector: cuánto se queda en cada toma (mín. y máx.)
+export const DIRECTOR = { minShotMs: 6_000, maxShotMs: 14_000, fightRadius: 18 };

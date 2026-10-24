@@ -128,6 +128,46 @@ function DeployPicker({ room, isHost }) {
   );
 }
 
+// Modo fácil y bots (fase 20): solo el anfitrión los cambia; los demás ven qué está activo
+const BOT_TARGETS = [0, 4, 8, 12, 20, 30, 40];
+function PresentationPicker({ room, isHost }) {
+  const bots = room.players.filter((p) => p.bot).length;
+  if (!isHost) {
+    return (
+      <>
+        {room.easy && <span className="rounded bg-amber-700/70 px-2 py-1 text-xs text-amber-50">Modo fácil</span>}
+        {bots > 0 && <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">🤖 {bots} bots</span>}
+      </>
+    );
+  }
+  return (
+    <>
+      <button
+        onClick={() => socket.emit(EVENTS.ROOM_EASY, !room.easy)}
+        className={`rounded px-2 py-1 text-xs ${room.easy ? 'bg-amber-600 font-bold text-black' : 'bg-white/10 text-stone-200'}`}
+        title="Preguntas de aritmética para probar el juego (no cuenta para logros; el CSV lo marca)"
+      >
+        {room.easy ? '✓ Modo fácil' : 'Modo fácil'}
+      </button>
+      <select
+        value=""
+        onChange={(e) => socket.emit(EVENTS.ROOM_BOTS, Number(e.target.value))}
+        className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100"
+        title="Bots"
+      >
+        <option value="" disabled className="bg-olive-900">
+          🤖 {bots ? `${bots} bots` : 'Bots'}
+        </option>
+        {BOT_TARGETS.map((n) => (
+          <option key={n} value={n} className="bg-olive-900">
+            {n === 0 ? 'Quitar los bots' : `Completar hasta ${n}`}
+          </option>
+        ))}
+      </select>
+    </>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
@@ -164,6 +204,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
           </button>
           <WeatherPicker room={room} isHost={isHost} />
           <DeployPicker room={room} isHost={isHost} />
+          <PresentationPicker room={room} isHost={isHost} />
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">
               Iniciar

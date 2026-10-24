@@ -29,6 +29,7 @@ import Replay from '../ui/Replay.jsx';
 import { DuelIntro } from '../ui/Cinema.jsx';
 import TacticalMap, { minimapSize } from '../ui/TacticalMap.jsx';
 import HostPanel from '../ui/HostPanel.jsx';
+import QuickPhrases from '../ui/QuickPhrases.jsx';
 import { InterceptCard, OperatorPanel, TransmissionToast } from '../ui/Operator.jsx';
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
@@ -125,6 +126,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         onPanel={() => setPanel(true)}
       />
       <Killfeed killfeed={view.killfeed} roster={room.players} myId={myId} />
+      {!replaying && <QuickPhrases client={client} roster={room.players} />}
       <TacticalMap
         frameRef={frameRef}
         myId={myId}
@@ -157,7 +159,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       {room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
       {room.phase === 'playing' && <DeployHUD client={client} frameRef={frameRef} isTouch={isTouch} />}
       {room.phase === 'results' && !replaying && (
-        <Results results={client.results} mine={client.privateResults} myId={myId} isHost={isHost} onReset={resetGame} />
+        <Results results={client.results} mine={client.privateResults} myId={myId} isHost={isHost} onReset={resetGame} csv={client.csv} />
       )}
     </>
   );
@@ -231,6 +233,7 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
   }, [client, room.phase]);
   const onReplayDone = useCallback(() => setReplayDone(true), []);
   useMusic(client, room, myId);
+  if (client) client.easy = Boolean(room.easy);
   // Al terminar la partida, primero la repetición (en lugar de la escena en vivo: un solo WebGL)
   const replaying = room.phase === 'results' && Boolean(client?.replay) && !replayDone;
 

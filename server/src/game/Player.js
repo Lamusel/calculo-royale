@@ -13,6 +13,7 @@ export class Player {
     this.color = color;
     this.token = token;
     this.skin = DEFAULT_SKIN;
+    this.bot = false; // bot del servidor (fase 20)
 
     this.x = 0;
     this.y = 0;
@@ -39,6 +40,11 @@ export class Player {
     this.seenQuestions = new Set();
     this.place = null; // posición final (1 = ganador)
     this.revived = false; // ya usó su reanimación de operador
+    // Para las medallas (fase 20)
+    this.pickups = 0;
+    this.longestKill = 0;
+    this.damageDealt = 0;
+    this.phrases = []; // momentos de sus frases rápidas recientes (antispam)
   }
 
   resetCombat() {
@@ -230,6 +236,6 @@ export class Player {
   }
 
   info() {
-    return { id: this.id, name: this.name, color: this.color, skin: this.skin, connected: this.connected };
+    return { id: this.id, name: this.name, color: this.color, skin: this.skin, connected: this.connected, bot: this.bot || undefined };
   }
 }

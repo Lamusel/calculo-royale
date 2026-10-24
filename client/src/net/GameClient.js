@@ -105,6 +105,9 @@ export class GameClient {
     this.loot = new Map(); // botín en el suelo: id → { id, item (o null si es caja), x, y, count }
     this.lootVersion = 0; // sube con cada cambio (la escena redibuja el botín solo entonces)
     this.lootToast = null; // { names } o { full, name } al tomar algo
+    this.phrases = []; // frases rápidas recientes: { id, index, at }
+    this.csv = null; // CSV de la última partida (anfitrión y proyector)
+    this.easy = false; // modo fácil de la sala: no cuenta para los logros
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
     this.vehicleId = null; // jeep en el que voy
     this.seat = null; // 'driver' | 'passenger'
@@ -246,6 +249,14 @@ export class GameClient {
         const answered = Object.values(mine.byTopic ?? {}).reduce((n, t) => n + t.total, 0);
         if (this.results?.winnerId === this.myId && answered > 0 && mine.failed.length === 0) this.achieve('flawlessWin');
       },
+      [EVENTS.PHRASE]: ({ id, index }) => {
+        this.phrases.push({ id, index, at: performance.now() });
+        if (this.phrases.length > 6) this.phrases.shift();
+        sound.click();
+      },
+      [EVENTS.RESULTS_CSV]: (csv) => {
+        this.csv = csv;
+      },
       [EVENTS.LOOT_SYNC]: (list) => {
         this.loot = new Map();
         for (const e of list) this.addLoot(e);
@@ -275,6 +286,7 @@ export class GameClient {
     actions.interact = () => socket.emit(EVENTS.INTERACT);
     actions.requestAmmo = () => this.requestAmmo();
     actions.useItem = (item) => this.useItem(item);
+    actions.phrase = (index) => this.socket.emit(EVENTS.QUICK_PHRASE, index);
     actions.jump = () => this.deploying === 'bus' && press(BUTTONS.JUMP);
 
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
@@ -523,6 +535,7 @@ export class GameClient {
   }
 
   achieve(type, value) {
+    if (this.easy) return; // en modo fácil no se desbloquea nada
     for (const id of recordEvent(type, value)) {
       this.unlocks.push({ id, at: performance.now() });
       sound.achievement();
@@ -617,6 +630,7 @@ export class GameClient {
     actions.switchWeapon = () => {};
     actions.interact = () => {};
     actions.useItem = () => {};
+    actions.phrase = () => {};
     actions.requestAmmo = () => {};
     actions.jump = () => {};
   }

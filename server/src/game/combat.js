@@ -80,6 +80,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   // El casco resta un porcentaje de lo que pasa el chaleco
   const toHp = (amount - absorbed) * (ignoreArmor ? 1 : 1 - HELMET[target.helmetLevel ?? 0]);
   target.hp -= toHp;
+  const hitter = game.room.players.get(attackerId);
+  if (hitter && hitter !== target) hitter.damageDealt = (hitter.damageDealt ?? 0) + Math.min(amount, toHp + absorbed);
   if (target.hp > 0) return { dealt: amount, killed: false };
 
   target.hp = 0;
@@ -92,7 +94,10 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   if (game.room.phase === 'playing') target.place = aliveCount(game) + 1;
   game.onPlayerDeath?.(target);
   const attacker = game.room.players.get(attackerId);
-  if (attacker && attacker !== target) attacker.kills++;
+  if (attacker && attacker !== target) {
+    attacker.kills++;
+    attacker.longestKill = Math.max(attacker.longestKill ?? 0, Math.hypot(attacker.x - target.x, attacker.y - target.y));
+  }
   game.kills.push([attackerId, target.id, weaponIndex]);
   return { dealt: amount, killed: true };
 }

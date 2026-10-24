@@ -11,6 +11,7 @@ import { RadioFeed } from '../ui/Radio.jsx';
 import Results from '../ui/Results.jsx';
 import Replay from '../ui/Replay.jsx';
 import { DuelIntro } from '../ui/Cinema.jsx';
+import { direct } from '../game/director.js';
 
 // En el proyector se ve todo el mapa: sin sombras (la caja de sombras sigue a un jugador)
 // y sin niebla
@@ -28,6 +29,9 @@ export default function Spectator() {
   const frameRef2 = useRef({ me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [], zone: [], airdrop: [] });
   const [replayDone, setReplayDone] = useState(false);
   const onReplayDone = useCallback(() => setReplayDone(true), []);
+  // Director automático: elige la toma (los botones manuales lo apagan)
+  const [director, setDirector] = useState(true);
+  const shot = useRef(null);
 
   useEffect(() => {
     const onInfo = (info) => setRoom(info);
@@ -62,11 +66,17 @@ export default function Spectator() {
     if (room?.phase !== 'results') setReplayDone(false);
   }, [client, room?.phase]);
 
-  // La interfaz lateral se refresca 2 veces por segundo
+  // La interfaz lateral se refresca 2 veces por segundo (y el director decide la toma)
   useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 500);
+    const id = setInterval(() => {
+      tick((n) => n + 1);
+      if (!director || !client) return;
+      const now = performance.now();
+      shot.current = direct({ phase: room?.phase, players: frameRef.current.others, killfeed: client.killfeed, lastShot: client.lastShot }, shot.current, now);
+      client.followId = shot.current?.id ?? null;
+    }, 500);
     return () => clearInterval(id);
-  }, []);
+  }, [director, client, room?.phase]);
 
   const alive = [...frameRef.current.others.values()].filter((p) => !(p.flags & PLAYER_FLAGS.DEAD)).length;
 
@@ -131,7 +141,7 @@ export default function Spectator() {
         {client && room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
         {client && <Killfeed killfeed={client.killfeed} roster={room.players} myId={null} />}
         {client && <RadioFeed radio={client.radio} />}
-        {client && room.phase === 'results' && !replaying && <Results results={client.results} mine={null} myId={null} isHost={false} onReset={() => {}} classStats={client.classStats} />}
+        {client && room.phase === 'results' && !replaying && <Results results={client.results} mine={null} myId={null} isHost={false} onReset={() => {}} classStats={client.classStats} csv={client.csv} />}
       </div>
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-khaki-dark/50 bg-olive-950/95 p-4">
         <div>
@@ -142,13 +152,16 @@ export default function Spectator() {
           {room.phase === 'lobby' ? 'En el campo de entrenamiento' : room.phase === 'results' ? 'Partida terminada' : `Vivos: ${alive} de ${room.players.length}`}
         </p>
         <div className="flex items-center gap-2 text-sm">
-          <button onClick={() => client && (client.followId = null)} className="rounded bg-black/40 px-2 py-1">
-            Mapa completo
+          <button onClick={() => setDirector((d) => !d)} className={`rounded px-2 py-1 ${director ? 'bg-khaki font-bold text-olive-950' : 'bg-black/40'}`} title="La cámara elige sola a quién seguir">
+            🎬 Director
           </button>
-          <button onClick={() => client?.cycleFollow(-1)} className="rounded bg-black/40 px-2 py-1">
+          <button onClick={() => { setDirector(false); if (client) client.followId = null; }} className="rounded bg-black/40 px-2 py-1">
+            Mapa
+          </button>
+          <button onClick={() => { setDirector(false); client?.cycleFollow(-1); }} className="rounded bg-black/40 px-2 py-1">
             ◀
           </button>
-          <button onClick={() => client?.cycleFollow(1)} className="rounded bg-black/40 px-2 py-1">
+          <button onClick={() => { setDirector(false); client?.cycleFollow(1); }} className="rounded bg-black/40 px-2 py-1">
             ▶
           </button>
           <span className="truncate text-stone-300">{following ? following.name : 'plano general'}</span>

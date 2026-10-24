@@ -258,7 +258,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **17. Gráficos estables y responsive** ✅ | Calidad automática que recorta en orden (resolución, sombras, decoración, niebla) con histéresis, calidad manual y escala de interfaz en Opciones, toda la interfaz con `clamp()` y zonas seguras, cola de mensajes | Se ve digno en un celular antiguo y nada se sale de la pantalla |
 | **18. Botín de battle royale y mapa más grande** ✅ | Mapa de ~280 m con terminal, mercado, estadio, cañón y aeródromo; botín en el suelo, inventario, miras, curación con tiempo, accesorios, mochila, casco y caja de botín al morir | Saquear y equiparse como en un battle royale |
 | **19. Audio total** ✅ | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
-| **20. Modo presentación y modo fácil** | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
+| **20. Modo presentación y modo fácil** ✅ | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
 | **21. Modo Profe Jefe Final** | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
 | **22. Revisión final** | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
@@ -412,6 +412,15 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Música procedural por momento:** lobby, bus, partida, zona cerrándose, duelo, victoria y resultados; cambia con fundido.
 - **Voz del Mando** con `speechSynthesis` en español (es-CO, si no es-MX, si no es-ES): lee el título y la desigualdad en palabras ("equis menos treinta y nueve al cuadrado más…").
 - **Pruebas:** números y desigualdades en palabras, elección de voz, manifiesto de audio, prioridad de voces, ducking y momento musical.
+
+#### Fase 20: modo presentación y modo fácil
+- **Modo fácil** (anfitrión, en el lobby): todas las preguntas pasan a ser de aritmética (suma, resta, multiplicación y dos operaciones según la rareza). No cuenta para los logros y el CSV lo marca.
+- **Intro y título:** logo animado una vez por pestaña (un toque la salta), logo en la pantalla de inicio y "Créditos" con espacios para completar en `client/src/credits.js`.
+- **Director de cámara** en el proyector: sigue solo la pelea, la baja reciente o al líder, con tomas de 6 a 14 s; los botones manuales lo apagan.
+- **Completar con bots hasta N** (anfitrión): bots del servidor que caminan, vuelven a la zona, disparan con puntería imperfecta, saltan del bus y toman botín. Sin personas, la sala se cierra.
+- **Medallas** al final: más bajas, calculista, puntería matemática, más daño, baja más lejana y saqueador.
+- **6 frases rápidas** (💬 o T, y 1–6) con antispam en el servidor.
+- **CSV** de cada partida para el profe (botón en resultados del anfitrión y del proyector), sin Supabase.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -653,7 +662,7 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | 17 | ✅ Completa | Calidad por pasos con histéresis, calidad y escala manuales, zonas seguras, cola del Mando. Falta medir FPS en un celular real |
 | 18 | ✅ Completa | Mapa de 280 m con 5 zonas nuevas y 8 jeeps, botín en el suelo, inventario con mochila, casco, accesorios y curación con tiempo, caja de botín al caer. Falta jugar una partida completa con el curso |
 | 19 | ✅ Completa | Canales Música, Efectos y Voz con silencio, ducking, prioridad de voces, 19 efectos nuevos, archivos propios opcionales, música procedural por momento y voz del Mando en español. Falta escucharlo en un celular real |
-| 20 | Pendiente | |
+| 20 | ✅ Completa | Modo fácil, intro y créditos, director de cámara, bots del servidor, medallas, frases rápidas y CSV. Faltan los nombres reales de los créditos |
 | 21 | Pendiente | |
 | 22 | Pendiente | |
 
@@ -738,3 +747,16 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | Opciones con volumen general, Música, Efectos, Voz y silencio (Edge) | PASS |
 | Build y 166 pruebas | PASS |
 | Escuchar la mezcla en un celular y en el proyector | Pendiente (el navegador de prueba no tiene salida de audio) |
+- 2026-10-23: **fase 20 completa (modo presentación y modo fácil).** *Modo fácil* (`server/src/questions/basic/aritmetica.js`): el anfitrión lo activa en el lobby ("Modo fácil"); cajas, motor del jeep, transmisiones e "Obtener balas" sacan aritmética (común: suma; rara: resta; épica: multiplicación; legendaria: multiplicación y suma) con las mismas reglas de opciones y tiempos. El cliente no registra logros en esa sala y los resultados y el CSV dicen "fácil (no cuenta)". *Intro* (`client/src/ui/Intro.jsx`): logo SVG propio (mira con el signo de integral), título que sube y fundido en 2,4 s, una vez por pestaña (`?intro=0` la salta); *créditos* en `client/src/credits.js` con los espacios para completar entre corchetes (autor, docente, banco de preguntas, pruebas, autores y licencias de los modelos externos, agradecimientos). *Director de cámara* (`client/src/game/director.js`, botón 🎬 en el proyector, encendido por defecto): puntúa a cada vivo (baja en los últimos 4 s +5, disparando +2, en pelea con rivales a menos de 18 m +4 y uno por rival, líder +3), mantiene cada toma al menos 6 s (salvo que caiga su protagonista) y como mucho 14 s, y en el medio solo cambia si aparece algo 3 puntos mejor; en el lobby, plano general. *Bots del servidor* (`server/src/game/bots.js`): el anfitrión elige "Completar hasta 4, 8, 12, 20, 30 o 40" o "Quitar los bots"; son jugadores sin socket que reciben un input por tick, así que el servidor los trata como a cualquiera (misma física, munición y daño). Eligen punto o saltan del bus al azar, caminan, vuelven a la zona, toman botín cercano, disparan al visible más cercano con error de puntería y, sin balas, reciben un cargador cada 8 s (no responden preguntas). Sin personas en la sala, se cierra; el anfitrión nunca pasa a un bot. Aparecen marcados "bot" en el ranking y en el CSV, y no ganan medallas. *Medallas* (`server/src/game/medals.js`): más bajas, calculista (aciertos), puntería matemática (% con 3 o más respuestas), más daño, baja más lejana (m) y saqueador (objetos tomados); si nadie hizo algo, esa no se entrega. *Frases rápidas* (`client/src/ui/QuickPhrases.jsx`, `server/src/game/phrases.js`): ¡Aquí!, ¡Cuidado!, Necesito balas, ¡Bien hecho!, Vamos a la zona, ¡Gracias!; botón 💬 o T y luego 1–6 (con el menú abierto, 1 y 2 no cambian de arma); el servidor solo acepta índices de la lista, una cada 2,5 s y como mucho 4 cada 20 s, y los caídos no hablan en partida. *CSV* (`recordToCsv` en `server/src/storage.js`): al terminar llega al anfitrión y al proyector (y otra vez si el anfitrión reconecta); una fila por jugador con fecha, sala, modo, tipo (estudiante o bot), puesto, bajas, aciertos, respuestas, porcentaje, puntaje y temas fallados; separado por punto y coma y con BOM para que Excel en español abra bien las tildes. *Corregido en el camino:* la intro reiniciaba sus temporizadores en cada render del inicio (mientras el servidor despertaba nunca terminaba): ahora recibe una función estable. *Verificado en Edge*: intro, inicio con logo y créditos; modo fácil y bots (8 en sala) desde el lobby; frase rápida "Profe: ¡Cuidado!" con T y 2 sin cambiar de arma; proyector con el director siguiendo a "Bot 7" y, al quedar dos, la pantalla partida del duelo entre bots; aviso de dispositivo lento en el navegador de prueba; sin errores. 7 pruebas nuevas (173 en total).
+
+| Validación fase 20 | Estado |
+|---|---|
+| Aritmética bien calculada y por dificultad; solo en modo fácil (prueba) | PASS |
+| Completar y quitar bots; sin personas la sala se cierra (prueba) | PASS |
+| Bots en partida: aterrizan, caminan y pelean hasta el duelo (prueba y Edge) | PASS |
+| Medallas, frases con antispam y CSV (prueba) | PASS |
+| Director: pelea, duración mínima, cambio por algo mejor (prueba y Edge) | PASS |
+| Intro, inicio y créditos (Edge) | PASS |
+| Build y 173 pruebas | PASS |
+| Pregunta fácil vista en el navegador y descarga del CSV al final de una partida real | Pendiente (cubierto por pruebas; falta verlo en una partida completa) |
+| Nombres reales en los créditos | Pendiente (lo completa el usuario en `client/src/credits.js`) |
