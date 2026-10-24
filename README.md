@@ -262,7 +262,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **21. Modo Profe Jefe Final** ✅ | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
 | **22. Revisión final** ✅ | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
 | **23. Botín y cajas (correcciones)** ✅ | En el suelo solo munición, vendas y casco 1; todo lo demás sale de cajas con pregunta; ninguna caja en campo abierto; lo recogido desaparece para todos | El cálculo vuelve a ser la llave del poder |
-| **24. Cámara más cercana** | Soldado ~2 veces más grande, cámara dinámica (edificios, campo abierto, jeep, mira) y "Distancia de cámara" en Opciones | Ver bien al personaje en celular y PC |
+| **24. Cámara más cercana** ✅ | Soldado ~2 veces más grande, cámara dinámica (edificios, campo abierto, jeep, mira) y "Distancia de cámara" en Opciones | Ver bien al personaje en celular y PC |
 | **25. Accesorios que se notan** | Accesorios visibles en el modelo, efectos reales (dispersión, retroceso, capacidad, casco) e iconos y tarjetas que los explican | Saber qué hace cada cosa |
 | **26. Skins con esqueleto** | Los 4 GLB nuevos (Mixamo) en modo C, comprimidos si hace falta y ajustados con la cámara nueva | Personajes especiales animados de verdad |
 | **27. Cuadrícula 8×8, sin jefe e interfaz** | Sectores A1–H8, se quita el modo Profe Jefe Final, lobby y ayuda de controles que no se enciman | Interfaz limpia y un solo modo |
@@ -446,6 +446,12 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Cajas solo en lugares estratégicos:** se quitan las cajas de campo abierto y las de los claros del bosque; las demás quedan dentro de edificios o de un punto de interés (`POIS`: pueblo, base, trincheras, contenedores, terminal, mercado, aeródromo, estadio, cañón). Las legendarias siguen en los lugares calientes.
 - **Lo recogido desaparece:** la escena redibujaba el botín solo cuando cambiaba "tamaño + versión" de la lista, y al tomar algo el tamaño baja 1 y la versión sube 1: la suma no cambiaba y el objeto seguía dibujado. Se pasa a un almacén de botín del cliente (`client/src/net/lootStore.js`) con versión propia que la escena compara sola.
 - **Pruebas:** botín del suelo de muchas partidas solo con lo permitido; todas las cajas posibles (y las elegidas con varias semillas) dentro de un edificio o un punto de interés; dos clientes: uno recoge y el otro deja de verlo, y uno que entra después tampoco lo ve.
+
+#### Fase 24: cámara más cercana
+- **Distancia:** de 30,5 m a 16 m (Normal) con inclinación de 52° y el mismo campo de visión de 40°: el soldado se ve ~1,9 veces más grande. Opciones → "Distancia de cámara": Cerca (13 m), Normal (16 m), Lejos (21 m), guardada en el navegador. Valores en `CAMERA` (`shared/src/constants.js`).
+- **Cámara dinámica con transiciones suaves:** dentro de un edificio ×0,85; corriendo en campo abierto ×1,1; en jeep ×1,3; con mira 2x/4x o francotirador apuntando se desplaza hacia la mira (como antes) y se aleja un poco.
+- **Celular horizontal:** el soldado queda un poco por debajo del centro (se ve más hacia adelante).
+- **Revisar** paredes semitransparentes, techos que se ocultan y silueta con la cámara nueva (la oclusión usa la misma inclinación), el proyector (sigue con su plano general) y capturas en 740×360, 844×390 y 1920×1080 antes y después.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -747,7 +753,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 21 | ✅ Completa | Modo aparte con escudo que solo baja con aciertos del equipo, 3 fases, volver con un acierto y límite de 8 min. Falta jugarlo con el curso |
 | 22 | ✅ Completa | Calidad y brillo revisados, servidor en Virginia preparado (falta que el usuario haga la mudanza), carga en ambos despliegues, checklist del día D y lista final. Falta el celular antiguo real |
 | 23 | ✅ Completa | En el suelo solo munición, vendas y casco 1; todas las cajas en edificios o puntos de interés; lo recogido desaparece para todos |
-| 24 | Pendiente | |
+| 24 | ✅ Completa | Cámara a 16 m y 52° (soldado ~1,9 veces más grande), dinámica, "Distancia de cámara" en Opciones, oclusión con la cámara real |
 | 25 | Pendiente | |
 | 26 | Pendiente | |
 | 27 | Pendiente | |
@@ -881,3 +887,13 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Lo recogido desaparece para el otro cliente y para quien entra después (prueba) | PASS |
 | Lo recogido desaparece en pantalla al instante (Edge) | PASS |
 | Build y 182 pruebas | PASS |
+- 2026-10-24: **fase 24 completa (cámara más cercana).** *Distancia:* de 30,5 m a 50° a 16 m a 52° con el mismo campo de visión de 40° (`CAMERA` en `shared/src/constants.js`): el soldado se ve ~1,9 veces más grande. Opciones → **Distancia de cámara**: Cerca (13 m), Normal (16 m) o Lejos (21 m), guardada con los demás ajustes. *Cámara dinámica* (`client/src/game/cameraMath.js`, transición suave de ~0,4 s): dentro de un edificio ×0,85, corriendo en campo abierto (más de 5 m/s) ×1,1, en jeep ×1,3; en el bus y cayendo conserva la vista amplia de antes (30,5 m) para ver dónde caer; el proyector siguiendo a alguien queda a 26 m. Con mira o francotirador apuntando se sigue desplazando hacia la mira, escalado a la distancia nueva (si no, el soldado se salía de la pantalla). En celular horizontal el soldado queda 2,2 m por debajo del centro (se ve más hacia adelante). *Corregido:* con la cámara cerca, el techo de una casa al sureste tapaba al jugador sin aclararse, porque la oclusión suponía la cámara justo al sur del jugador y la cámara se adelanta hacia donde apunta; ahora se usa la posición real de la cámara (el segmento cámara → pecho contra la caja de cada edificio, `occlusion.js`). Los techos de la casa donde estás se siguen ocultando y la silueta sigue igual. *Capturas* (Edge, en el pueblo, afuera y dentro de una casa) en 740×360, 844×390 y 1920×1080 antes y después: el soldado pasa de ocupar una parte mínima de la pantalla a verse claro, con suficiente entorno alrededor para combatir. 2 pruebas nuevas y una ampliada (184 en total).
+
+| Validación fase 24 | Estado |
+|---|---|
+| Soldado ~2 veces más grande; inclinación 50–55°; Cerca < Normal < Lejos (prueba) | PASS |
+| Cámara dinámica: adentro, corriendo, jeep, despliegue y proyector (prueba) | PASS |
+| Oclusión con la cámara adelantada hacia la mira (prueba y Edge) | PASS |
+| Capturas en 740×360, 844×390 y 1920×1080 antes y después (Edge) | PASS |
+| Build y 184 pruebas | PASS |
+| Sensación en un celular real (¿Normal es la mejor por defecto?) | Pendiente |

@@ -22,6 +22,13 @@ test('lo más alto tapa desde más lejos', () => {
   const low = wall('bajo', -1, 1, -4, -3.5, 1.2);
   const tall = wall('alto', -1, 1, -4, -3.5, 5.2);
   assert.deepEqual([...findOccluders(0, 0, [low, tall], 50)], ['alto']);
+  // Con la cámara real (fase 24): adelantada al este, la casa del sureste tapa; desde el sur, no
+  const southEast = { id: 'sureste', minX: 1.5, maxX: 10, minY: -8, maxY: -1, height: 4.7 };
+  const camSouth = { x: 0, y: -9.8, z: 12.6 };
+  const camEast = { x: 3, y: -9.8, z: 12.6 };
+  assert.deepEqual([...findOccluders(0, 0, [southEast], 52, new Set(), camSouth)], []);
+  assert.deepEqual([...findOccluders(0, 0, [southEast], 52, new Set(), camEast)], ['sureste']);
+  assert.deepEqual([...findOccluders(0, 0, [{ ...southEast, minY: 1, maxY: 6 }], 52, new Set(), camEast)], [], 'al norte nunca');
 });
 
 test('dentro de una casa se detecta para ocultar el techo', () => {

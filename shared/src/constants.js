@@ -394,3 +394,20 @@ export const BOSS = {
 // Id del jefe en disparos y killfeed (los jugadores empiezan en 1) y como blanco de las balas
 export const BOSS_ID = 0;
 export const BOSS_TARGET_ID = -999;
+
+// --- Cámara (fase 24) ---
+// Antes: 30,5 m a 50°. Normal ahora a 16 m y 52° (mismo campo de visión de 40°): el soldado se ve
+// ~1,9 veces más grande. Factores de la cámara dinámica (se aplican con transición suave).
+export const CAMERA = {
+  pitchDeg: 52,
+  fov: 40,
+  distances: { near: 13, normal: 16, far: 21 },
+  insideFactor: 0.85, // dentro de un edificio, algo más cerca
+  runFactor: 1.1, // corriendo en campo abierto, un poco más lejos
+  runSpeed: 5, // m/s desde los que cuenta como "corriendo"
+  jeepFactor: 1.3, // en jeep, más lejos
+  touchShift: 2.2, // celular horizontal: el soldado queda un poco por debajo del centro (m hacia adelante)
+  projectorDistance: 26, // el proyector, siguiendo a alguien, un poco más lejos
+  deployDistance: 30.5, // en el bus y cayendo: la vista amplia de siempre (se ve dónde caer)
+  lookScaleFrom: 30.5, // la mira y el francotirador se ajustaron con la cámara a 30,5 m: se escalan
+};

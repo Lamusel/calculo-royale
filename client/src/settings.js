@@ -2,7 +2,8 @@
 // canal (música, efectos, voz), silencio, calidad y escala de la interfaz.
 
 const KEY = 'calculo-royale:ajustes';
-const DEFAULTS = { brightness: 1, volume: 0.7, musicVolume: 0.5, sfxVolume: 1, voiceVolume: 0.9, muted: false, quality: 'auto', uiScale: 'normal' };
+const DEFAULTS = { brightness: 1, volume: 0.7, musicVolume: 0.5, sfxVolume: 1, voiceVolume: 0.9, muted: false, quality: 'auto', uiScale: 'normal', cameraDistance: 'normal' };
+export const CAMERA_DISTANCE_OPTIONS = [['near', 'Cerca'], ['normal', 'Normal'], ['far', 'Lejos']];
 export const QUALITY_OPTIONS = [['auto', 'Auto'], ['high', 'Alta'], ['medium', 'Media'], ['low', 'Baja']];
 export const UI_SCALES = { small: 0.85, normal: 1, large: 1.18 };
 export const UI_SCALE_OPTIONS = [['small', 'Pequeña'], ['normal', 'Normal'], ['large', 'Grande']];

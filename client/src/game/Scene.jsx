@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AIM_CANCEL_ZONE, DEPLOY, SCOPES, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
+import { AIM_CANCEL_ZONE, CAMERA, DEPLOY, SCOPES, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
+import { HOUSES } from '@calculo-royale/shared/mapLayout';
+import { goalDistance } from './cameraMath.js';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, currentAim, inputState } from '../input/inputState.js';
 import { isTouchDevice } from '../input/TouchControls.jsx';
@@ -26,12 +28,11 @@ import Vehicles from './Vehicles.jsx';
 import Weather, { weatherLook } from './Weather.jsx';
 import ZoneMesh from './ZoneMesh.jsx';
 
-// Cámara 3/4: inclinación (grados sobre el horizonte) y distancia al jugador. Fácil de ajustar.
-export const CAMERA_PITCH_DEG = 50;
-// Campo de visión angosto y cámara más lejos (misma área visible): menos deformación de
-// perspectiva en los bordes, donde los soldados parecían acostados
-const CAMERA_DISTANCE = 30.5;
-const CAMERA_FOV = 40;
+// Cámara 3/4 (fase 24): inclinación y distancias en CAMERA (shared/constants.js). Campo de visión
+// angosto (menos deformación en los bordes); la distancia base la elige el jugador en Opciones
+// (Cerca, Normal, Lejos) y la cámara dinámica la ajusta según dónde está.
+export const CAMERA_PITCH_DEG = CAMERA.pitchDeg;
+const CAMERA_FOV = CAMERA.fov;
 // La cámara se adelanta un poco hacia donde apunta el jugador
 const LOOK_AHEAD = 2.5;
 // Al apuntar con el francotirador la cámara se aleja un poco y se desplaza hacia la mira
@@ -41,7 +42,11 @@ const OVERVIEW_DISTANCE = 176;
 const OVERVIEW_PITCH = (62 * Math.PI) / 180;
 
 const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
-const CAMERA_OFFSET = new THREE.Vector3(0, Math.sin(pitch) * CAMERA_DISTANCE, Math.cos(pitch) * CAMERA_DISTANCE);
+// Dirección de la cámara desde el jugador (por metro de distancia)
+const CAMERA_DIR = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
+const CAMERA_OFFSET = CAMERA_DIR.clone().multiplyScalar(CAMERA.distances.normal);
+const insideHouse = (x, y) => HOUSES.some((h) => Math.abs(x - h.x) < h.w / 2 - 0.3 && Math.abs(y - h.y) < h.h / 2 - 0.3);
+
 
 // Dirección del sol (desde el suroeste, alto): sombras hacia el noreste
 const SUN_OFFSET = new THREE.Vector3(-22, 40, 18);
@@ -73,9 +78,11 @@ function sniperLook() {
 // El sol (y su caja de sombras) sigue al mismo punto.
 function CameraRig({ client, frameRef, sun, overview }) {
   const s = useMemo(
-    () => ({ target: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3(), lookGoal: new THREE.Vector3(), zoom: 1 }),
+    () => ({ target: new THREE.Vector3(), goal: new THREE.Vector3(), look: new THREE.Vector3(), lookGoal: new THREE.Vector3(), zoom: 1, dist: CAMERA.distances.normal, last: null, speed: 0 }),
     [],
   );
+  // Celular acostado: el soldado un poco por debajo del centro (se ve más hacia adelante)
+  const touch = useMemo(() => isTouchDevice(), []);
   useFrame(({ camera, scene }, delta) => {
     const dt = Math.min(delta, 0.1);
     const { me, follow, deploying, altitude = 0 } = frameRef.current;
@@ -115,10 +122,27 @@ function CameraRig({ client, frameRef, sun, overview }) {
     if (focusOn) s.goal.set(focusOn.x, terrainHeight(focusOn.x, focusOn.y) + lift * 0.6, -focusOn.y);
     s.target.lerp(s.goal, 1 - Math.exp(-12 * dt));
 
+    // Cámara dinámica: velocidad aproximada del enfocado, si está adentro de un edificio o en jeep
+    if (focusOn) {
+      if (s.last && dt > 0) s.speed += (Math.hypot(focusOn.x - s.last.x, focusOn.y - s.last.y) / dt - s.speed) * (1 - Math.exp(-4 * dt));
+      s.last = { x: focusOn.x, y: focusOn.y };
+    }
+    const goalDist = goalDistance({
+      choice: settings.cameraDistance,
+      inside: Boolean(focusOn) && insideHouse(focusOn.x, focusOn.y),
+      speed: s.speed,
+      inJeep: !follow && frameRef.current.myVehicleId != null,
+      air: Boolean(air),
+      projector: overview,
+    });
+    s.dist += (goalDist - s.dist) * (1 - Math.exp(-2.5 * dt));
+
     const aim = follow ? follow.aim : currentAim();
-    const extra = follow ? 0 : sniperLook();
+    // Mira y francotirador: el desplazamiento se escala con la distancia (el soldado no se sale de la pantalla)
+    const extra = follow ? 0 : sniperLook() * (s.dist / CAMERA.lookScaleFrom);
     const amount = LOOK_AHEAD + extra;
-    s.lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount);
+    const shift = touch && !overview && innerWidth > innerHeight ? CAMERA.touchShift : 0;
+    s.lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount - shift);
     s.look.lerp(s.lookGoal, 1 - Math.exp(-5 * dt));
     s.zoom += ((extra > 0 ? SNIPER_ZOOM : 1) * deployZoom - s.zoom) * (1 - Math.exp(-3 * dt));
     // La niebla se aleja con la cámara (desde el bus se ve el mapa)
@@ -130,7 +154,7 @@ function CameraRig({ client, frameRef, sun, overview }) {
     }
 
     const focus = s.target.clone().add(s.look);
-    camera.position.copy(focus).addScaledVector(CAMERA_OFFSET, s.zoom);
+    camera.position.copy(focus).addScaledVector(CAMERA_DIR, s.dist * s.zoom);
     // Sacudida proporcional al trauma (cuadrático: los golpes fuertes se notan mucho más)
     const shake = client.trauma ** 2 * 0.7;
     if (shake > 0.001) {

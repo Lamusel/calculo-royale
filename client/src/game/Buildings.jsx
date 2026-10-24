@@ -277,9 +277,16 @@ export default function Buildings({ frameRef, pitchDeg }) {
   }, [houses, containers]);
 
   const occluders = useMemo(() => new Set(), []);
-  useFrame((_, delta) => {
+  const cam = useMemo(() => ({ x: 0, y: 0, z: 0 }), []);
+  useFrame(({ camera }, delta) => {
     const me = frameRef.current.me;
-    if (me) findOccluders(me.x, me.y, items, pitchDeg, occluders);
+    if (me) {
+      // Con la posición real de la cámara (se adelanta hacia la mira): coordenadas del mapa
+      cam.x = camera.position.x;
+      cam.y = -camera.position.z;
+      cam.z = camera.position.y - terrainHeight(me.x, me.y);
+      findOccluders(me.x, me.y, items, pitchDeg, occluders, cam);
+    }
     else occluders.clear();
     const rate = 1 - Math.exp(-8 * Math.min(delta, 0.1));
     const fade = (material, goal) => {
