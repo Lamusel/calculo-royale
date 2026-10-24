@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { AIRDROP, MAP_HALF, MAX_HP, TICK_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
-import { insideZone, sectorBounds, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
+import { ALL_SECTORS, insideZone, sectorBounds, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
 import { Game } from '../server/src/game/Game.js';
 import { damagePlayer } from '../server/src/game/combat.js';
 import { airdropSpot } from '../server/src/game/match.js';
@@ -93,12 +93,17 @@ test('una fase usa elipse y la desigualdad se escribe bien', () => {
   assert.equal(insideZone(e, 2, 6), false);
 });
 
-test('sectores A1 (noroeste) a F6 (sureste)', () => {
+test('sectores A1 (noroeste) a H8 (sureste)', () => {
   assert.equal(sectorOf(-MAP_HALF + 1, MAP_HALF - 1), 'A1');
-  assert.equal(sectorOf(MAP_HALF - 1, -MAP_HALF + 1), 'F6');
-  assert.equal(sectorOf(0.5, 0.5), 'D3');
+  assert.equal(sectorOf(MAP_HALF - 1, -MAP_HALF + 1), 'H8');
+  assert.equal(sectorOf(0.5, 0.5), 'E4');
   const b = sectorBounds('C4');
   assert.equal(sectorOf(b.cx, b.cy), 'C4');
+  // 8×8: 64 sectores de 35 m que cubren el mapa sin huecos
+  assert.equal(ALL_SECTORS.length, 64);
+  assert.equal(ALL_SECTORS.at(-1), 'H8');
+  assert.equal(b.maxX - b.minX, 35);
+  for (const s of ALL_SECTORS) assert.equal(sectorOf(sectorBounds(s).cx, sectorBounds(s).cy), s);
 });
 
 test('fuera de la zona se recibe daño que el chaleco no absorbe', () => {

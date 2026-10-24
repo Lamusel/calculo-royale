@@ -46,7 +46,7 @@ Primero es un battle royale de verdad; **el cálculo es la llave del poder**: la
 Al morir pasas a vista espectador y recibes **transmisiones** (preguntas):
 
 - **Si caíste en las fases 1 o 2 de la zona y no has usado tu reanimación:** 3 aciertos seguidos = te reaniman **una vez**, con pistola y venda, en paracaídas a un punto al azar dentro de la zona.
-- **Si caíste después o ya usaste tu reanimación:** cada acierto da **un voto** para un sector del mapa (cuadrícula militar 6×6, de A1 a F6). Cada 60 s el sector más votado recibe un **bombardeo** (5 s de aviso con marca roja y sirena, luego daño en área).
+- **Si caíste después o ya usaste tu reanimación:** cada acierto da **un voto** para un sector del mapa (cuadrícula militar 8×8, de A1 a H8, sectores de 35 m). Cada 60 s el sector más votado recibe un **bombardeo** (5 s de aviso con marca roja y sirena, luego daño en área).
   - No se puede bombardear el mismo sector dos veces seguidas (gana el siguiente más votado).
   - Los bombardeos se desactivan cuando quedan 5 vivos o menos.
 - **Siempre:** los aciertos como operador suman al ranking final.
@@ -259,14 +259,13 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **18. Botín de battle royale y mapa más grande** ✅ | Mapa de ~280 m con terminal, mercado, estadio, cañón y aeródromo; botín en el suelo, inventario, miras, curación con tiempo, accesorios, mochila, casco y caja de botín al morir | Saquear y equiparse como en un battle royale |
 | **19. Audio total** ✅ | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
 | **20. Modo presentación y modo fácil** ✅ | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
-| **21. Modo Profe Jefe Final** ✅ | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
 | **22. Revisión final** ✅ | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
 | **23. Botín y cajas (correcciones)** ✅ | En el suelo solo munición, vendas y casco 1; todo lo demás sale de cajas con pregunta; ninguna caja en campo abierto; lo recogido desaparece para todos | El cálculo vuelve a ser la llave del poder |
 | **24. Cámara más cercana** ✅ | Soldado ~2 veces más grande, cámara dinámica (edificios, campo abierto, jeep, mira) y "Distancia de cámara" en Opciones | Ver bien al personaje en celular y PC |
 | **25. Accesorios que se notan** ✅ | Accesorios visibles en el modelo, efectos reales (dispersión, retroceso, capacidad, casco) e iconos y tarjetas que los explican | Saber qué hace cada cosa |
 | **26. Skins con esqueleto** ✅ | Los 4 GLB nuevos (Mixamo) en modo C, comprimidos si hace falta y ajustados con la cámara nueva | Personajes especiales animados de verdad |
-| **27. Cuadrícula 8×8, sin jefe e interfaz** | Sectores A1–H8, se quita el modo Profe Jefe Final, lobby y ayuda de controles que no se enciman | Interfaz limpia y un solo modo |
-| *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
+| **27. Cuadrícula 8×8, sin jefe e interfaz** ✅ | Sectores A1–H8, se quita el modo Profe Jefe Final, lobby y ayuda de controles que no se enciman | Interfaz limpia y un solo modo |
+| *Backlog* | #4 campos vectoriales, #6 centro de masa | |
 
 ### Planes por fase (modo maratón: el plan se escribe aquí antes de ejecutar cada fase)
 
@@ -295,7 +294,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Zona** (`server/src/game/Zone.js`): 5 fases en ~9 minutos (aviso de 60 s, cierre de 45 s). Cada zona nueva queda dentro de la anterior. Todas se modelan como elipses (el círculo es el caso p = q): la fase 3 es una elipse (idea #3).
 - **Transmisiones del mando** (`radio:message`): la zona se anuncia con su desigualdad en KaTeX, `(x − a)² + (y − b)² ≤ r²` o `(x − a)²/p² + (y − b)²/q² ≤ 1`, con 60 s de aviso; también el cierre y el lanzamiento aéreo.
 - **Daño fuera de la zona**, creciente por fase (no lo absorbe el chaleco); muerte por zona en el killfeed.
-- **Mapa táctico:** minimapa con ejes, coordenadas, cuadrícula de sectores A1–F6, zona actual y siguiente, alarmas, lanzamiento aéreo y enemigos del radar; al tocarlo se abre el mapa grande. GPS con sector en el HUD.
+- **Mapa táctico:** minimapa con ejes, coordenadas, cuadrícula de sectores A1–H8, zona actual y siguiente, alarmas, lanzamiento aéreo y enemigos del radar; al tocarlo se abre el mapa grande. GPS con sector en el HUD.
 - **Lanzamiento aéreo** a mitad de partida: el mando anuncia las coordenadas; una caja dorada (Todo o nada) cae en paracaídas en 20 s dentro de la zona.
 - **Victoria:** último en pie gana (con 2 o más jugadores). Pantalla de resultados: posición, bajas, aciertos por tema y cada pregunta fallada con su solución en KaTeX (solo la ve su dueño). El host vuelve al lobby.
 - **Pruebas:** zona (contención, interpolación, daño, desigualdad), sectores, lanzamiento aéreo, victoria, posiciones y resultados privados.
@@ -303,7 +302,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 #### Fase 6: operadores de radio y clase
 - **Al morir en partida:** vista espectador (sigue a quien te eliminó, o a otro vivo; se puede cambiar) y panel de operador de radio con transmisiones (preguntas de 30 s, una tras otra).
 - **Reanimación:** si caíste en las fases 1 o 2 de la zona y no la has usado, 3 aciertos seguidos te reaniman una vez dentro de la zona con pistola y 75 de vida (50 + venda). Un fallo reinicia la cuenta.
-- **Bombardeo por votos:** si no puedes reanimar, eliges un sector en la cuadrícula A1–F6 y cada acierto le suma un voto. Cada 60 s el sector más votado recibe un bombardeo (aviso de 5 s con el sector marcado en rojo, luego daño en todo el sector). Nunca el mismo sector dos veces seguidas; desactivado con 5 vivos o menos.
+- **Bombardeo por votos:** si no puedes reanimar, eliges un sector en la cuadrícula A1–H8 y cada acierto le suma un voto. Cada 60 s el sector más votado recibe un bombardeo (aviso de 5 s con el sector marcado en rojo, luego daño en todo el sector). Nunca el mismo sector dos veces seguidas; desactivado con 5 vivos o menos.
 - **Interceptar transmisión enemiga:** cada 2 minutos, pregunta rápida para todos los vivos sin detenerse (panel pequeño). Los 5 primeros en acertar reciben en privado el centro de la próxima zona antes del anuncio público.
 - **Ranking final:** puntos = 10 por puesto superado + 15 por baja + 5 por acierto (incluidos los de operador e intercepciones).
 - **Vista para proyector:** `/espectador?code=ABCD` muestra el mapa completo, vivos, killfeed, transmisiones y aciertos por tema en vivo. **Panel del host** con el porcentaje de acierto por tema de la clase en vivo.
@@ -434,13 +433,6 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Checklist del día D** y **lista final de pruebas** en este README.
 - Celular antiguo real: queda en el checklist (no hay uno conectado a esta máquina).
 
-#### Fase 21: modo Profe Jefe Final
-- **Modo aparte** que elige el anfitrión en el lobby ("🎓 Profe Jefe Final"): todos contra un jefe gigante en la cancha del estadio, como equipo (sin fuego amigo), con rifle, chaleco 2 y vendas; sin zona, cajas, botín, despliegue, operadores ni bombardeos.
-- **Escudo matemático:** con el escudo arriba las balas lo chocan sin daño. Solo baja con aciertos del equipo ("Romper escudo", Q): cada acierto suma, cada fallo da 6 s de espera; al llegar a la meta el escudo cae 15 s y vuelve con la cuenta en cero.
-- **3 fases:** cada una con más vida (escalada por cantidad de jugadores), ráfagas más seguidas y, desde la segunda, onda expansiva con aviso; la meta del escudo sube por fase y cada 6 jugadores.
-- **Caídos:** a los 20 s piden una pregunta; si aciertan vuelven a la cancha con 75 de vida; si fallan, 10 s más.
-- **8 minutos:** si no lo derrotan, gana el profe. Resultados para todo el equipo con daño al jefe, aciertos y CSV.
-
 #### Fase 23: botín y cajas (correcciones de la prueba)
 - **Nada de poder gratis en el suelo:** el botín suelto solo puede ser munición, vendas y casco 1 (lista `LOOT_GROUND` en `constants.js`). Armas, granadas, miras, accesorios, mochilas, chalecos, cascos 2–3, botiquines y bebidas salen solo de cajas con pregunta, de la caja de botín de un caído o del lanzamiento aéreo; las tablas de las cajas los incluyen todos. Al empezar, solo la pistola con munición limitada.
 - **Cajas solo en lugares estratégicos:** se quitan las cajas de campo abierto y las de los claros del bosque; las demás quedan dentro de edificios o de un punto de interés (`POIS`: pueblo, base, trincheras, contenedores, terminal, mercado, aeródromo, estadio, cañón). Las legendarias siguen en los lugares calientes.
@@ -463,6 +455,11 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - Alias de huesos si alguno queda en modo B; texturas a 1024 y archivo comprimido si pasa de 3 MB (sin instalar `gltf-transform` en el proyecto).
 - Reparar esqueletos mal exportados al cargar (`external/repair.js`); si no tienen arreglo, el modelo anima entero (modo A) en lugar de deformarse.
 - Ajustar escala, rotación y arma con la cámara nueva (caminar, apuntar, jeep, autobús, paracaídas, victoria) y revisar casco y mochila o sus iconos.
+
+#### Fase 27: cuadrícula 8×8, sin jefe e interfaz
+- **Cuadrícula 8×8 (A1–H8)** en todo: minimapa, mapa táctico, GPS del HUD, votos y bombardeo de los operadores (sector de 35 m: daño 70 → 80), transmisiones y voz (dice "sector hache ocho"), proyector y pruebas.
+- **Fuera el modo Profe Jefe Final:** opción del lobby, servidor, cliente, eventos, música, pruebas y README. Solo queda anotado en la bitácora como descartado.
+- **Interfaz:** el panel del lobby y "Esperando a que el anfitrión inicie…" nunca encima de la barra superior; la ayuda de controles se va sola a los pocos segundos o al usar los controles (nunca en partida); barra de armas con fondo sólido.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -761,13 +758,12 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 18 | ✅ Completa | Mapa de 280 m con 5 zonas nuevas y 8 jeeps, botín en el suelo, inventario con mochila, casco, accesorios y curación con tiempo, caja de botín al caer. Falta jugar una partida completa con el curso |
 | 19 | ✅ Completa | Canales Música, Efectos y Voz con silencio, ducking, prioridad de voces, 19 efectos nuevos, archivos propios opcionales, música procedural por momento y voz del Mando en español. Falta escucharlo en un celular real |
 | 20 | ✅ Completa | Modo fácil, intro y créditos, director de cámara, bots del servidor, medallas, frases rápidas y CSV. Faltan los nombres reales de los créditos |
-| 21 | ✅ Completa | Modo aparte con escudo que solo baja con aciertos del equipo, 3 fases, volver con un acierto y límite de 8 min. Falta jugarlo con el curso |
 | 22 | ✅ Completa | Calidad y brillo revisados, servidor en Virginia preparado (falta que el usuario haga la mudanza), carga en ambos despliegues, checklist del día D y lista final. Falta el celular antiguo real |
 | 23 | ✅ Completa | En el suelo solo munición, vendas y casco 1; todas las cajas en edificios o puntos de interés; lo recogido desaparece para todos |
 | 24 | ✅ Completa | Cámara a 16 m y 52° (soldado ~1,9 veces más grande), dinámica, "Distancia de cámara" en Opciones, oclusión con la cámara real |
 | 25 | ✅ Completa | Accesorios visibles en el modelo y en la red, retroceso y culata, casco contra francotirador, retícula por mira, tarjetas e iconos que los explican |
 | 26 | ✅ Completa | Esqueletos de Tripo reparados al cargar; Furina en modo C con casco, mochila y arma en su mano; 2B, Ghost y Luffy en modo A (sus archivos no traen pesos usables); texturas a 1024 |
-| 27 | Pendiente | |
+| 27 | ✅ Completa | Cuadrícula A1–H8 en mapa, GPS, votos, bombardeo, voz y proyector; modo jefe quitado; lobby, ayuda y barra de armas que no se enciman |
 
 ### Bitácora
 
@@ -940,3 +936,15 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Todos bajo 3 MB y texturas ≤ 1024 | PASS |
 | Build y 196 pruebas | PASS |
 | Animación completa de 2B, Ghost y Luffy | Pendiente (necesitan re-riggeo en Mixamo) |
+
+- 2026-10-24: **fase 27 completa (cuadrícula 8×8, sin jefe e interfaz).** *Cuadrícula:* `SECTORS` 6 → 8 (sectores de 35 m en vez de 46,7); todo lo demás sale de ahí (`sectorOf`, `sectorBounds`, `ALL_SECTORS`): minimapa y mapa táctico con letras A–H y números 1–8, GPS del HUD, cuadrícula de votos del operador (8 columnas), bombardeo y su marca roja, transmisiones y proyector. El servidor acepta votos solo de `ALL_SECTORS` (antes una expresión fija A–F/1–6). Como el sector es un 44 % más chico y se sale más rápido, el bombardeo pasa de 70 a 80 de daño. La voz de la radio dice los sectores con su letra ("sector hache ocho" en vez de "Hocho"). *Modo Profe Jefe Final:* **descartado** por decisión del profe; se quitó completo (`server/src/game/boss.js`, sus ganchos en `Game`, `combat`, `bots`, `radio`, `Room` y `RoomManager`, los eventos `room:mode` y `boss:*`, las constantes `BOSS`, `GAME_MODES`, `BOSS_ID` y `BOSS_TARGET_ID`, el campo del jefe al final del snapshot, `Boss.jsx`, `BossHUD.jsx`, el selector de modo del lobby, la tecla Q, la música de duelo con jefe, la tabla de daño de los resultados y sus 6 pruebas). Nada más dependía de él: el estadio queda como zona normal del mapa. *Interfaz:* en pantallas bajas (celular acostado) el panel del lobby y su texto van debajo de la barra superior y ya no tapan el GPS ni la latencia; en PC caben arriba. La ayuda de controles se desvanece a los 8 s o con la primera tecla o toque fuera de los menús, y solo existe en el lobby. La barra de armas y las ranuras de curación tienen fondo casi sólido: los blancos de práctica y los objetos del suelo ya no se ven a través. *Verificado en Edge:* invitado en 740×360, 844×390 y 1920×1080 sin cruces entre el texto de espera y la barra; ayuda oculta a los 10 s; mapa de despliegue con A–H/1–8 y GPS "E4"; sin errores. 190 pruebas (salen las 6 del jefe; las de sectores, votos y voz se ampliaron).
+
+| Validación fase 27 | Estado |
+|---|---|
+| 64 sectores de 35 m que cubren el mapa; A1 noroeste, H8 sureste (prueba) | PASS |
+| Votos fuera de A1–H8 rechazados; bombardeo del sector votado (prueba) | PASS |
+| Voz: "sector hache ocho" (prueba) | PASS |
+| Sin rastros del modo jefe en servidor, cliente, shared ni pruebas (búsqueda) | PASS |
+| Lobby del invitado sin encimarse en 740×360, 844×390 y 1920×1080 (Edge) | PASS |
+| Ayuda de controles que se va sola y barra de armas sólida (Edge) | PASS |
+| Build y 190 pruebas | PASS |

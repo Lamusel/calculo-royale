@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BOMBING, GRENADE, OPERATOR, SECTORS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { BOMBING, GRENADE, OPERATOR, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
+import { ALL_SECTORS } from '@calculo-royale/shared/zone';
 import MathText from './MathText.jsx';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -54,19 +55,18 @@ export function QuestionCard({ item, onAnswer, compact = false }) {
   );
 }
 
-// Cuadrícula A1–F6 para elegir dónde caerá el bombardeo
+// Cuadrícula A1–H8 para elegir dónde caerá el bombardeo
 function SectorPicker({ selected, votes, onPick, bombing }) {
   const max = Math.max(1, ...Object.values(votes ?? {}));
   return (
-    <div className="grid grid-cols-6 gap-0.5" style={{ width: 'min(42vw, 13rem)' }}>
-      {Array.from({ length: SECTORS * SECTORS }, (_, i) => {
-        const name = `${String.fromCharCode(65 + (i % SECTORS))}${Math.floor(i / SECTORS) + 1}`;
+    <div className="grid grid-cols-8 gap-0.5" style={{ width: 'min(46vw, 15rem)' }}>
+      {ALL_SECTORS.map((name) => {
         const v = votes?.[name] ?? 0;
         return (
           <button
             key={name}
             onPointerUp={() => onPick(name)}
-            className={`relative aspect-square rounded-sm text-[10px] font-bold ${
+            className={`relative aspect-square rounded-sm text-[9px] font-bold ${
               bombing === name ? 'animate-pulse bg-red-600 text-white' : selected === name ? 'bg-khaki text-olive-950' : 'bg-black/40 text-stone-300'
             }`}
             style={v && selected !== name && bombing !== name ? { background: `rgba(239, 68, 68, ${0.15 + (0.5 * v) / max})` } : undefined}

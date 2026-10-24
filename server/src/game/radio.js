@@ -1,6 +1,6 @@
 import { BOMBING, CLASS_STATS_MS, INTERCEPT, OPERATOR, TOPICS, WEAPON_IDS, DEPLOY } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
-import { sectorBounds, sectorOf } from '@calculo-royale/shared/zone';
+import { ALL_SECTORS, sectorBounds, sectorOf } from '@calculo-royale/shared/zone';
 import { drawQuestion } from '../questions/QuestionBank.js';
 import { aliveCount, damagePlayer } from './combat.js';
 import { dropWithChute } from './deploy.js';
@@ -60,7 +60,7 @@ export function onPlayerDeath(game, player) {
 }
 
 export function voteSector(game, player, sector) {
-  if (player.operator && /^[A-F][1-6]$/.test(sector)) player.operator.sector = sector;
+  if (player.operator && ALL_SECTORS.includes(sector)) player.operator.sector = sector;
 }
 
 function revive(game, player) {
@@ -193,7 +193,7 @@ export function encodeBombing(game) {
 }
 
 export function updateRadio(game) {
-  if (game.room.phase === 'playing' && !game.boss) {
+  if (game.room.phase === 'playing') {
     updateOperators(game);
     updateBombing(game);
     updateIntercept(game);

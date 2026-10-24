@@ -28,7 +28,7 @@ export function zoneInequality(z) {
   return `\\frac{${x}}{${z.p * z.p}} + \\frac{${y}}{${z.q * z.q}} \\le 1`;
 }
 
-// Sector militar de un punto: columnas A–F a lo largo de x, filas 1–6 de norte a sur
+// Sector militar de un punto: columnas A–H a lo largo de x, filas 1–8 de norte a sur
 const SECTOR_SIZE = MAP_SIZE / SECTORS;
 export function sectorOf(x, y) {
   const col = Math.min(SECTORS - 1, Math.max(0, Math.floor((x + MAP_HALF) / SECTOR_SIZE)));

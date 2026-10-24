@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { DEPLOY_MODES, GAME_MODES, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -135,7 +135,6 @@ function PresentationPicker({ room, isHost }) {
   if (!isHost) {
     return (
       <>
-        {room.mode === 'jefe' && <span className="rounded bg-red-800/80 px-2 py-1 text-xs text-red-50">🎓 Profe Jefe Final</span>}
         {room.easy && <span className="rounded bg-amber-700/70 px-2 py-1 text-xs text-amber-50">Modo fácil</span>}
         {bots > 0 && <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">🤖 {bots} bots</span>}
       </>
@@ -143,18 +142,6 @@ function PresentationPicker({ room, isHost }) {
   }
   return (
     <>
-      <select
-        value={room.mode ?? 'royale'}
-        onChange={(e) => socket.emit(EVENTS.ROOM_MODE, e.target.value)}
-        className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100"
-        title="Modo de juego"
-      >
-        {Object.entries(GAME_MODES).map(([id, name]) => (
-          <option key={id} value={id} className="bg-olive-900">
-            {id === 'jefe' ? '🎓' : '🪖'} {name}
-          </option>
-        ))}
-      </select>
       <button
         onClick={() => socket.emit(EVENTS.ROOM_EASY, !room.easy)}
         className={`rounded px-2 py-1 text-xs ${room.easy ? 'bg-amber-600 font-bold text-black' : 'bg-white/10 text-stone-200'}`}
@@ -181,6 +168,46 @@ function PresentationPicker({ room, isHost }) {
   );
 }
 
+// Ayuda de controles abajo a la izquierda (solo en el lobby): se va sola a los pocos segundos o
+// apenas se usan los controles, para no quedar encima del juego
+const HELP_MS = 8_000;
+function ControlsHelp({ isTouch }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const hide = () => setVisible(false);
+    const timer = setTimeout(hide, HELP_MS);
+    // Cualquier tecla o toque fuera de los menús (escena, joysticks) cuenta como usar los controles
+    const onPointer = (e) => !e.target.closest?.('button, select, input, a, [role=dialog]') && hide();
+    window.addEventListener('keydown', hide);
+    window.addEventListener('pointerdown', onPointer);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', hide);
+      window.removeEventListener('pointerdown', onPointer);
+    };
+  }, []);
+  return (
+    <div
+      className={`pointer-events-none absolute bottom-[7.5rem] left-3 z-20 max-w-[28vw] rounded bg-black/45 px-2.5 py-1.5 text-[10px] leading-snug text-stone-200 transition-opacity duration-500 sm:text-[11px] ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      {isTouch ? (
+        <>
+          <b className="text-khaki-light">Toca</b> el joystick derecho: dispara al más cercano
+          <br />
+          <b className="text-khaki-light">Arrastra</b>: apuntar y disparar
+        </>
+      ) : (
+        <>
+          WASD moverse · clic disparar
+          <br />R recargar · B balas · 1/2 armas · G granada · E tomar · 4/5/6 curar
+        </>
+      )}
+    </div>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
@@ -200,7 +227,9 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
 
   return (
     <>
-      <div className="absolute left-1/2 top-3 z-20 flex w-max max-w-[62vw] -translate-x-1/2 flex-col items-center gap-2">
+      {/* En pantallas bajas (celular acostado) va debajo de la barra superior (GPS, latencia, botones)
+          para no encimarse; en pantallas altas cabe arriba entre ellos */}
+      <div className="absolute left-1/2 top-[calc(max(0.5rem,env(safe-area-inset-top))+2.6rem)] z-20 flex w-max max-w-[62vw] -translate-x-1/2 flex-col items-center gap-1.5 [@media(min-height:600px)]:top-3">
         <div className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-lg bg-black/60 px-3 py-2 text-stone-100 backdrop-blur">
           <button onClick={() => setShowInvite(true)} className="flex items-center gap-3" title="Mostrar código y QR">
             <span className="font-mono text-[clamp(1.1rem,3.2vw,1.5rem)] font-black tracking-[0.2em] text-khaki">{room.code}</span>
@@ -230,21 +259,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
         {error && <p className="rounded-lg bg-red-950/80 px-3 py-1 text-xs text-red-300">{error}</p>}
       </div>
 
-      {/* Ayuda de controles abajo a la izquierda, lejos del killfeed y de la barra de armas */}
-      <div className="pointer-events-none absolute bottom-[7.5rem] left-3 z-20 max-w-[28vw] rounded bg-black/45 px-2.5 py-1.5 text-[10px] leading-snug text-stone-200 sm:text-[11px]">
-        {isTouch ? (
-          <>
-            <b className="text-khaki-light">Toca</b> el joystick derecho: dispara al más cercano
-            <br />
-            <b className="text-khaki-light">Arrastra</b>: apuntar y disparar
-          </>
-        ) : (
-          <>
-            WASD moverse · clic disparar
-            <br />R recargar · B balas · 1/2 armas · G granada · E tomar · 4/5/6 curar
-          </>
-        )}
-      </div>
+      <ControlsHelp isTouch={isTouch} />
 
       {showInvite && <BigInvite room={room} url={url} onClose={() => setShowInvite(false)} />}
       {showTopics && <TopicPicker room={room} isHost={isHost} onClose={() => setShowTopics(false)} />}

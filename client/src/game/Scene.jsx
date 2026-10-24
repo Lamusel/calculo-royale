@@ -16,7 +16,6 @@ import Bus from './Bus.jsx';
 import MapProps from './MapProps.jsx';
 import GroundLoot from './GroundLoot.jsx';
 import OuterRing from './OuterRing.jsx';
-import Boss from './Boss.jsx';
 import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
@@ -292,7 +291,6 @@ export default function Scene({
       <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
       <MapProps frameRef={frameRef} />
       <OuterRing />
-      {phase === 'playing' && <Boss frameRef={frameRef} />}
       {phase !== 'lobby' && client.loot && <GroundLoot client={client} />}
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />

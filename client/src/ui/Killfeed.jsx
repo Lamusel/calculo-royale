@@ -1,11 +1,10 @@
-import { BOSS, BOSS_ID } from '@calculo-royale/shared/constants';
 import WeaponIcon from './WeaponIcon.jsx';
 
 // Killfeed: "Ana [icono del arma] Juan", con el color de cada jugador
 export default function Killfeed({ killfeed = [], roster, myId }) {
   if (killfeed.length === 0) return null;
   const byId = new Map(roster.map((p) => [p.id, p]));
-  const name = (id) => (id === BOSS_ID ? { name: BOSS.name, color: '#f87171' } : (byId.get(id) ?? { name: '¿?', color: '#a8a29e' }));
+  const name = (id) => byId.get(id) ?? { name: '¿?', color: '#a8a29e' };
 
   return (
     <div className="pointer-events-none absolute right-3 top-14 z-20 flex flex-col items-end gap-1 text-xs sm:text-sm">

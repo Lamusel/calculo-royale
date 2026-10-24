@@ -8,7 +8,6 @@ import { socket } from '../net/socket.js';
 import { ClassTopics } from '../ui/HostPanel.jsx';
 import Killfeed from '../ui/Killfeed.jsx';
 import { RadioFeed } from '../ui/Radio.jsx';
-import { BossBar } from '../ui/BossHUD.jsx';
 import Results from '../ui/Results.jsx';
 import Replay from '../ui/Replay.jsx';
 import { DuelIntro } from '../ui/Cinema.jsx';
@@ -141,8 +140,7 @@ export default function Spectator() {
         )}
         {client && room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
         {client && <Killfeed killfeed={client.killfeed} roster={room.players} myId={null} />}
-        {client && frameRef.current.boss && <BossBar boss={frameRef.current.boss} />}
-        {client && <RadioFeed radio={client.radio} below={frameRef.current.boss ? 4.6 : 0} />}
+        {client && <RadioFeed radio={client.radio} />}
         {client && room.phase === 'results' && !replaying && <Results results={client.results} mine={null} myId={null} isHost={false} onReset={() => {}} classStats={client.classStats} csv={client.csv} />}
       </div>
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-khaki-dark/50 bg-olive-950/95 p-4">

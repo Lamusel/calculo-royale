@@ -66,12 +66,13 @@ export function TouchButton({ onPress, className, style, title, children }) {
   );
 }
 
+// Fondo casi sólido: los blancos de práctica y objetos del mundo no se ven a través de la barra
 function Slot({ active, alert, label, children, onPress }) {
   const tone = alert
-    ? 'border-red-400 bg-red-900/70 text-red-100'
+    ? 'border-red-400 bg-red-950/95 text-red-100'
     : active
-      ? 'border-khaki bg-black/70 text-khaki-light'
-      : 'border-white/10 bg-black/45 text-stone-400';
+      ? 'border-khaki bg-stone-950/95 text-khaki-light'
+      : 'border-white/10 bg-stone-900/90 text-stone-400';
   return (
     <TouchButton
       onPress={onPress}
@@ -218,7 +219,7 @@ function Inventory({ self, isTouch, drinkLeft }) {
               key={item}
               onPress={() => n > 0 && actions.useItem(item)}
               className={`flex h-[2.6rem] w-[3.3rem] flex-col items-center justify-center rounded border text-[0.65rem] leading-tight ${
-                n > 0 ? 'border-white/20 bg-black/60 text-stone-100' : 'border-white/5 bg-black/30 text-stone-500'
+                n > 0 ? 'border-white/20 bg-stone-950/90 text-stone-100' : 'border-white/5 bg-stone-900/85 text-stone-500'
               }`}
             >
               <span className="text-sm leading-none">{icon}</span>

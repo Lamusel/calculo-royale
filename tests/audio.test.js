@@ -31,6 +31,7 @@ test('desigualdades de la zona en palabras', () => {
   const said = radioToSpeech(String.raw`Nueva zona segura: $(x + 12)^2 + y^2 \le 400$. Tienen 75 s.`);
   assert.equal(said, 'Nueva zona segura: equis más doce al cuadrado más ye al cuadrado menor o igual que cuatrocientos. Tienen setenta y cinco segundos.');
   assert.ok(!/[\$^{}]/.test(said), 'sin restos de LaTeX');
+  assert.equal(radioToSpeech('Bombardeo en el sector H8 en 5 s.'), 'Bombardeo en el sector hache ocho en cinco segundos.');
 });
 
 test('voz: es-CO, si no es-MX, si no es-ES, si no cualquier español', () => {

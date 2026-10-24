@@ -5,7 +5,7 @@ import { AREAS, HOUSES, OBSTACLES, TOWERS, TREES } from '@calculo-royale/shared/
 import { sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
 import MathText from './MathText.jsx';
 
-// Mapa táctico: plano cartesiano del mapa con ejes, coordenadas y sectores A1–F6.
+// Mapa táctico: plano cartesiano del mapa con ejes, coordenadas y sectores A1–H8.
 // Muestra la zona actual (borde rojo, afuera sombreado) y la siguiente (blanca punteada),
 // tu posición, alarmas, el lanzamiento aéreo y, con radar, a los enemigos.
 // También: el líder (corona), los jeeps encendidos cercanos (hacen ruido) y, de noche,

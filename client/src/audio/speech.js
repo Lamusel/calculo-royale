@@ -73,10 +73,14 @@ export function latexToSpeech(tex) {
   return s.replace(/\s+/g, ' ').trim();
 }
 
+// Letras de los sectores (A1–H8) como se dicen: "sector E4" → "sector e cuatro"
+const LETTERS = { A: 'a', B: 'be', C: 'ce', D: 'de', E: 'e', F: 'efe', G: 'ge', H: 'hache' };
+
 // Texto de la radio (con fórmulas entre $) listo para decir en voz alta
 export function radioToSpeech(text) {
   return text
     .replace(/\$([^$]+)\$/g, (_, tex) => latexToSpeech(tex))
+    .replace(/\b([A-H])([1-8])\b/g, (_, l, n) => `${LETTERS[l]} ${n}`)
     .replace(/\bs\b(?=[.,]|$)/g, 'segundos')
     .replace(/(\d+) s\b/g, '$1 segundos')
     .replace(/\d+(\.\d+)?/g, (m) => numberToWords(m))

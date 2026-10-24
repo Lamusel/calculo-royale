@@ -12,7 +12,7 @@ export function useMusic(client, room, myId) {
         musicMoment({
           phase: room.phase,
           deploying: Boolean(client.deploying),
-          duel: Boolean(client.duel || client.lastFrame?.boss),
+          duel: Boolean(client.duel),
           closing: Boolean(zone?.[10]),
           winner: myId !== null && client.results?.winnerId === myId,
           alive: client.alive,

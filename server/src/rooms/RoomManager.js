@@ -1,4 +1,4 @@
-import { DEPLOY_MODES, GAME_MODES, NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { canUseSkin } from '@calculo-royale/shared/skins';
@@ -147,24 +147,6 @@ export class RoomManager {
     if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby') return;
     room.easy = Boolean(easy);
     room.broadcastInfo();
-  }
-
-  // Modo de juego: battle royale o Profe Jefe Final (solo el host, en el lobby)
-  setMode(socket, mode) {
-    const room = this.roomOf(socket);
-    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby' || !GAME_MODES[mode]) return;
-    room.mode = mode;
-    room.broadcastInfo();
-  }
-
-  bossRequest(socket, kind) {
-    const player = this.playerOf(socket);
-    if (player) this.roomOf(socket).game.bossRequest(player, kind);
-  }
-
-  bossAnswer(socket, data) {
-    const player = this.playerOf(socket);
-    if (player) this.roomOf(socket).game.answerBoss(player, Number(data?.id), Number(data?.index));
   }
 
   // Completar con bots hasta N (solo el host, en el lobby)
