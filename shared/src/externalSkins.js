@@ -1,0 +1,23 @@
+// Generado por scripts/skins-manifest.js: no editar a mano
+export default [
+  {
+    "id": "2b",
+    "source": "/assets/skins/external/2b/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "furina",
+    "source": "/assets/skins/external/furina/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "ghost",
+    "source": "/assets/skins/external/ghost/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "luffy",
+    "source": "/assets/skins/external/luffy/luffy.glb",
+    "portrait": true
+  }
+]

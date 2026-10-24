@@ -1,6 +1,8 @@
 // Catálogo de skins. El servidor valida contra esta lista; los modelos viven en el cliente:
 // las procedurales en client/src/game/models/skins.js y las externas (GLB) se configuran en
-// client/src/game/character/skins/registry.js (aquí solo van sus IDs genéricos).
+// client/src/game/character/skins/registry.js. Las externas salen de las carpetas reales
+// (externalSkins.js lo genera scripts/skins-manifest.js antes de dev y build).
+import EXTERNAL_MANIFEST from './externalSkins.js';
 
 export const SKIN_RARITIES = {
   comun: { name: 'Común', color: '#9ca3af' },
@@ -19,6 +21,9 @@ export const ACHIEVEMENTS = {
 };
 
 export const DEFAULT_SKIN = 'soldado';
+
+// Nombre por defecto de una externa: el id con mayúscula inicial (el registro del cliente puede cambiarlo)
+export const externalName = (id) => id.charAt(0).toUpperCase() + id.slice(1);
 
 export const SKINS = [
   { id: 'soldado', name: 'Soldado', collection: 'Básicas', rarity: 'comun' },
@@ -56,11 +61,11 @@ export const SKINS = [
   { id: 'pirata', name: 'Rey Pirata Fantasma', collection: 'Leyendas del Cálculo', rarity: 'legendario' },
   { id: 'hechicero', name: 'Hechicero del Gradiente', collection: 'Leyendas del Cálculo', rarity: 'legendario' },
 
-  // Espacios para skins externas (GLB). Nombre, rareza y ajustes: client/src/game/character/skins/registry.js
-  ...[1, 2, 3, 4, 5].map((n) => ({
-    id: `externa_0${n}`,
-    name: `Skin externa ${n}`,
-    collection: 'Skins externas',
+  // Personajes especiales (GLB): una por carpeta en client/public/assets/skins/external/
+  ...EXTERNAL_MANIFEST.map(({ id }) => ({
+    id,
+    name: externalName(id),
+    collection: 'Personajes especiales',
     rarity: 'legendario',
     type: 'external',
   })),

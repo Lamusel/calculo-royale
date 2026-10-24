@@ -71,6 +71,18 @@ const tilt = new THREE.Quaternion();
 const yaw = new THREE.Quaternion();
 const BAR_WIDTH = 1.8;
 
+// Jeep quieto, sin barra de vida (referencia para ajustar skins sentadas en /skins)
+export function JeepModel(props) {
+  return (
+    <group {...props}>
+      <mesh geometry={bodyGeometry} material={modelMaterial} castShadow receiveShadow />
+      {WHEELS.map(([x, z], i) => (
+        <mesh key={i} geometry={wheelGeometry} material={modelMaterial} position={[x, WHEEL_R, z]} castShadow />
+      ))}
+    </group>
+  );
+}
+
 function Jeep({ id, register }) {
   const refs = useRef({ wheels: [] }).current;
   const set = (key) => (node) => {

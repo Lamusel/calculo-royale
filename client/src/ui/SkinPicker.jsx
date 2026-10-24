@@ -1,129 +1,138 @@
-import { useEffect, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useState } from 'react';
 import { ACHIEVEMENTS, SKIN_RARITIES } from '@calculo-royale/shared/skins';
-import { loadSkinSystem } from '../game/character/Character.js';
-import { externalSkins, getSkinEntry, listSkins } from '../game/character/skins/index.js';
+import { getSkinEntry, listSkins, rarityColor, skinInitials } from '../game/character/skins/index.js';
 import { loadProgress, loadSkin, saveSkin, unlockedSkins } from '../achievements.js';
-import SoldierModel from '../game/SoldierModel.jsx';
 
-// Vista 3D girando de una skin (con chaleco 2 para ver cómo luce en partida)
-function Turntable({ skin, color }) {
-  const group = useRef(null);
-  useFrame((_, delta) => (group.current.rotation.y += delta * 0.8));
+// Retrato 2D de una skin: el PNG de client/public/assets/skins/portraits/<id>.png, o si no hay
+// (o falla al cargar) una tarjeta con el color de la rareza y las iniciales. Nunca carga un GLB.
+export function SkinPortrait({ skin, className = '' }) {
+  const [broken, setBroken] = useState(false);
+  const color = rarityColor(skin.rarity);
+  if (skin.portrait && !broken) {
+    return (
+      <img
+        src={skin.portrait}
+        alt={skin.name}
+        loading="lazy"
+        draggable={false}
+        onError={() => setBroken(true)}
+        className={`object-cover ${className}`}
+        style={{ background: `linear-gradient(160deg, ${color}55, #0c0f08)` }}
+      />
+    );
+  }
   return (
-    <group ref={group}>
-      <SoldierModel skin={skin} color={color} vest={2} />
-    </group>
-  );
-}
-
-export function SkinPreview({ skin, color, className }) {
-  return (
-    <Canvas className={className} dpr={[1, 1.5]} camera={{ fov: 32, position: [3.4, 2.1, 3.4] }} onCreated={({ camera }) => camera.lookAt(0, 1.1, 0)}>
-      <hemisphereLight args={['#e8eef2', '#3a3628', 1.6]} />
-      <directionalLight position={[3, 5, 2]} intensity={1.8} />
-      <Turntable skin={skin} color={color} />
-      <mesh rotation-x={-Math.PI / 2}>
-        <circleGeometry args={[1.1, 32]} />
-        <meshLambertMaterial color="#2f3a1e" />
-      </mesh>
-    </Canvas>
+    <div
+      className={`flex items-center justify-center font-black tracking-wider text-white/90 ${className}`}
+      style={{ background: `linear-gradient(160deg, ${color}, ${color}33 70%, #0c0f08)`, fontSize: 'clamp(1.1rem, 4vw, 2rem)' }}
+      aria-label={skin.name}
+    >
+      {skinInitials(skin.name)}
+    </div>
   );
 }
 
 const SKINS = listSkins();
-const COLLECTIONS = [...new Set(SKINS.map((s) => s.collection))];
+const GAME_COLLECTIONS = [...new Set(SKINS.filter((s) => s.type !== 'external').map((s) => s.collection))];
+const SPECIAL = SKINS.filter((s) => s.type === 'external');
 
-// Qué skins externas tienen su archivo (las demás dicen "Asset pendiente")
-function useExternalStatus() {
-  const [status, setStatus] = useState({});
-  useEffect(() => {
-    let alive = true;
-    loadSkinSystem().then(async (m) => {
-      const entries = await Promise.all(externalSkins().map(async (e) => [e.id, await m.assetStatus(e)]));
-      if (alive) setStatus(Object.fromEntries(entries));
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
-  return status;
+function SkinCard({ skin, selected, current, locked, onSelect }) {
+  return (
+    <button
+      onClick={() => onSelect(skin.id)}
+      className={`relative overflow-hidden rounded-md border-2 text-left transition ${
+        selected ? 'border-khaki shadow-[0_0_0_2px_rgba(0,0,0,0.6)]' : 'border-white/10 hover:border-white/30'
+      }`}
+      style={{ borderBottomColor: rarityColor(skin.rarity) }}
+    >
+      <SkinPortrait skin={skin} className={`aspect-[3/4] w-full ${locked ? 'opacity-40 grayscale' : ''}`} />
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 pb-1 pt-4 text-[clamp(10px,2.6vw,13px)] font-bold leading-tight">
+        {skin.name}
+      </span>
+      {locked && <span className="absolute right-1 top-1 text-sm">🔒</span>}
+      {current && <span className="absolute left-1 top-1 rounded bg-khaki px-1 text-[9px] font-bold uppercase text-olive-950">en uso</span>}
+    </button>
+  );
 }
 
-// Selector del lobby: colecciones, rareza, candado de las de honor con su logro
-export default function SkinPicker({ color, onChoose, onClose }) {
+function Section({ title, children }) {
+  return (
+    <div className="mb-3">
+      <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-khaki-light">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+const GRID = 'grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(clamp(72px,18vw,112px),1fr))]';
+
+// Selector del lobby: retratos 2D, "Skins del juego" (por colección) y "Personajes especiales";
+// las de honor con candado y su logro. La elección se guarda en el navegador y solo viaja el skinId.
+export default function SkinPicker({ onChoose, onClose }) {
   const progress = loadProgress();
   const unlocked = new Set(unlockedSkins(progress));
   const [current] = useState(loadSkin);
   const [selected, setSelected] = useState(current);
-  const external = useExternalStatus();
   const skin = getSkinEntry(selected);
-  const pending = skin.type === 'external' && external[skin.id] === 'missing';
   const rarity = SKIN_RARITIES[skin.rarity];
-  const locked = skin.rarity === 'honor' && !unlocked.has(skin.id);
+  const isLocked = (s) => s.rarity === 'honor' && !unlocked.has(s.id);
+  const locked = isLocked(skin);
   const achievement = skin.achievement && ACHIEVEMENTS[skin.achievement];
+  const card = (s) => <SkinCard key={s.id} skin={s} selected={selected === s.id} current={current === s.id} locked={isLocked(s)} onSelect={setSelected} />;
 
   return (
-    <div className="absolute inset-0 z-50 flex bg-black/80 p-2 text-stone-100 sm:p-4">
-      <div className="mx-auto flex h-full w-full max-w-5xl gap-3 overflow-hidden rounded-lg border border-khaki-dark bg-olive-950/95 p-3">
-        <div className="flex w-[42%] shrink-0 flex-col gap-2">
-          <SkinPreview skin={skin.id} color={color} className="min-h-0 flex-1 rounded bg-gradient-to-b from-olive-800 to-olive-950" />
-          <div>
-            <p className="text-lg font-black uppercase tracking-wide">{skin.name}</p>
-            <p className="text-xs text-stone-400">
-              {skin.collection} · <b style={{ color: rarity.color }}>{rarity.name}</b>
-            </p>
-            {pending && <p className="mt-1 text-xs text-orange-300">Asset pendiente: se verá el soldado gris hasta que pongas su archivo</p>}
-            {achievement && (
-              <p className={`mt-1 text-xs ${locked ? 'text-orange-300' : 'text-green-300'}`}>
-                {locked ? '🔒 ' : '✓ '}
-                {achievement.description} ({Math.min(progress[skin.achievement], achievement.goal)}/{achievement.goal})
+    <div
+      className="absolute inset-0 z-50 flex bg-black/80 text-stone-100"
+      style={{ padding: 'max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left))' }}
+    >
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-2 overflow-hidden rounded-lg border border-khaki-dark bg-olive-950/95 p-2 sm:flex-row sm:gap-3 sm:p-3 landscape:flex-row">
+        <div className="flex shrink-0 gap-2 sm:w-[34%] sm:flex-col landscape:w-[30%] landscape:flex-col">
+          <SkinPortrait skin={skin} className="aspect-[3/4] w-24 shrink-0 rounded-md sm:w-full landscape:min-h-0 landscape:w-full landscape:flex-1" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 landscape:flex-none">
+            <div>
+              <p className="truncate text-[clamp(14px,3.5vw,20px)] font-black uppercase tracking-wide">{skin.name}</p>
+              <p className="text-xs text-stone-400">
+                {skin.collection} · <b style={{ color: rarity.color }}>{rarity.name}</b>
               </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              disabled={locked}
-              onClick={() => {
-                saveSkin(skin.id);
-                onChoose(skin.id);
-                onClose();
-              }}
-              className="flex-1 rounded bg-khaki py-2 font-bold text-olive-950 disabled:opacity-40"
-            >
-              {selected === current ? 'Usando esta' : 'Usar esta skin'}
-            </button>
-            <button onClick={onClose} className="rounded bg-black/40 px-3 py-2 text-sm">
-              Cerrar
-            </button>
+              {achievement && (
+                <p className={`mt-1 text-xs ${locked ? 'text-orange-300' : 'text-green-300'}`}>
+                  {locked ? '🔒 ' : '✓ '}
+                  {achievement.name}: {achievement.description} ({Math.min(progress[skin.achievement], achievement.goal)}/{achievement.goal})
+                </p>
+              )}
+            </div>
+            <div className="mt-auto flex gap-2">
+              <button
+                disabled={locked}
+                onClick={() => {
+                  saveSkin(skin.id);
+                  onChoose(skin.id);
+                  onClose();
+                }}
+                className="flex-1 rounded bg-khaki py-2 text-sm font-bold text-olive-950 disabled:opacity-40"
+              >
+                {selected === current ? 'Usando esta' : 'Usar esta skin'}
+              </button>
+              <button onClick={onClose} className="rounded bg-black/40 px-3 py-2 text-sm">
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
-        <div className="min-w-0 flex-1 overflow-y-auto pr-1">
-          {COLLECTIONS.map((collection) => (
-            <div key={collection} className="mb-3">
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.25em] text-khaki-light">{collection}</p>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                {SKINS.filter((s) => s.collection === collection).map((s) => {
-                  const isLocked = s.rarity === 'honor' && !unlocked.has(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelected(s.id)}
-                      className={`flex items-center gap-2 rounded border px-2 py-1.5 text-left text-sm ${
-                        selected === s.id ? 'border-khaki bg-khaki/15' : 'border-white/10 bg-black/30'
-                      }`}
-                    >
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SKIN_RARITIES[s.rarity].color }} />
-                      <span className={`truncate ${isLocked ? 'text-stone-500' : ''}`}>{s.name}</span>
-                      {isLocked && <span className="ml-auto text-xs">🔒</span>}
-                      {s.type === 'external' && external[s.id] === 'missing' && <span className="ml-auto text-[10px] text-orange-300">pendiente</span>}
-                      {s.id === current && <span className="ml-auto text-[10px] text-khaki-light">en uso</span>}
-                    </button>
-                  );
-                })}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1">
+          {SPECIAL.length > 0 && (
+            <Section title="Personajes especiales">
+              <div className={GRID}>{SPECIAL.map(card)}</div>
+            </Section>
+          )}
+          <Section title="Skins del juego">
+            {GAME_COLLECTIONS.map((collection) => (
+              <div key={collection} className="mb-2">
+                <p className="mb-1 text-[11px] font-semibold text-stone-400">{collection}</p>
+                <div className={GRID}>{SKINS.filter((s) => s.collection === collection && s.type !== 'external').map(card)}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </Section>
         </div>
       </div>
     </div>

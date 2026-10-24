@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, DEFAULT_SKIN, SKINS } from '@calculo-royale/shared/skins';
+import { ACHIEVEMENTS, DEFAULT_SKIN, SKIN_IDS, SKINS } from '@calculo-royale/shared/skins';
 
 // Progreso de logros y skin elegida, guardados en este navegador (sin base de datos).
 // Si el almacenamiento no está disponible, el juego sigue sin guardar.
@@ -44,7 +44,9 @@ export function recordEvent(type, value = 1, storage = globalThis.localStorage) 
 
 export function loadSkin(storage = globalThis.localStorage) {
   try {
-    return storage.getItem(SKIN_KEY) ?? DEFAULT_SKIN;
+    // Una skin que ya no existe (carpeta borrada o espacio viejo) vuelve a la base
+    const id = storage.getItem(SKIN_KEY);
+    return SKIN_IDS.has(id) ? id : DEFAULT_SKIN;
   } catch {
     return DEFAULT_SKIN;
   }

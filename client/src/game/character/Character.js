@@ -48,7 +48,7 @@ export class Character {
     this.dropExternal();
     this.applyWeaponOffset();
     if (this.entry.type === 'external') {
-      // Mientras carga se ve el soldado gris
+      // Mientras carga se ve la skin procedural base
       this.mountProcedural(FALLBACK_SKIN);
       this.status = 'loading';
       const wanted = skinId;
@@ -164,10 +164,12 @@ export class Character {
   pose(dt = 0) {
     poseDeltas(this.anim, this.deltas);
     applyMasterPose(this.rig, this.deltas);
+    const socket = this.rig.sockets.WeaponSocket_R;
+    // Sin brazos propios (modos A y B) el arma flotaría sobre la cabeza al tomar las cuerdas
+    socket.visible = !(this.external && this.external.mode !== 'C' && this.anim.air);
     if (!this.external) return;
     this.external.apply(this.anim, this.deltas, dt);
     // Modo C: el socket del arma sigue la mano del modelo (otras proporciones que el rig)
-    const socket = this.rig.sockets.WeaponSocket_R;
     socket.position.set(0, 0, 0);
     this.visualRoot.updateMatrixWorld(true);
     if (this.external.handWorldPosition(handWorld)) socket.position.copy(socket.parent.worldToLocal(handWorld));

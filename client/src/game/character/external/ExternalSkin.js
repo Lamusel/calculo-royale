@@ -98,9 +98,12 @@ export class ExternalSkin {
         this.play(this.mixer ? findAnimationBySemantic(this.clips, st.state) : null);
       } else {
         // Estático: inclinación hacia adelante y rebote al caminar para no verse congelado
+        // En el jeep no dobla las piernas: queda de pie en la cabina (las piernas las tapa la
+        // carrocería, revisado en /skins). La caída, el paracaídas y la muerte inclinan el rig entero
         const stride = Math.min(st.speed / 6, 1);
         o.rotation.z = -0.12 * stride;
         o.position.y = Math.abs(Math.sin(st.phase)) * 0.07 * stride;
+        if (st.victory) o.rotation.y += Math.sin(st.victoryT * 5) * 0.5;
       }
     }
     this.mixer?.update(dt);

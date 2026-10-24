@@ -3,13 +3,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { canUseSkin, EXTERNAL_SKIN_IDS } from '@calculo-royale/shared/skins';
+import { canUseSkin, EXTERNAL_SKIN_IDS, externalName } from '@calculo-royale/shared/skins';
 import { findAnimationBySemantic } from '../client/src/game/character/animation/clips.js';
 import { Character } from '../client/src/game/character/Character.js';
 import { mapBones, isRigCompatible } from '../client/src/game/character/external/bones.js';
 import { normalizeExternalSkin } from '../client/src/game/character/external/normalize.js';
 import { acquireSkin, cacheInfo, limitWarnings, releaseSkin, setLoaderDeps } from '../client/src/game/character/loaders/skinLoader.js';
-import { externalSkins, getSkinEntry } from '../client/src/game/character/skins/index.js';
+import { getSkinEntry, listSkins, rarityColor, skinInitials } from '../client/src/game/character/skins/index.js';
+import { EXTERNAL_OVERRIDES, registerExternalSkin, registerFromManifest } from '../client/src/game/character/skins/registry.js';
+import MANIFEST from '../client/src/game/character/skins/external-manifest.json' with { type: 'json' };
+import { buildManifest } from '../scripts/skins-manifest.js';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const glbBytes = () => {
   const buffer = new ArrayBuffer(16);
@@ -68,18 +74,61 @@ const until = async (check) => {
 
 const worldDir = (a, b) => b.getWorldPosition(new THREE.Vector3()).sub(a.getWorldPosition(new THREE.Vector3())).normalize();
 
-test('5 espacios genéricos, legendarios, en su carpeta; el servidor los valida como al resto', () => {
-  const externals = externalSkins();
-  assert.deepEqual(externals.map((e) => e.id), ['externa_01', 'externa_02', 'externa_03', 'externa_04', 'externa_05']);
-  assert.deepEqual(EXTERNAL_SKIN_IDS, externals.map((e) => e.id));
-  for (const [i, e] of externals.entries()) {
-    assert.equal(e.name, `Skin externa ${i + 1}`);
+// Skins de prueba (no dependen de las carpetas reales)
+for (const n of [1, 2, 3, 4, 5]) registerExternalSkin({ id: `prueba_${n}`, source: `/assets/skins/external/prueba_${n}/character.glb` });
+
+test('registro único: externas = carpetas reales del manifiesto, sin espacios vacíos; el servidor las valida', () => {
+  const real = MANIFEST.map((m) => m.id);
+  assert.deepEqual(EXTERNAL_SKIN_IDS, real);
+  for (const id of real) {
+    const e = getSkinEntry(id);
+    assert.equal(e.type, 'external');
     assert.equal(e.rarity, 'legendario');
-    assert.equal(e.source, `/assets/skins/external/${e.id}/character.glb`);
-    assert.equal(canUseSkin(e.id), true);
+    assert.equal(e.collection, 'Personajes especiales');
+    assert.equal(e.source, MANIFEST.find((m) => m.id === id).source);
+    assert.equal(canUseSkin(id), true);
   }
-  assert.equal(canUseSkin('externa_06'), false);
-  assert.equal(getSkinEntry('no-existe').id, 'fallback');
+  assert.equal(listSkins().some((s) => /^externa_0/.test(s.id)), false);
+  assert.equal(canUseSkin('prueba_1'), false);
+  assert.equal(canUseSkin('prueba_1'), false, 'el servidor solo conoce las carpetas reales');
+  assert.equal(getSkinEntry('no-existe').id, 'soldado', 'respaldo: la procedural base');
+});
+
+test('registro: sin línea propia el nombre es el id con mayúscula; con línea, la línea manda', () => {
+  registerFromManifest([{ id: 'zorro', source: '/assets/skins/external/zorro/zorro.glb', portrait: false }]);
+  const e = getSkinEntry('zorro');
+  assert.equal(e.name, 'Zorro');
+  assert.equal(e.portrait, null);
+  assert.equal(e.scale, 1);
+  assert.equal(externalName('luffy'), 'Luffy');
+  if (EXTERNAL_OVERRIDES['2b'] && MANIFEST.some((m) => m.id === '2b')) assert.equal(getSkinEntry('2b').name, EXTERNAL_OVERRIDES['2b'].name);
+});
+
+test('manifiesto: character.glb, o el único .glb de la carpeta; carpetas vacías o ambiguas fuera', () => {
+  const root = mkdtempSync(join(tmpdir(), 'skins-'));
+  const dir = join(root, 'external');
+  const portraits = join(root, 'portraits');
+  mkdirSync(portraits, { recursive: true });
+  for (const [id, files] of Object.entries({ a: ['character.glb', 'otro.glb'], b: ['b.glb', 'tex.png'], c: [], d: ['uno.glb', 'dos.glb'] })) {
+    mkdirSync(join(dir, id), { recursive: true });
+    for (const file of files) writeFileSync(join(dir, id, file), '');
+  }
+  writeFileSync(join(portraits, 'b.png'), '');
+  assert.deepEqual(buildManifest(dir, portraits), [
+    { id: 'a', source: '/assets/skins/external/a/character.glb', portrait: false },
+    { id: 'b', source: '/assets/skins/external/b/b.glb', portrait: true },
+  ]);
+  assert.deepEqual(buildManifest(join(root, 'no-existe'), portraits), []);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('iniciales y color de rareza para las tarjetas sin retrato', () => {
+  assert.equal(skinInitials('Isaac Newton'), 'IN');
+  assert.equal(skinInitials('2B'), '2B');
+  assert.equal(skinInitials('Furina'), 'FU');
+  assert.equal(skinInitials('Comando Culona'), 'CC');
+  assert.equal(rarityColor('legendario'), '#eab308');
+  assert.equal(rarityColor('nada'), '#9ca3af');
 });
 
 test('normalización: 1,8 m, pies en el suelo, centrado y orientado a +X', () => {
@@ -115,9 +164,9 @@ test('alias: reconoce Mixamo y nombres comunes', () => {
 
 test('modo C: las animaciones del Master Rig mueven los huesos del modelo igual que los del rig', async () => {
   setLoaderDeps(fakeLoader(mixamoModel()));
-  const ch = new Character({ skin: 'externa_01', color: '#f00' });
+  const ch = new Character({ skin: 'prueba_1', color: '#f00' });
   assert.equal(ch.status, 'loading');
-  assert.ok(ch.procedural, 'mientras carga se ve el soldado gris');
+  assert.ok(ch.procedural, 'mientras carga se ve el soldado base');
   await until(() => ch.status !== 'loading');
   assert.equal(ch.status, 'ready');
   assert.equal(ch.external.mode, 'C');
@@ -147,7 +196,7 @@ test('caché con conteo de referencias: una descarga; se libera solo cuando nadi
   let disposed = 0;
   scene.traverse((o) => o.isMesh && (o.geometry.dispose = () => disposed++));
   setLoaderDeps(fakeLoader(scene, calls));
-  const entry = getSkinEntry('externa_02');
+  const entry = getSkinEntry('prueba_2');
   await Promise.all([acquireSkin(entry), acquireSkin(entry)]);
   assert.equal(calls.fetch, 1);
   assert.equal(cacheInfo().find((c) => c.source === entry.source).refs, 2);
@@ -158,20 +207,20 @@ test('caché con conteo de referencias: una descarga; se libera solo cuando nadi
   assert.equal(cacheInfo().some((c) => c.source === entry.source), false);
 });
 
-test('fallback: si falta el archivo (404 o index.html) queda el soldado gris y se avisa', async () => {
+test('fallback: si falta el archivo (404 o index.html) queda el soldado base y se avisa', async () => {
   const warnings = [];
   const warn = console.warn;
   console.warn = (...args) => warnings.push(args.join(' '));
   try {
     setLoaderDeps({ fetch: async () => ({ ok: false, status: 404 }) });
-    const ch = new Character({ skin: 'externa_03', color: '#0f0' });
+    const ch = new Character({ skin: 'prueba_3', color: '#0f0' });
     await until(() => ch.status !== 'loading');
     assert.equal(ch.status, 'fallback');
-    assert.ok(ch.procedural?.meshes.torso, 'sigue el soldado gris');
-    assert.ok(warnings.some((w) => w.startsWith('Skin asset missing: externa_03')));
+    assert.ok(ch.procedural?.meshes.torso, 'sigue el soldado base');
+    assert.ok(warnings.some((w) => w.startsWith('Skin asset missing: prueba_3')));
     // index.html en lugar del GLB (servidor de desarrollo o rewrite)
     setLoaderDeps({ fetch: async () => ({ ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('<!doctype html>').buffer }) });
-    const ch2 = new Character({ skin: 'externa_04', color: '#0f0' });
+    const ch2 = new Character({ skin: 'prueba_4', color: '#0f0' });
     await until(() => ch2.status !== 'loading');
     assert.equal(ch2.status, 'fallback');
     // Cambio de skin en caliente a una procedural
@@ -190,7 +239,7 @@ test('modo A (sin esqueleto): mira hacia donde apunta, se balancea al caminar y 
     model.add(m);
   });
   setLoaderDeps(fakeLoader(model));
-  const ch = new Character({ skin: 'externa_05', color: '#00f' });
+  const ch = new Character({ skin: 'prueba_5', color: '#00f' });
   await until(() => ch.status !== 'loading');
   assert.equal(ch.external.mode, 'A');
   const lods = ['LOD0', 'LOD1', 'LOD2'].map((n) => ch.external.model.getObjectByName(n));
@@ -200,6 +249,12 @@ test('modo A (sin esqueleto): mira hacia donde apunta, se balancea al caminar y 
   for (let i = 0; i < 20; i++) ch.update({ x: i * 0.3, y: 0, aim: 1.1, dead: false, shotAgo: 1e9, weapon: 0, seat: null }, i * 50, 0.05);
   assert.ok(Math.abs(ch.external.object.rotation.y - 1.1) < 1e-9, 'mira a la mira');
   assert.ok(ch.external.object.rotation.z < 0, 'se inclina al caminar');
+  // En el jeep no camina: sin inclinación ni rebote; victoria: se balancea
+  for (let i = 0; i < 10; i++) ch.update({ x: 6, y: 0, aim: 1.1, dead: false, shotAgo: 1e9, weapon: 0, seat: 'driver', seatYaw: 0 }, 1100 + i * 50, 0.05);
+  assert.ok(Math.abs(ch.external.object.rotation.z) < 0.02 && Math.abs(ch.external.object.position.y) < 0.01, 'quieto en el jeep');
+  ch.update({ x: 6, y: 0, aim: 1.1, dead: false, shotAgo: 1e9, weapon: 0, seat: null, victory: true }, 1700, 0.05);
+  ch.update({ x: 6, y: 0, aim: 1.1, dead: false, shotAgo: 1e9, weapon: 0, seat: null, victory: true }, 1800, 0.1);
+  assert.notEqual(ch.external.object.rotation.y, 1.1, 'se mueve en la victoria');
   ch.setShadows(false);
   assert.equal(lods[2].castShadow, false);
   ch.dispose();

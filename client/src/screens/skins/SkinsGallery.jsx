@@ -7,11 +7,19 @@ import { ANIM_STATES } from '../../game/character/animation/pose.js';
 import { boneNames, characterStats, CharacterDebug } from '../../game/character/debug.js';
 import { getSkinEntry, listSkins } from '../../game/character/skins/index.js';
 import { QUALITY } from '../../game/quality.js';
+import { JeepModel } from '../../game/Vehicles.jsx';
+import { modelMaterial } from '../../game/models/build.js';
+import { parachuteGeometry } from '../../game/models/parachute.js';
+
+const chuteGeometry = parachuteGeometry({ radius: 1.9, height: 4.6, hook: 1.9, colors: ['#e9d77a', '#2f7d4a'] });
+
+// Dónde queda el jeep respecto al jugador sentado (shared/vehicle.js: seatPosition con rumbo 0)
+const JEEP_AT = { drive: [-0.15, 0, 0.45], passenger: [0.75, 0, -0.35] };
 
 // Galería de skins (/skins): cada skin con sus animaciones, LOD, calidad, estadísticas y
 // depuración. Se carga con import() dinámico: no pesa en el juego.
 
-const ANIM_LABELS = { idle: 'Idle', walk: 'Walk', run: 'Run', aim: 'Aim', shoot: 'Shoot', reload: 'Reload', death: 'Death', victory: 'Victory', drive: 'Drive', passenger: 'Pasajero' };
+const ANIM_LABELS = { idle: 'Idle', walk: 'Walk', run: 'Run', aim: 'Aim', shoot: 'Shoot', reload: 'Reload', death: 'Death', victory: 'Victory', drive: 'Drive', passenger: 'Pasajero', fall: 'Caída', chute: 'Paracaídas' };
 const TYPE_LABELS = { procedural: 'Procedural', external: 'Externa (GLB)' };
 const MODE_LABELS = { A: 'A · estático', B: 'B · esqueleto propio', C: 'C · Master Rig (alias)' };
 
@@ -32,6 +40,7 @@ function animInput(anim, t, state) {
     seat: anim === 'drive' ? 'driver' : anim === 'passenger' ? 'passenger' : null,
     seatYaw: 0,
     victory: anim === 'victory',
+    air: anim === 'fall' || anim === 'chute' ? anim : null,
   };
 }
 
@@ -81,7 +90,11 @@ export default function SkinsGallery() {
   const [status, setStatus] = useState({});
   const [, tick] = useState(0);
   const info = useRef({ calls: 0, status: 'idle' });
-  const character = useMemo(() => new Character({ skin: selected, color: '#f97316', vest: 2 }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const character = useMemo(() => {
+    const c = new Character({ skin: selected, color: '#f97316', vest: 2 });
+    c.setWeapon(2); // con el arma en la mano, para ajustar weaponOffset
+    return c;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const entry = getSkinEntry(selected);
   const q = QUALITY[quality];
 
@@ -123,6 +136,8 @@ export default function SkinsGallery() {
           <hemisphereLight args={['#e8eef2', '#3a3628', 1.4]} />
           <directionalLight position={[3, 6, 2]} intensity={2} castShadow={q.shadows} shadow-mapSize={[1024, 1024]} />
           <Viewer character={character} anim={anim} debug={debug} info={info} autoRotate={autoRotate} />
+          {JEEP_AT[anim] && <JeepModel position={JEEP_AT[anim]} />}
+          {anim === 'chute' && <mesh geometry={chuteGeometry} material={modelMaterial} />}
           <mesh rotation-x={-Math.PI / 2} receiveShadow>
             <circleGeometry args={[2.2, 48]} />
             <meshLambertMaterial color="#3f4f26" />
@@ -136,7 +151,7 @@ export default function SkinsGallery() {
           </p>
           {pending && <p className="text-xs font-bold text-orange-300">{entry.name} · Asset pendiente</p>}
           {character.status === 'loading' && <p className="text-xs text-sky-300">Cargando…</p>}
-          {character.status === 'fallback' && !pending && <p className="text-xs text-red-300">No se pudo cargar: se ve el soldado gris</p>}
+          {character.status === 'fallback' && !pending && <p className="text-xs text-red-300">No se pudo cargar: se ve el soldado base</p>}
         </div>
         <div className="absolute inset-x-3 bottom-3 flex flex-wrap gap-1">
           {ANIM_STATES.map((a) => (
