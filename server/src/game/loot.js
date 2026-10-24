@@ -122,17 +122,20 @@ const takesFromBox = (player, { item }) => LOOT_ITEMS[item].kind !== 'weapon' ||
 // Tomar lo que hay en el suelo (E o "Tomar"). Devuelve los nombres de lo que tomó.
 export function pickUp(game, player, entry) {
   const names = [];
+  const items = [];
   const drops = [];
   if (entry.box) {
     entry.box = entry.box.filter((content) => {
       if (!takesFromBox(player, content) || !wants(player, content.item)) return true;
       drops.push(...take(player, content.item, content.state));
       names.push(LOOT_ITEMS[content.item].name);
+      items.push(content.item);
       return false;
     });
   } else if (wants(player, entry.item)) {
     drops.push(...take(player, entry.item, entry.state));
     names.push(LOOT_ITEMS[entry.item].name);
+    items.push(entry.item);
   }
   if (!names.length) {
     game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, { full: true, name: entry.box ? 'Caja de botín' : LOOT_ITEMS[entry.item].name });
@@ -147,7 +150,7 @@ export function pickUp(game, player, entry) {
   }
   dropAround(game, player.x, player.y, drops);
   player.pickups = (player.pickups ?? 0) + names.length;
-  game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, { names });
+  game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, { names, items });
   return names;
 }
 

@@ -14,12 +14,15 @@ export function magazineOf(weaponId, attachments) {
   return attachments?.mag === 'extmag' ? Math.round(base * ATTACHMENTS.extmag) : base;
 }
 
-// Arma con la dispersión ajustada por culata y punto rojo (el resto igual)
-export function weaponWith(weaponId, attachments) {
+// Arma con la dispersión ajustada por culata, punto rojo y retroceso acumulado (el resto igual).
+// recoil: 0 en el primer disparo; disparando seguido sube (ver RECOIL y combat.js).
+export function weaponWith(weaponId, attachments, recoil = 0) {
   const w = WEAPONS[weaponId];
   let spread = w.spread;
   if (attachments?.stock === 'stock') spread *= ATTACHMENTS.stock;
   if (attachments?.scope === 'reddot') spread *= ATTACHMENTS.reddot;
+  // La escopeta abre su abanico fijo: el retroceso no lo ensancha
+  if (w.pellets === 1) spread *= 1 + recoil;
   return spread === w.spread ? w : { ...w, spread };
 }
 

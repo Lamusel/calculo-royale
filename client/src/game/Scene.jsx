@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AIM_CANCEL_ZONE, CAMERA, DEPLOY, SCOPES, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
+import { AIM_CANCEL_ZONE, CAMERA, DEPLOY, SCOPE_ZOOM, SCOPES, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
 import { HOUSES } from '@calculo-royale/shared/mapLayout';
 import { goalDistance } from './cameraMath.js';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
@@ -144,7 +144,9 @@ function CameraRig({ client, frameRef, sun, overview }) {
     const shift = touch && !overview && innerWidth > innerHeight ? CAMERA.touchShift : 0;
     s.lookGoal.set(Math.cos(aim) * amount, 0, -Math.sin(aim) * amount - shift);
     s.look.lerp(s.lookGoal, 1 - Math.exp(-5 * dt));
-    s.zoom += ((extra > 0 ? SNIPER_ZOOM : 1) * deployZoom - s.zoom) * (1 - Math.exp(-3 * dt));
+    // Apuntando con mira: la cámara se aleja (2x, 4x: más alcance visible); el francotirador, igual que antes
+    const scopeZoom = extra > 0 ? Math.max(aimPreview() === 'sniper' ? SNIPER_ZOOM : 1, SCOPE_ZOOM[inputState.scope ?? 'none'] ?? 1) : 1;
+    s.zoom += (scopeZoom * deployZoom - s.zoom) * (1 - Math.exp(-3 * dt));
     // La niebla se aleja con la cámara (desde el bus se ve el mapa)
     if (scene.fog) {
       // THREE.Fog no tiene userData: la distancia base se guarda aquí (y se renueva si cambia la niebla)
@@ -163,6 +165,12 @@ function CameraRig({ client, frameRef, sun, overview }) {
       focus.x += (Math.random() * 2 - 1) * shake * 0.3;
     }
     client.trauma = Math.max(0, client.trauma - dt * 1.6);
+    // Retroceso del arma propia: la cámara salta un poco hacia arriba (con culata, la mitad)
+    if (client.kick > 0.001) {
+      camera.position.y += client.kick * 0.35;
+      focus.y += client.kick * 0.5;
+      client.kick = Math.max(0, client.kick - dt * 3);
+    }
     camera.lookAt(focus);
 
     if (sun.current) {

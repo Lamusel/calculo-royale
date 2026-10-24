@@ -411,3 +411,17 @@ export const CAMERA = {
   deployDistance: 30.5, // en el bus y cayendo: la vista amplia de siempre (se ve dónde caer)
   lookScaleFrom: 30.5, // la mira y el francotirador se ajustaron con la cámara a 30,5 m: se escalan
 };
+
+// --- Accesorios que se notan (fase 25) ---
+// Retroceso: cada disparo abre la dispersión (multiplicador 1 + retroceso) y se recupera con el tiempo.
+// La culata reduce lo que sube por disparo. La cámara del que dispara "salta" en proporción.
+export const RECOIL = {
+  perShot: { pistol: 0.35, shotgun: 0.25, rifle: 0.22, sniper: 0.6 },
+  max: 2.2, // dispersión hasta ×3,2 disparando seguido
+  recoverPerSec: 2.5,
+  stock: 0.5, // con culata, la mitad por disparo
+};
+// Casco contra el francotirador (además de HELMET para todo lo demás)
+export const HELMET_SNIPER = [0, 0.25, 0.4, 0.55];
+// Mira al apuntar: la cámara se aleja este factor (más alcance visible) además de adelantarse
+export const SCOPE_ZOOM = { none: 1, reddot: 1, scope2x: 1.25, scope4x: 1.45 };

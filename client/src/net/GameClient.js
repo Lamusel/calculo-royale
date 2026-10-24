@@ -1,5 +1,7 @@
 import { GRENADE, LOOT, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { weaponWith } from '@calculo-royale/shared/inventory';
+import { RECOIL } from '@calculo-royale/shared/constants';
+import { GEAR_INFO } from '@calculo-royale/shared/gear';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/codec';
 import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
@@ -176,6 +178,7 @@ export class GameClient {
         if (result.outcome === 'correct') sound.lockOpen();
         else if (result.outcome !== 'cancelled') sound.lockFail();
         this.crateResult = { ...result, at: performance.now() };
+        this.showGear(result.items);
         if (result.outcome === 'correct') {
           this.achieve('correct');
           if (this.lastCrateRarity === 3) this.achieve('legendary');
@@ -280,6 +283,7 @@ export class GameClient {
       [EVENTS.LOOT_REMOVE]: (ids) => this.lootStore.remove(ids),
       [EVENTS.LOOT_TAKEN]: (result) => {
         this.lootToast = { ...result, at: performance.now() };
+        this.showGear(result.items);
         if (!result.full) sound.pickup();
         vibrate(result.full ? 60 : 15);
       },
@@ -434,7 +438,13 @@ export class GameClient {
     }
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
-    const w = weaponWith(id, this.self.attachments);
+    // Retroceso previsto (el mismo cálculo que el servidor): abre la dispersión y la cámara salta
+    this.localRecoil = Math.max(0, (this.localRecoil ?? 0) - ((now - (this.localRecoilAt ?? now)) / 1000) * RECOIL.recoverPerSec);
+    const w = weaponWith(id, this.self.attachments, this.localRecoil);
+    const step = (RECOIL.perShot[id] ?? 0.3) * (this.self.attachments?.stock ? RECOIL.stock : 1);
+    this.localRecoil = Math.min(RECOIL.max, this.localRecoil + step);
+    this.localRecoilAt = now;
+    this.kick = Math.min(1, (this.kick ?? 0) + step);
     this.localNextFire = now + w.intervalMs;
     this.predictedMag -= 1;
 
@@ -572,6 +582,12 @@ export class GameClient {
     if (ids.length === 0) return;
     const i = ids.indexOf(this.followId);
     this.followId = ids[(i + step + ids.length) % ids.length];
+  }
+
+  // Tarjeta breve con el equipo recién recibido: icono, nombre y efecto (fase 25)
+  showGear(items = []) {
+    const gear = items.filter((id) => GEAR_INFO[id]);
+    if (gear.length) this.gearCard = { items: gear, at: performance.now() };
   }
 
   // Botín en el suelo (lo leen la escena y el aviso "Tomar …")

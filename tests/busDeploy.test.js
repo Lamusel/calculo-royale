@@ -87,7 +87,7 @@ test('todos empiezan en el bus; no se puede saltar antes de que arranque; saltar
   assert.equal(p.deploy, null, 'aterrizó');
   assert.equal(p.weaponId, 'pistol');
   const landed = room.game.snapshot([...room.players.values()])[1].find((e) => e[0] === p.id);
-  assert.equal(landed.length, 9, 'en el suelo ya no lleva altura');
+  assert.equal(landed[9], 0, 'en el suelo la altura es 0 (desde la fase 25 siempre viaja, seguida del equipo)');
 });
 
 test('al final de la ruta saltan todos los que queden', () => {

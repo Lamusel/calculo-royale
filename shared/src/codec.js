@@ -5,7 +5,7 @@
 //   aimDist:  distancia al punto apuntado (alcance de la granada)
 //
 // Snapshot (S → C): [tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles]
-//   players:    [[id, x, y, aim, lastSeq, hp, armorLevel, weaponIndex, flags], ...]
+//   players:    [[id, x, y, aim, lastSeq, hp, armorLevel, weaponIndex, flags, altura, equipo], ...] (equipo: gear.js)
 //   grenades:   [[id, x, y], ...]
 //   dummies:    [hp, ...] (solo en el lobby)
 //   shots:      [[shooterId, weaponIndex, ox, oy, a1, d1, a2, d2, ...], ...] ángulo y distancia por bala
@@ -16,6 +16,8 @@
 //   airdrop:    [x, y, ms para aterrizar] mientras está activo, o []
 //   bombing:    [sector, ms para el impacto] durante el aviso de un bombardeo, o []
 //   vehicles:   [[id, x, y, rumbo, velocidad, vida, conductor, pasajero, estado], ...] (estado: VEHICLE_STATE)
+
+import { encodeGear } from './gear.js';
 
 const round2 = (v) => Math.round(v * 100) / 100;
 
@@ -42,9 +44,8 @@ export function decodeInput(data) {
 
 // En el aire se agrega la altura (índice 9)
 export function encodePlayerState(p, weaponIndex, flags) {
-  const entry = [p.id, round2(p.x), round2(p.y), round2(p.aim), p.lastSeq, Math.ceil(p.hp), p.armorLevel, weaponIndex, flags];
-  if (p.deploy) entry.push(Math.round(p.deploy.z * 10) / 10);
-  return entry;
+  // [9] altura en el despliegue (0 en el suelo) · [10] equipo visible (gear.js)
+  return [p.id, round2(p.x), round2(p.y), round2(p.aim), p.lastSeq, Math.ceil(p.hp), p.armorLevel, weaponIndex, flags, p.deploy ? Math.round(p.deploy.z * 10) / 10 : 0, encodeGear(p)];
 }
 
 // Disparo con silenciador: el índice del arma lleva este bit (no sale en el minimapa de los demás)

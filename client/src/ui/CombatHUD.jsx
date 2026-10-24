@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { ARMOR_ABSORB, BACKPACK, GRENADE, JEEP, LOOT_ITEMS, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { ARMOR_ABSORB, BACKPACK, GRENADE, JEEP, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
 import WeaponIcon from './WeaponIcon.jsx';
+import { GEAR_INFO } from '@calculo-royale/shared/gear';
+import { magazineOf } from '@calculo-royale/shared/inventory';
 
 const ammoText = (mag, reserve) => `${mag} / ${reserve ?? 0}`;
 
@@ -103,6 +105,7 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
           <>
             <WeaponIcon weapon={primary.id} className="h-4 w-12" />
             <span className="font-mono">{ammoText(primary.mag, primary.reserve)}</span>
+            {self.attachments?.mag && <span className="text-[0.6rem] text-amber-300">📦 cargador {magazineOf(primary.id, self.attachments)}</span>}
           </>
         ) : (
           <span className="py-1.5 text-stone-500">vacío</span>
@@ -141,32 +144,69 @@ const HEALS = [
   ['medkit', 'medkits', 'Botiquín', '5', '✚'],
   ['drink', 'drinks', 'Bebida', '6', '⚡'],
 ];
-const SHORT = { reddot: 'Punto rojo', scope2x: '2x', scope4x: '4x', extmag: 'Cargador+', stock: 'Culata', silencer: 'Silenciador' };
+
+// Lo que lleva puesto el jugador como ids de objeto (chaleco, casco, mochila y accesorios)
+function equipped(self) {
+  const ids = [];
+  if (self.armorLevel > 0) ids.push(`armor${self.armorLevel}`);
+  if (self.helmetLevel > 0) ids.push(`helmet${self.helmetLevel}`);
+  if (self.backpackLevel > 0) ids.push(`backpack${self.backpackLevel}`);
+  for (const a of Object.values(self.attachments ?? {})) if (a) ids.push(a);
+  return ids;
+}
+
+// Panel al tocar el equipo: qué tienes y qué efecto da cada cosa (fase 25)
+function GearPanel({ self, onClose }) {
+  const ids = equipped(self);
+  return (
+    <div className="absolute bottom-full left-0 mb-2 w-[min(80vw,19rem)] rounded-lg border border-white/15 bg-black/85 p-2 text-[0.7rem] text-stone-100 shadow-xl">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="font-mono uppercase tracking-[0.2em] text-khaki-light">Tu equipo</span>
+        <TouchButton onPress={onClose} className="rounded bg-white/10 px-1.5 text-xs">
+          ✕
+        </TouchButton>
+      </div>
+      {ids.length === 0 && <p className="text-stone-400">Nada todavía: abre cajas (con su pregunta) para conseguir chaleco, casco, mochila y accesorios.</p>}
+      {ids.map((id) => (
+        <p key={id} className="flex gap-1.5 py-0.5">
+          <span className="w-5 text-center text-sm leading-tight">{GEAR_INFO[id].icon}</span>
+          <span>
+            <b>{GEAR_INFO[id].short}</b> · {GEAR_INFO[id].effect}
+          </span>
+        </p>
+      ))}
+    </div>
+  );
+}
 
 function Inventory({ self, isTouch, drinkLeft }) {
   const cap = BACKPACK[self.backpackLevel ?? 0];
-  const gear = [
-    ['Ch', self.armorLevel],
-    ['Ca', self.helmetLevel ?? 0],
-    ['Mo', self.backpackLevel ?? 0],
+  const [panel, setPanel] = useState(false);
+  const slots = [
+    ['🦺', 'Chaleco', self.armorLevel],
+    ['⛑️', 'Casco', self.helmetLevel ?? 0],
+    ['🎒', 'Mochila', self.backpackLevel ?? 0],
   ];
   const attachments = Object.values(self.attachments ?? {}).filter(Boolean);
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="relative flex flex-col items-start gap-1">
+      {panel && <GearPanel self={self} onClose={() => setPanel(false)} />}
       <div className="flex flex-wrap gap-1">
-        {gear.map(([label, level]) => (
-          <span
-            key={label}
-            className={`rounded px-1.5 py-0.5 font-mono text-[0.65rem] ${level > 0 ? 'bg-black/65 text-sky-200' : 'bg-black/35 text-stone-500'}`}
-            title={{ Ch: 'Chaleco', Ca: 'Casco', Mo: 'Mochila' }[label]}
+        {slots.map(([icon, name, level]) => (
+          <TouchButton
+            key={name}
+            onPress={() => setPanel((p) => !p)}
+            title={`${name} ${level || 'sin'} · toca para ver el efecto`}
+            className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[0.7rem] ${level > 0 ? 'bg-black/65 text-sky-100' : 'bg-black/35 text-stone-500 grayscale'}`}
           >
-            {label} {level || '–'}
-          </span>
+            <span className="text-sm leading-none">{icon}</span>
+            <span className="font-mono">{level || '–'}</span>
+          </TouchButton>
         ))}
         {attachments.map((a) => (
-          <span key={a} className="rounded bg-black/65 px-1.5 py-0.5 text-[0.65rem] text-amber-200" title={LOOT_ITEMS[a].name}>
-            {SHORT[a]}
-          </span>
+          <TouchButton key={a} onPress={() => setPanel((p) => !p)} title={GEAR_INFO[a].short} className="rounded bg-black/65 px-1.5 py-0.5 text-sm leading-none">
+            {GEAR_INFO[a].icon}
+          </TouchButton>
         ))}
         {drinkLeft > 0 && <span className="rounded bg-emerald-800/80 px-1.5 py-0.5 text-[0.65rem] text-emerald-100">⚡ {drinkLeft} s</span>}
       </div>
@@ -255,7 +295,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
 
 // Interfaz de combate: vida, armas, botones táctiles, aviso para tomar armas y pantalla de muerte
 export default function CombatHUD({ view, phase, roster, myId, isTouch, client }) {
-  const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle, healing, drinkLeft, lootToast } = view;
+  const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle, healing, drinkLeft, lootToast, gearCard } = view;
   if (!self) return null;
 
   return (
@@ -283,9 +323,25 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
         </div>
       )}
 
-      {self.alive && phase === 'playing' && (
+      {/* También en el campo de entrenamiento: se ve el chaleco del armero */}
+      {self.alive && (
         <div className="absolute bottom-3 left-3 z-20">
           <Inventory self={self} isTouch={isTouch} drinkLeft={drinkLeft} />
+        </div>
+      )}
+
+      {gearCard && (
+        <div className="pointer-events-none absolute left-1/2 top-[30%] z-30 flex w-[min(90vw,22rem)] -translate-x-1/2 flex-col gap-1">
+          {gearCard.items.map((id) => (
+            <div key={id} className="flex items-center gap-2 rounded-lg border border-amber-400/60 bg-black/85 px-3 py-2 text-stone-100 shadow-lg">
+              <span className="text-2xl leading-none">{GEAR_INFO[id].icon}</span>
+              <span className="text-[0.8rem] leading-snug">
+                <b className="text-amber-200">{GEAR_INFO[id].short}</b>
+                <br />
+                {GEAR_INFO[id].effect}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

@@ -86,6 +86,8 @@ export default function SkinsGallery() {
   const [lod, setLod] = useState(0);
   const [quality, setQuality] = useState('high');
   const [autoRotate, setAutoRotate] = useState(true);
+  // Equipo completo puesto (casco 3, mochila 3 y todos los accesorios): para ver cómo luce cada skin
+  const [gear, setGear] = useState(false);
   const [debug, setDebug] = useState({ skeleton: false, box: false, sockets: false, names: false });
   const [status, setStatus] = useState({});
   const [, tick] = useState(0);
@@ -179,6 +181,15 @@ export default function SkinsGallery() {
         <div className="flex flex-wrap items-center gap-1">
           <button onClick={() => setAutoRotate((v) => !v)} className={chip(autoRotate)}>
             Girar
+          </button>
+          <button
+            onClick={() => {
+              character.setGear(gear ? null : { helmet: 3, backpack: 3, scope: 'scope4x', mag: true, stock: true, muzzle: true });
+              setGear(!gear);
+            }}
+            className={chip(gear)}
+          >
+            Equipo
           </button>
           {[['skeleton', 'Esqueleto'], ['box', 'Caja'], ['sockets', 'Sockets'], ['names', 'Huesos']].map(([k, label]) => (
             <button key={k} onClick={() => toggle(k)} className={chip(debug[k])}>

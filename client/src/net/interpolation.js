@@ -80,6 +80,7 @@ export class SnapshotBuffer {
         weapon: pb[7],
         flags: pb[8],
         z: lerp(pa[9] ?? 0, pb[9] ?? 0, alpha), // altura en el despliegue (0 en el suelo)
+        gear: pb[10] ?? 0, // equipo visible (shared/gear.js)
       });
     }
     for (const [id, gb] of b.grenades) {

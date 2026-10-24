@@ -144,13 +144,14 @@ function finish(game, player, outcome, chosen = null) {
   if (!crate.practice) recordStats(player, q, correct, chosen);
 
   if (correct) {
-    const loot = rollLoot(crate.rarity).map((item) => applyLoot(player, item, game));
+    const items = rollLoot(crate.rarity);
+    const loot = items.map((item) => applyLoot(player, item, game));
     crate.state = CRATE_STATE.OPEN;
     if (crate.practice) crate.reopenAt = game.now + PRACTICE_CRATE_RESET_MS;
     player.streak++;
     const radar = player.streak % STREAK_FOR_RADAR === 0;
     if (radar) player.radarUntil = game.now + RADAR_MS;
-    game.room.emitTo(player, EVENTS.CRATE_RESULT, { crateId, outcome, loot, explicacion: q.explicacion, radar });
+    game.room.emitTo(player, EVENTS.CRATE_RESULT, { crateId, outcome, loot, items, explicacion: q.explicacion, radar });
     return;
   }
 

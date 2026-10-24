@@ -1,4 +1,4 @@
-import { DUMMY_HP, DUMMY_REGEN_MS, INTERACT_RADIUS, RESPAWN_MS, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { DUMMY_HP, DUMMY_REGEN_MS, INTERACT_RADIUS, ITEM_NAMES, RESPAWN_MS, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodePlayerState } from '@calculo-royale/shared/codec';
 import { applyInput } from '@calculo-royale/shared/movement';
@@ -126,7 +126,13 @@ export class Game {
     }
     const options = [];
     const rack = this.room.phase === 'lobby' ? nearestRack(player.x, player.y, INTERACT_RADIUS) : null;
-    if (rack) options.push({ dist: Math.hypot(rack.x - player.x, rack.y - player.y), use: () => player.giveItem(rack.item) });
+    if (rack) options.push({ dist: Math.hypot(rack.x - player.x, rack.y - player.y), use: () => {
+          player.giveItem(rack.item);
+          // Tarjeta del equipo también en el campo de entrenamiento (el chaleco del armero)
+          const item = rack.item === 'armor' ? `armor${player.armorLevel}` : rack.item;
+          this.room.emitTo(player, EVENTS.LOOT_TAKEN, { names: [ITEM_NAMES[rack.item]], items: [item] });
+        },
+      });
     const crate = nearestCrate(this, player.x, player.y);
     if (crate) options.push({ dist: crate.dist, use: () => openCrate(this, player, crate.crate) });
     const vehicle = nearestVehicle(this, player.x, player.y);

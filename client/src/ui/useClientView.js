@@ -106,6 +106,7 @@ export function useClientView(client, frameRef, phase) {
             : null,
         drinkLeft: Math.max(0, Math.ceil(((client.drinkEndsAt ?? 0) - now) / 1000)),
         lootToast: client.lootToast && now - client.lootToast.at < LOOT_TOAST_MS ? client.lootToast : null,
+        gearCard: client.gearCard && now - client.gearCard.at < 4000 ? client.gearCard : null,
       });
     };
     read();

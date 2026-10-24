@@ -231,7 +231,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
       </div>
 
       {/* Ayuda de controles abajo a la izquierda, lejos del killfeed y de la barra de armas */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[28vw] rounded bg-black/45 px-2.5 py-1.5 text-[10px] leading-snug text-stone-200 sm:text-[11px]">
+      <div className="pointer-events-none absolute bottom-[7.5rem] left-3 z-20 max-w-[28vw] rounded bg-black/45 px-2.5 py-1.5 text-[10px] leading-snug text-stone-200 sm:text-[11px]">
         {isTouch ? (
           <>
             <b className="text-khaki-light">Toca</b> el joystick derecho: dispara al más cercano

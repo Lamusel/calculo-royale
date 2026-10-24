@@ -263,7 +263,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **22. Revisión final** ✅ | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
 | **23. Botín y cajas (correcciones)** ✅ | En el suelo solo munición, vendas y casco 1; todo lo demás sale de cajas con pregunta; ninguna caja en campo abierto; lo recogido desaparece para todos | El cálculo vuelve a ser la llave del poder |
 | **24. Cámara más cercana** ✅ | Soldado ~2 veces más grande, cámara dinámica (edificios, campo abierto, jeep, mira) y "Distancia de cámara" en Opciones | Ver bien al personaje en celular y PC |
-| **25. Accesorios que se notan** | Accesorios visibles en el modelo, efectos reales (dispersión, retroceso, capacidad, casco) e iconos y tarjetas que los explican | Saber qué hace cada cosa |
+| **25. Accesorios que se notan** ✅ | Accesorios visibles en el modelo, efectos reales (dispersión, retroceso, capacidad, casco) e iconos y tarjetas que los explican | Saber qué hace cada cosa |
 | **26. Skins con esqueleto** | Los 4 GLB nuevos (Mixamo) en modo C, comprimidos si hace falta y ajustados con la cámara nueva | Personajes especiales animados de verdad |
 | **27. Cuadrícula 8×8, sin jefe e interfaz** | Sectores A1–H8, se quita el modo Profe Jefe Final, lobby y ayuda de controles que no se enciman | Interfaz limpia y un solo modo |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
@@ -452,6 +452,11 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Cámara dinámica con transiciones suaves:** dentro de un edificio ×0,85; corriendo en campo abierto ×1,1; en jeep ×1,3; con mira 2x/4x o francotirador apuntando se desplaza hacia la mira (como antes) y se aleja un poco.
 - **Celular horizontal:** el soldado queda un poco por debajo del centro (se ve más hacia adelante).
 - **Revisar** paredes semitransparentes, techos que se ocultan y silueta con la cámara nueva (la oclusión usa la misma inclinación), el proyector (sigue con su plano general) y capturas en 740×360, 844×390 y 1920×1080 antes y después.
+
+#### Fase 25: accesorios que se notan
+- **Visibles en el modelo:** mira (punto rojo, 2x, 4x) sobre el arma, cargador ampliado más largo, culata o estabilizador, silenciador en el cañón, casco por nivel en la cabeza y mochila por nivel (más grande) en la espalda. El equipo de cada jugador viaja en el snapshot (`shared/src/gear.js`) para que todos lo vean. Si la skin no puede llevarlos, iconos junto a su barra de vida.
+- **Efectos reales** (valores en `constants.js`, validados en el servidor): punto rojo −15 % de dispersión y retícula; miras 2x/4x alejan y adelantan la cámara al apuntar, con su retícula; **retroceso** nuevo (disparar seguido abre la dispersión y la cámara salta) que la culata reduce a la mitad; cargador ampliado +50 % (se ve en el HUD); silenciador; mochila (límites en el HUD); casco que resta más daño del francotirador, y el número de daño que ve el que dispara es el real.
+- **Explicados en pantalla:** tarjeta al recoger (icono, nombre, efecto), iconos en lugar de "Ch/Ca/Mo" y panel "Tu equipo" al tocarlos, retícula de la mira al apuntar.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -754,7 +759,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 22 | ✅ Completa | Calidad y brillo revisados, servidor en Virginia preparado (falta que el usuario haga la mudanza), carga en ambos despliegues, checklist del día D y lista final. Falta el celular antiguo real |
 | 23 | ✅ Completa | En el suelo solo munición, vendas y casco 1; todas las cajas en edificios o puntos de interés; lo recogido desaparece para todos |
 | 24 | ✅ Completa | Cámara a 16 m y 52° (soldado ~1,9 veces más grande), dinámica, "Distancia de cámara" en Opciones, oclusión con la cámara real |
-| 25 | Pendiente | |
+| 25 | ✅ Completa | Accesorios visibles en el modelo y en la red, retroceso y culata, casco contra francotirador, retícula por mira, tarjetas e iconos que los explican |
 | 26 | Pendiente | |
 | 27 | Pendiente | |
 
@@ -897,3 +902,16 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Capturas en 740×360, 844×390 y 1920×1080 antes y después (Edge) | PASS |
 | Build y 184 pruebas | PASS |
 | Sensación en un celular real (¿Normal es la mejor por defecto?) | Pendiente |
+- 2026-10-24: **fase 25 completa (accesorios que se notan).** *En el modelo* (`client/src/game/models/gear.js`, `Character.setGear`): cada arma tiene sus puntos de montaje (boca del cañón, riel, culata, cargador) y se le agregan la mira (punto rojo con su luz, 2x con lente, 4x larga), el cargador ampliado curvo, la culata reforzada (en la pistola, un estabilizador) y el silenciador; el casco va en `HeadTopSocket` (1 gorra de combate, 2 con visera, 3 pesado con barbuquejo) y la mochila en `BackSocket`, más grande por nivel. El equipo viaja en el snapshot como un número de bits (`encodeGear`/`decodeGear`, posición 10 de cada jugador; la 9, la altura, ahora siempre viaja), así todos ven lo que lleva cada uno. En las skins externas con esqueleto usable (modo C), el arma, el casco y la mochila siguen los huesos del propio modelo; si el esqueleto no sirve (huesos todos en el mismo punto), casco y mochila aparecen como iconos junto a su barra de vida. *Efectos:* **retroceso** nuevo en el servidor (`RECOIL`): cada disparo suma (pistola 0,35, rifle 0,22, francotirador 0,6) y se recupera 2,5 por segundo; la dispersión se multiplica por 1 + retroceso (hasta ×3,2); la **culata** suma la mitad por disparo y además −30 % de dispersión base; el cliente predice lo mismo para sus trazadoras y la cámara del que dispara salta en proporción (con culata, la mitad). **Punto rojo** −15 % de dispersión y retícula roja al apuntar. **Miras 2x/4x**: al apuntar la cámara se aleja ×1,25/×1,45 (más alcance visible) y se adelanta, con retícula de cruz (la 4x con marcas). **Casco**: ahora reduce el daño antes del chaleco y más al francotirador (10/16/22 % general, 25/40/55 % del francotirador); el número de daño que ve el que dispara es el real, ya reducido. **Cargador ampliado**: el HUD muestra "📦 cargador 45" en el arma. **Mochila**: límites en las ranuras de curación y de granadas. **Silenciador**: como antes, sonido apagado y fuera del minimapa. *Explicados:* tarjeta al recoger (de una caja, del suelo, de una caja de botín o del armero del campo de entrenamiento) con icono, nombre y efecto (`GEAR_INFO`); en el HUD, iconos 🦺 ⛑️ 🎒 con su nivel y los iconos de cada accesorio en lugar de "Ch/Ca/Mo"; tocarlos abre "Tu equipo" con el efecto de cada cosa. El inventario se ve también en el campo de entrenamiento (la ayuda de controles subió para no encimarse). En `/skins` hay un botón **Equipo** que pone todo para revisar cada skin. *Verificado en Edge:* soldado con mira 4x, cargador, culata, silenciador, casco 3 y mochila 3 en `/skins`; tomar el chaleco del armero muestra la tarjeta "Absorbe 25 de daño antes que la vida", el icono 🦺 1 y el panel al tocarlo; sin errores. *Encontrado para la fase 26:* los 4 GLB nuevos traen el esqueleto con todos los huesos en el origen (ver fase 26). 7 pruebas nuevas (191 en total).
+
+| Validación fase 25 | Estado |
+|---|---|
+| Equipo en el snapshot y en el modelo (arma, casco, mochila más grande por nivel) (prueba) | PASS |
+| Dispersión: punto rojo y culata la cierran; retroceso la abre; escopeta sin cambio (prueba) | PASS |
+| Retroceso sube, se recupera y la culata lo reduce a la mitad (prueba) | PASS |
+| Capacidad: cargador ampliado y mochila (prueba) | PASS |
+| Casco: más contra el francotirador y número de daño real (prueba) | PASS |
+| Cada objeto de equipo con icono, nombre y efecto (prueba) | PASS |
+| Tarjeta, iconos y panel en el HUD; equipo visible en `/skins` (Edge) | PASS |
+| Build y 191 pruebas | PASS |
+| Retícula de mira en partida vista en celular | Pendiente (las miras solo salen de cajas con pregunta) |

@@ -8,6 +8,7 @@ import { aimPreview, inputState } from '../input/inputState.js';
 import { Character } from './character/Character.js';
 import { characterStats, CharacterDebug, debugSkinsEnabled } from './character/debug.js';
 import { textTexture } from './labels.js';
+import { decodeGear } from '@calculo-royale/shared/gear';
 import { modelMaterial } from './models/build.js';
 import { sound } from '../audio/sound.js';
 import { parachuteGeometry } from './models/parachute.js';
@@ -42,6 +43,12 @@ const chuteGeometry = parachuteGeometry({ radius: 1.9, height: 4.6, hook: 1.9, c
 
 // Icono de "expuesto" sobre quien está abriendo una caja
 const exposedLabel = textTexture('⚠ ABRIENDO', { color: '#fb923c', size: 44 });
+// Casco y mochila como iconos junto a la barra cuando la skin externa no los puede llevar puestos
+const gearIconLabel = (g) => {
+  const text = `${g.helmet ? `⛑${g.helmet}` : ''}${g.helmet && g.backpack ? ' ' : ''}${g.backpack ? `🎒${g.backpack}` : ''}`;
+  return text ? textTexture(text, { color: '#fde68a', size: 40 }) : null;
+};
+
 // Nivel del chaleco junto a la barra
 const vestLabels = [null, 1, 2, 3].map((n) => n && textTexture(`Ch${n}`, { color: '#93c5fd', size: 40 }));
 
@@ -116,6 +123,9 @@ function SoldierAvatar({ player, isMe, register, blobShadow }) {
       <sprite ref={set('vest')} position={[BAR_WIDTH / 2 + 0.32, BAR_Y + 0.05, 0]} scale={[0.6, 0.27, 1]} visible={false} renderOrder={2}>
         <spriteMaterial ref={set('vestMaterial')} depthWrite={false} transparent />
       </sprite>
+      <sprite ref={set('gearIcons')} position={[-BAR_WIDTH / 2 - 0.45, BAR_Y + 0.05, 0]} scale={[0.6, 0.27, 1]} visible={false} renderOrder={2}>
+        <spriteMaterial ref={set('gearMaterial')} depthWrite={false} transparent />
+      </sprite>
     </group>
   );
 }
@@ -189,6 +199,8 @@ export default function Players({ client, roster, myId, frameRef, quality, night
       const isMe = id === myId;
       const ch = a.character;
       ch.setVest(info.armorLevel);
+      const gear = decodeGear(info.gear);
+      ch.setGear(gear);
       ch.setWeapon(info.weapon < 4 ? info.weapon : -1);
       const external = Boolean(ch.external);
       const lod = lodFor(focus ? Math.hypot(pos.x - focus.x, pos.y - focus.y) : 0, quality, night);
@@ -237,6 +249,14 @@ export default function Players({ client, roster, myId, frameRef, quality, night
       a.armor.visible = !dead && info.armorLevel > 0;
       a.armor.scale.x = (BAR_WIDTH * ARMOR_ABSORB[info.armorLevel]) / ARMOR_ABSORB[3];
       a.vest.visible = a.armor.visible;
+      // Skin externa sin los huesos del rig: casco y mochila como iconos junto a la barra
+      const icons = !dead && !ch.gearOnModel ? gearIconLabel(gear) : null;
+      a.gearIcons.visible = Boolean(icons);
+      if (icons && a.gearMaterial.map !== icons.texture) {
+        a.gearMaterial.map = icons.texture;
+        a.gearMaterial.needsUpdate = true;
+        a.gearIcons.scale.set(icons.aspect * 0.27, 0.27, 1);
+      }
       if (debug) {
         a.debug ??= new CharacterDebug(ch, scene);
         a.debug.update();

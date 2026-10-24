@@ -87,6 +87,8 @@ export class Player {
     this.healing = null; // { item, until } mientras se venda o usa un botiquín
     this.drinkUntil = 0; // la bebida cura de a poco y da velocidad hasta este momento
     this.speedFactor = 1;
+    this.recoil = 0; // retroceso acumulado (fase 25)
+    this.recoilAt = 0;
     // Modo jefe (fase 21)
     this.bossQuestion = null; // pregunta de escudo o de volver pendiente
     this.reviveAt = 0;

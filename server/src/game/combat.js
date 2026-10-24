@@ -1,7 +1,9 @@
 import {
-  GRENADE, HELMET, LAG_COMP_MAX_MS, MAP_HALF, PLAYER_RADIUS, TICK_MS, WEAPON_IDS, WEAPONS,
+  GRENADE, LAG_COMP_MAX_MS, MAP_HALF, PLAYER_RADIUS, TICK_MS, WEAPON_IDS, WEAPONS,
 } from '@calculo-royale/shared/constants';
 import { magazineOf, weaponWith } from '@calculo-royale/shared/inventory';
+import { helmetFactor } from '@calculo-royale/shared/gear';
+import { RECOIL } from '@calculo-royale/shared/constants';
 import { BUTTONS, dummyTargetId, EVENTS } from '@calculo-royale/shared/protocol';
 import { encodeShot } from '@calculo-royale/shared/codec';
 import { hasLineOfSight, overlapsObstacle, raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
@@ -76,20 +78,23 @@ export function aliveCount(game) {
   return n;
 }
 
-// Aplica daño (primero al chaleco, salvo ignoreArmor). Devuelve { dealt, killed }.
+const SNIPER_INDEX = WEAPON_IDS.indexOf('sniper');
+
+// Aplica daño: el casco lo reduce (más contra el francotirador), después el chaleco absorbe y el
+// resto va a la vida (salvo ignoreArmor: zona y bombardeo). Devuelve { dealt (ya reducido), killed }.
 export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ignoreArmor = false } = {}) {
   if (!target.alive) return { dealt: 0, killed: false };
+  if (!ignoreArmor) amount *= helmetFactor(target.helmetLevel ?? 0, weaponIndex === SNIPER_INDEX);
   const absorbed = ignoreArmor ? 0 : Math.min(target.armor, amount);
   target.armor -= absorbed;
   if (target.armor <= 0 && target.armorLevel > 0) {
     target.armor = 0;
     target.armorLevel = 0;
   }
-  // El casco resta un porcentaje de lo que pasa el chaleco
-  const toHp = (amount - absorbed) * (ignoreArmor ? 1 : 1 - HELMET[target.helmetLevel ?? 0]);
+  const toHp = amount - absorbed;
   target.hp -= toHp;
   const hitter = game.room.players.get(attackerId);
-  if (hitter && hitter !== target) hitter.damageDealt = (hitter.damageDealt ?? 0) + Math.min(amount, toHp + absorbed);
+  if (hitter && hitter !== target) hitter.damageDealt = (hitter.damageDealt ?? 0) + amount;
   if (target.hp > 0) return { dealt: amount, killed: false };
 
   target.hp = 0;
@@ -124,12 +129,21 @@ function damageTarget(game, target, amount, attackerId, weaponIndex) {
   return damagePlayer(game, target.player, amount, attackerId, weaponIndex);
 }
 
+// Retroceso que queda ahora (se recupera RECOIL.recoverPerSec por segundo desde el último disparo)
+export function currentRecoil(game, p) {
+  return Math.max(0, (p.recoil ?? 0) - ((game.now - (p.recoilAt ?? game.now)) / 1000) * RECOIL.recoverPerSec);
+}
+
+// Cuánto sube el retroceso por disparo (con culata, menos)
+export const recoilStep = (weaponId, attachments) => (RECOIL.perShot[weaponId] ?? 0.3) * (attachments?.stock ? RECOIL.stock : 1);
+
 // Disparo hitscan con compensación de lag: los objetivos se ubican donde el tirador los veía
 export function fire(game, p, input) {
   const id = p.weaponId;
-  // Culata y punto rojo cierran la dispersión
-  const w = weaponWith(id, p.attachments);
   if (game.now < p.nextFireAt || p.reloadUntil) return;
+  // Retroceso acumulado (se recupera con el tiempo); culata y punto rojo cierran la dispersión
+  p.recoil = currentRecoil(game, p);
+  const w = weaponWith(id, p.attachments, p.recoil);
   p.healing = null; // disparar cancela la curación
   if (p.mag <= 0) {
     startReload(game, p);
@@ -165,10 +179,13 @@ export function fire(game, p, input) {
   });
 
   for (const [target, amount] of damageByTarget) {
-    const { killed } = damageTarget(game, target, amount, p.id, weaponIndex);
-    game.room.emitTo(p, EVENTS.COMBAT_HIT, [target.id, amount, target.x, target.y, killed ? 1 : 0]);
+    // El número que ve el que dispara es el daño real (con el casco del otro ya descontado)
+    const { dealt, killed } = damageTarget(game, target, amount, p.id, weaponIndex);
+    game.room.emitTo(p, EVENTS.COMBAT_HIT, [target.id, Math.round(dealt), target.x, target.y, killed ? 1 : 0]);
   }
   game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, pellets, p.attachments?.muzzle === 'silencer'));
+  p.recoil = Math.min(RECOIL.max, p.recoil + recoilStep(id, p.attachments));
+  p.recoilAt = game.now;
   if (p.mag === 0) startReload(game, p);
 }
 
@@ -212,8 +229,8 @@ function explode(game, g) {
     const d = Math.hypot(x - g.x, y - g.y);
     if (d > GRENADE.radius || !hasLineOfSight(g.x, g.y, x, y)) return;
     const amount = Math.round(GRENADE.damage * (1 - 0.8 * (d / GRENADE.radius)));
-    const { killed } = damageTarget(game, target, amount, g.ownerId, GRENADE_INDEX);
-    if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, [target.id, amount, x, y, killed ? 1 : 0]);
+    const { dealt, killed } = damageTarget(game, target, amount, g.ownerId, GRENADE_INDEX);
+    if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, [target.id, Math.round(dealt), x, y, killed ? 1 : 0]);
   };
   // En el modo jefe las granadas de los jugadores no dañan a los compañeros, sí al jefe (sin escudo)
   if (game.boss && game.room.phase === 'playing') {

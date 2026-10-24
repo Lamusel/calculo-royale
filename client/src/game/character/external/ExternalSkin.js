@@ -11,6 +11,14 @@ import { normalizeExternalSkin } from './normalize.js';
 const LOD_NAME = /(^|[_\s.-])LOD([0-2])$/i;
 const SECONDARY_RATIO = 0.15; // piezas con menos del 15 % de los triángulos de la principal
 
+// La cabeza tiene que quedar bien por encima de la cadera (en metros, ya normalizado a 1,8 m)
+function usableSkeleton(holder, mapping) {
+  holder.updateMatrixWorld(true);
+  const head = mapping.head?.getWorldPosition(new THREE.Vector3());
+  const hips = mapping.hips?.getWorldPosition(new THREE.Vector3());
+  return Boolean(head && hips && head.y - hips.y > 0.3);
+}
+
 const trianglesOf = (mesh) => {
   const g = mesh.geometry;
   return (g.index ? g.index.count : g.attributes.position.count) / 3;
@@ -30,6 +38,9 @@ export class ExternalSkin {
     });
     this.mode = isRigCompatible(this.mapping) ? 'C' : skinned ? 'B' : 'A';
     this.animator = this.mode === 'C' ? createExternalAnimator(holder, this.mapping) : null;
+    // ¿Los huesos están donde van? (algunos exportadores dejan todo el esqueleto en el origen):
+    // si no, casco y mochila se muestran como iconos (fase 25)
+    this.bonesUsable = this.mode === 'C' && usableSkeleton(holder, this.mapping);
 
     const clips = asset.animations ?? [];
     this.clips = clips;
@@ -111,8 +122,14 @@ export class ExternalSkin {
 
   // Dónde está la mano derecha del modelo (para llevar el arma ahí), o null
   handWorldPosition(target) {
-    const hand = this.mapping.handR;
-    return hand && this.mode === 'C' && !this.action ? hand.getWorldPosition(target) : null;
+    return this.boneWorldPosition('handR', target);
+  }
+
+  // Posición de un hueso del modelo (modo C, sin clip de victoria sonando), o null: el arma, el
+  // casco y la mochila siguen al modelo, que tiene otras proporciones que el Master Rig
+  boneWorldPosition(name, target) {
+    const bone = this.mapping[name];
+    return bone && this.mode === 'C' && !this.action ? bone.getWorldPosition(target) : null;
   }
 
   stats() {
