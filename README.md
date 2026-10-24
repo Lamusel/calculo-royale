@@ -645,7 +645,7 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 
 ### Mudar el servidor a Virginia (menos ping desde Colombia)
 
-Render no deja cambiar la región de un servicio, así que se crea uno nuevo en Virginia y el viejo (Oregón) **sigue funcionando** hasta que el nuevo esté probado. `render.yaml` ya trae los dos: `calculo-royale-server` (el actual) y `calculo-royale-server-va` (`region: virginia`). Con Render en Oregón el ping desde Colombia es de ~210 ms; en Virginia debería bajar a ~80–120 ms.
+Render no deja cambiar la región de un servicio, así que se crea uno nuevo en Virginia y el viejo (Oregón) **sigue funcionando** hasta que el nuevo esté probado. `render.yaml` ya trae los dos: `calculo-royale-server` (el actual) y `calculo-royale-server-va` (`region: virginia`). Medido desde Colombia con 20 clientes: Oregón ~212 ms de ping (p50), Virginia ~133 ms (p50, p95 147 ms). El servicio de Virginia ya existe: Render lo creó solo al subir `render.yaml` (Blueprint con auto-sync), así que el paso 1 de abajo ya está hecho; faltan los pasos 3 a 7.
 
 1. **Crear el servicio nuevo.** En **render.com** → menú izquierdo **Blueprints** → **calculo-royale**.
    - Si dice **Auto-Sync: Yes**, el `git push` de este cambio ya creó **calculo-royale-server-va** (míralo en **Dashboard**).
@@ -855,3 +855,4 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Modo en el lobby, jefe, barra, pregunta y fases en PC y celular (Edge) | PASS |
 | Build y 179 pruebas | PASS |
 | Partida completa de 8 min con el curso | Pendiente |
+- 2026-10-24: **mudanza a Virginia, primer paso hecho solo.** Al subir la fase 22, el Blueprint de Render (con auto-sync) creó `calculo-royale-server-va` en Virginia y quedó en línea; el servidor viejo sigue igual. Prueba de carga corta contra el nuevo (20 clientes, 45 s): ping p50 133 ms y p95 147 ms (Oregón: 212 y 267 ms), tick de 0,9 ms, snapshots cada 50 ms, 0 desconexiones. Falta que el usuario ponga `CLIENT_ORIGIN` en el servicio nuevo, cambie `VITE_SERVER_URL` en Vercel (y haga Redeploy) y apunte UptimeRobot al nuevo; después, borrar el viejo.
