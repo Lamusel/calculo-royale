@@ -261,6 +261,11 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **20. Modo presentación y modo fácil** ✅ | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
 | **21. Modo Profe Jefe Final** ✅ | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
 | **22. Revisión final** ✅ | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
+| **23. Botín y cajas (correcciones)** ✅ | En el suelo solo munición, vendas y casco 1; todo lo demás sale de cajas con pregunta; ninguna caja en campo abierto; lo recogido desaparece para todos | El cálculo vuelve a ser la llave del poder |
+| **24. Cámara más cercana** | Soldado ~2 veces más grande, cámara dinámica (edificios, campo abierto, jeep, mira) y "Distancia de cámara" en Opciones | Ver bien al personaje en celular y PC |
+| **25. Accesorios que se notan** | Accesorios visibles en el modelo, efectos reales (dispersión, retroceso, capacidad, casco) e iconos y tarjetas que los explican | Saber qué hace cada cosa |
+| **26. Skins con esqueleto** | Los 4 GLB nuevos (Mixamo) en modo C, comprimidos si hace falta y ajustados con la cámara nueva | Personajes especiales animados de verdad |
+| **27. Cuadrícula 8×8, sin jefe e interfaz** | Sectores A1–H8, se quita el modo Profe Jefe Final, lobby y ayuda de controles que no se enciman | Interfaz limpia y un solo modo |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
 
 ### Planes por fase (modo maratón: el plan se escribe aquí antes de ejecutar cada fase)
@@ -435,6 +440,12 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **3 fases:** cada una con más vida (escalada por cantidad de jugadores), ráfagas más seguidas y, desde la segunda, onda expansiva con aviso; la meta del escudo sube por fase y cada 6 jugadores.
 - **Caídos:** a los 20 s piden una pregunta; si aciertan vuelven a la cancha con 75 de vida; si fallan, 10 s más.
 - **8 minutos:** si no lo derrotan, gana el profe. Resultados para todo el equipo con daño al jefe, aciertos y CSV.
+
+#### Fase 23: botín y cajas (correcciones de la prueba)
+- **Nada de poder gratis en el suelo:** el botín suelto solo puede ser munición, vendas y casco 1 (lista `LOOT_GROUND` en `constants.js`). Armas, granadas, miras, accesorios, mochilas, chalecos, cascos 2–3, botiquines y bebidas salen solo de cajas con pregunta, de la caja de botín de un caído o del lanzamiento aéreo; las tablas de las cajas los incluyen todos. Al empezar, solo la pistola con munición limitada.
+- **Cajas solo en lugares estratégicos:** se quitan las cajas de campo abierto y las de los claros del bosque; las demás quedan dentro de edificios o de un punto de interés (`POIS`: pueblo, base, trincheras, contenedores, terminal, mercado, aeródromo, estadio, cañón). Las legendarias siguen en los lugares calientes.
+- **Lo recogido desaparece:** la escena redibujaba el botín solo cuando cambiaba "tamaño + versión" de la lista, y al tomar algo el tamaño baja 1 y la versión sube 1: la suma no cambiaba y el objeto seguía dibujado. Se pasa a un almacén de botín del cliente (`client/src/net/lootStore.js`) con versión propia que la escena compara sola.
+- **Pruebas:** botín del suelo de muchas partidas solo con lo permitido; todas las cajas posibles (y las elegidas con varias semillas) dentro de un edificio o un punto de interés; dos clientes: uno recoge y el otro deja de verlo, y uno que entra después tampoco lo ve.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -735,6 +746,11 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 20 | ✅ Completa | Modo fácil, intro y créditos, director de cámara, bots del servidor, medallas, frases rápidas y CSV. Faltan los nombres reales de los créditos |
 | 21 | ✅ Completa | Modo aparte con escudo que solo baja con aciertos del equipo, 3 fases, volver con un acierto y límite de 8 min. Falta jugarlo con el curso |
 | 22 | ✅ Completa | Calidad y brillo revisados, servidor en Virginia preparado (falta que el usuario haga la mudanza), carga en ambos despliegues, checklist del día D y lista final. Falta el celular antiguo real |
+| 23 | ✅ Completa | En el suelo solo munición, vendas y casco 1; todas las cajas en edificios o puntos de interés; lo recogido desaparece para todos |
+| 24 | Pendiente | |
+| 25 | Pendiente | |
+| 26 | Pendiente | |
+| 27 | Pendiente | |
 
 ### Bitácora
 
@@ -856,3 +872,12 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Build y 179 pruebas | PASS |
 | Partida completa de 8 min con el curso | Pendiente |
 - 2026-10-24: **mudanza a Virginia, primer paso hecho solo.** Al subir la fase 22, el Blueprint de Render (con auto-sync) creó `calculo-royale-server-va` en Virginia y quedó en línea; el servidor viejo sigue igual. Prueba de carga corta contra el nuevo (20 clientes, 45 s): ping p50 133 ms y p95 147 ms (Oregón: 212 y 267 ms), tick de 0,9 ms, snapshots cada 50 ms, 0 desconexiones. Falta que el usuario ponga `CLIENT_ORIGIN` en el servicio nuevo, cambie `VITE_SERVER_URL` en Vercel (y haga Redeploy) y apunte UptimeRobot al nuevo; después, borrar el viejo.
+- 2026-10-24: **fase 23 completa (botín y cajas, correcciones graves de la prueba).** *Nada de poder gratis:* el botín suelto ahora solo puede ser munición, vendas o casco 1 (`LOOT_GROUND` en `shared/src/constants.js`; antes salían armas, miras, mochilas, chalecos, botiquines y bebidas del suelo sin responder nada). Todo lo demás sale de cajas con pregunta, de la caja de botín de un caído o del lanzamiento aéreo; la tabla de las cajas raras suma chaleco 1, granadas, bebidas, mochila 1, punto rojo y silenciador para que todo siga existiendo. Al empezar, cada uno tiene solo la pistola con su munición limitada. *Cajas:* se quitaron las 29 de campo abierto y las 2 de los claros del bosque; quedan 64 puntos posibles, todos dentro de un edificio o de un punto de interés (`POIS` y `strategicSpot` en `mapLayout.js`: pueblo, base, trincheras, contenedores, terminal, mercado, aeródromo, estadio y cañón; el bosque y el campo abierto no cuentan). Las legendarias siguen en los lugares calientes. *Lo recogido no desaparecía:* el servidor sí avisaba (`loot:remove`) y el cliente sí lo borraba de su lista, pero la escena (`GroundLoot.jsx`) solo redibujaba si cambiaba "tamaño de la lista + versión": al tomar un objeto el tamaño baja 1 y la versión sube 1, la suma quedaba igual y el objeto seguía dibujado. Ahora el botín del cliente vive en `client/src/net/lootStore.js` con su propia versión y la escena redibuja cada vez que sube. Quien entra o reconecta recibe la lista completa ya sin lo tomado. *Verificado en Edge:* al tomar la munición junto al jugador, la caja desaparece al instante y la reserva pasa de 36 a 48; sin errores. 3 pruebas nuevas: botín del suelo de 25 partidas solo con lo permitido y estado inicial solo con pistola; cada punto posible de caja (y las elegidas con 30 semillas) en un edificio o un punto de interés; dos clientes con los mismos eventos de la sala (uno recoge, el otro deja de verlo y su escena tiene que redibujar) y uno que entra después (182 en total).
+
+| Validación fase 23 | Estado |
+|---|---|
+| Suelo solo munición, vendas y casco 1 en 25 partidas; inicio solo con pistola (prueba) | PASS |
+| Todas las cajas en edificios o puntos de interés, todos los puntos y 30 semillas (prueba) | PASS |
+| Lo recogido desaparece para el otro cliente y para quien entra después (prueba) | PASS |
+| Lo recogido desaparece en pantalla al instante (Edge) | PASS |
+| Build y 182 pruebas | PASS |

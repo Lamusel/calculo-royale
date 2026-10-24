@@ -1,4 +1,4 @@
-import { GRENADE, LOOT, LOOT_IDS, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { GRENADE, LOOT, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { weaponWith } from '@calculo-royale/shared/inventory';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/codec';
@@ -9,6 +9,7 @@ import { seatPosition } from '@calculo-royale/shared/vehicle';
 import { actions, currentAim, inputState, press, readInput, resetInput } from '../input/inputState.js';
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
+import { LootStore } from './lootStore.js';
 import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
 import { setListener, sound, speak, updateBusHum, updateEngine } from '../audio/sound.js';
 import { insideZone } from '@calculo-royale/shared/zone';
@@ -102,8 +103,7 @@ export class GameClient {
     this.privateResults = null; // aciertos por tema y preguntas falladas (solo mías)
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
     this.heardShot = new Map(); // lo mismo, sin los disparos con silenciador (minimapa de noche)
-    this.loot = new Map(); // botín en el suelo: id → { id, item (o null si es caja), x, y, count }
-    this.lootVersion = 0; // sube con cada cambio (la escena redibuja el botín solo entonces)
+    this.lootStore = new LootStore(); // botín en el suelo (ver lootStore.js)
     this.lootToast = null; // { names } o { full, name } al tomar algo
     this.phrases = []; // frases rápidas recientes: { id, index, at }
     this.csv = null; // CSV de la última partida (anfitrión y proyector)
@@ -275,19 +275,9 @@ export class GameClient {
       [EVENTS.RESULTS_CSV]: (csv) => {
         this.csv = csv;
       },
-      [EVENTS.LOOT_SYNC]: (list) => {
-        this.loot = new Map();
-        for (const e of list) this.addLoot(e);
-        this.lootVersion++;
-      },
-      [EVENTS.LOOT_ADD]: (list) => {
-        for (const e of list) this.addLoot(e);
-        this.lootVersion++;
-      },
-      [EVENTS.LOOT_REMOVE]: (ids) => {
-        for (const id of ids) this.loot.delete(id);
-        this.lootVersion++;
-      },
+      [EVENTS.LOOT_SYNC]: (list) => this.lootStore.sync(list),
+      [EVENTS.LOOT_ADD]: (list) => this.lootStore.add(list),
+      [EVENTS.LOOT_REMOVE]: (ids) => this.lootStore.remove(ids),
       [EVENTS.LOOT_TAKEN]: (result) => {
         this.lootToast = { ...result, at: performance.now() };
         if (!result.full) sound.pickup();
@@ -584,9 +574,13 @@ export class GameClient {
     this.followId = ids[(i + step + ids.length) % ids.length];
   }
 
-  // [id, índice en LOOT_IDS (−1 = caja de botín), x, y, cantidad]
-  addLoot([id, index, x, y, count]) {
-    this.loot.set(id, { id, item: index >= 0 ? LOOT_IDS[index] : null, x, y, count });
+  // Botín en el suelo (lo leen la escena y el aviso "Tomar …")
+  get loot() {
+    return this.lootStore.items;
+  }
+
+  get lootVersion() {
+    return this.lootStore.version;
   }
 
   // Botín al alcance (el más cercano), para el aviso "Tomar …"

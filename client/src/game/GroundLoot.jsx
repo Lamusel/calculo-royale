@@ -47,14 +47,13 @@ export default function GroundLoot({ client }) {
   const ringMesh = useRef(null);
   const material = useMemo(() => new THREE.MeshLambertMaterial(), []);
   const ringMaterial = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false }), []);
-  const state = useRef({ version: -1, list: null });
+  const drawn = useRef(-1); // versión del botín ya dibujada
 
   useFrame(() => {
-    // La lista cambia muy de vez en cuando: se compara la referencia y el tamaño
+    // La lista cambia muy de vez en cuando: se redibuja solo si subió su versión
+    if (drawn.current === client.lootVersion) return;
+    drawn.current = client.lootVersion;
     const loot = client.loot;
-    if (state.current.list === loot && state.current.version === loot.size + client.lootVersion) return;
-    state.current.list = loot;
-    state.current.version = loot.size + client.lootVersion;
     const o3 = new THREE.Object3D();
     const color = new THREE.Color();
     const counts = Object.fromEntries(Object.keys(SHAPES).map((k) => [k, 0]));

@@ -1,4 +1,4 @@
-import { HEALING, LOOT, LOOT_IDS, LOOT_ITEMS, MAP_HALF, MAX_HP, TICK_MS } from '@calculo-royale/shared/constants';
+import { HEALING, LOOT, LOOT_GROUND, LOOT_IDS, LOOT_ITEMS, MAP_HALF, MAX_HP, TICK_MS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { AREAS, HOUSES } from '@calculo-royale/shared/mapLayout';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
@@ -8,8 +8,6 @@ import { counterOf, inventoryItems, take, wants } from '@calculo-royale/shared/i
 // caer y curación con tiempo. Todo lo decide el servidor; el cliente solo dibuja y pide.
 
 const round2 = (v) => Math.round(v * 100) / 100;
-const COMMON = LOOT_IDS.filter((id) => LOOT_ITEMS[id].tier === 0);
-const RARE = LOOT_IDS.filter((id) => LOOT_ITEMS[id].tier === 1);
 
 function weighted(pool, rand) {
   const total = pool.reduce((t, id) => t + (LOOT.weights[id] ?? 1), 0);
@@ -21,8 +19,8 @@ function weighted(pool, rand) {
   return pool[pool.length - 1];
 }
 
-// Un objeto del suelo: común o, con LOOT.rareChance, raro (nunca épico: eso es de las cajas)
-export const rollGroundItem = (rand = Math.random) => weighted(rand() < LOOT.rareChance ? RARE : COMMON, rand);
+// Un objeto del suelo: solo munición, vendas o casco 1 (LOOT_GROUND); el resto sale de cajas con pregunta
+export const rollGroundItem = (rand = Math.random) => weighted(LOOT_GROUND, rand);
 
 // Punto libre dentro de un rectángulo (o null si no se encontró)
 function freeSpot(rand, cx, cy, w, h) {

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAP_HALF, PLAYER_RADIUS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
 import { overlapsObstacle, raycastObstacles } from '@calculo-royale/shared/collision';
-import { AREAS, FURNITURE, HOUSES, OBSTACLES, SUPPLY_CRATES, TRAINING, VEHICLE_SPOTS } from '@calculo-royale/shared/mapLayout';
+import { AREAS, FURNITURE, HOUSES, OBSTACLES, strategicSpot, SUPPLY_CRATES, TRAINING, VEHICLE_SPOTS } from '@calculo-royale/shared/mapLayout';
 import { JEEP } from '@calculo-royale/shared/constants';
 
 const boxOf = (o) =>
@@ -129,7 +129,7 @@ test('la rejilla de colisiones da lo mismo que revisar todos los obstáculos', (
   }
 });
 
-test('cajas por partida: las calientes siempre; la mayoría dentro de edificios y pocas en campo abierto; cambian entre partidas', async () => {
+test('cajas por partida: las calientes siempre, todas en lugares estratégicos (nunca en campo abierto) y cambian entre partidas', async () => {
   const { createCrates, pickMatchCrates, crateVisible } = await import('../server/src/game/crates.js');
   const runs = [];
   for (let seed = 1; seed <= 30; seed++) {
@@ -139,14 +139,25 @@ test('cajas por partida: las calientes siempre; la mayoría dentro de edificios 
     pickMatchCrates(game, rand);
     const active = game.crates.filter((c) => crateVisible(c, 'playing') && !c.airdrop && !c.practice);
     assert.ok(active.filter((c) => c.tag === 'hot').length === SUPPLY_CRATES.filter((c) => c.tag === 'hot').length, 'todas las calientes');
-    const inside = active.filter((c) => c.tag !== 'open').length;
-    assert.ok(inside / active.length > 0.65, `mayoría dentro (${inside}/${active.length})`);
-    // Desde la fase 18 las cajas son de raro en adelante (lo común está en el suelo); en campo abierto, raras
+    // Fase 23: cada caja de la partida dentro de un edificio o de un punto de interés
+    for (const c of active) assert.ok(strategicSpot(c.x, c.y), `caja en campo abierto en (${c.x}, ${c.y})`);
+    assert.equal(active.some((c) => c.tag === 'open'), false);
+    // Desde la fase 18 las cajas son de raro en adelante (lo común está en el suelo)
     for (const c of active) assert.ok(c.rarity >= 1, 'ninguna caja común en partida');
-    for (const c of active.filter((x) => x.tag === 'open')) assert.equal(c.rarity, 1, 'en campo abierto solo raras');
     runs.push(active.map((c) => c.id).join(','));
   }
   assert.ok(new Set(runs).size > 25, 'cada partida tiene otras cajas');
   // Las de mayor rareza están en los lugares disputados
   for (const c of SUPPLY_CRATES.filter((x) => x.rarity === 3)) assert.equal(c.tag, 'hot');
+});
+
+test('todos los puntos posibles de cajas están en un edificio o un punto de interés (ninguno en el bosque ni en campo abierto)', () => {
+  for (const c of SUPPLY_CRATES) {
+    assert.ok(strategicSpot(c.x, c.y), `caja en (${c.x}, ${c.y}) fuera de lugares estratégicos`);
+    const inForest = Math.abs(c.x - AREAS.forest.x) < AREAS.forest.w / 2 && Math.abs(c.y - AREAS.forest.y) < AREAS.forest.h / 2;
+    const inHouse = HOUSES.some((h) => Math.abs(c.x - h.x) <= h.w / 2 && Math.abs(c.y - h.y) <= h.h / 2);
+    assert.ok(!inForest || inHouse, 'en el bosque solo dentro de la cabaña');
+  }
+  // Un punto de campo abierto no cuenta
+  assert.equal(strategicSpot(20, 30), false);
 });

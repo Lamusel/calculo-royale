@@ -16,7 +16,10 @@ import { drawQuestion } from '../questions/QuestionBank.js';
 // (lo común está en el suelo).
 export const LOOT_TABLES = [
   [['ammo', 'bandage'], ['ammo', 'grenade'], ['bandage', 'drink'], ['ammo', 'ammo']],
-  [['shotgun', 'ammo'], ['rifle', 'ammo'], ['armor2', 'helmet1'], ['backpack2', 'bandage'], ['scope2x', 'extmag'], ['medkit', 'stock']],
+  [
+    ['shotgun', 'ammo'], ['rifle', 'ammo'], ['armor1', 'grenade'], ['armor2', 'helmet1'], ['backpack1', 'drink'], ['backpack2', 'bandage'],
+    ['reddot', 'grenade'], ['scope2x', 'extmag'], ['medkit', 'stock'], ['silencer', 'drink'],
+  ],
   [['sniper', 'scope4x'], ['armor3', 'helmet2'], ['medkit', 'grenade', 'silencer'], ['rifle', 'extmag', 'reddot'], ['backpack3', 'medkit'], ['helmet3', 'drink']],
 ];
 

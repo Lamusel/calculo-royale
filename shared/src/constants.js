@@ -300,17 +300,21 @@ export const LOOT_ITEMS = {
 // Índice fijo de cada objeto (eventos de botín); no cambiar el orden, solo agregar al final
 export const LOOT_IDS = Object.keys(LOOT_ITEMS);
 
-// Botín en el suelo por partida: cuántos por punto de zona y peso de cada objeto (común o raro)
+// Botín suelto en el suelo (fase 23): SOLO estos objetos. Todo lo demás (armas, granadas, miras,
+// accesorios, mochilas, chalecos, cascos 2–3, botiquines y bebidas) sale de cajas con pregunta, de la
+// caja de botín de un caído o del lanzamiento aéreo: el cálculo es la llave del poder.
+export const LOOT_GROUND = ['ammo', 'bandage', 'helmet1'];
+
+// Botín en el suelo por partida: cuántos por punto de zona y peso de cada objeto
 export const LOOT = {
   perHouseRoom: 2, // objetos por cuarto de casa
   perArea: 14, // objetos sueltos por zona con nombre
   scattered: 40, // objetos sueltos por el campo abierto
-  rareChance: 0.3, // probabilidad de que un objeto del suelo sea raro (si no, común)
   pickupRadius: 2.2,
   dropSpread: 1.2, // al soltar algo queda a esta distancia, alrededor del jugador
   deathBox: true,
   // Peso de cada objeto al sortear (los que no figuran pesan 1)
-  weights: { ammo: 4, bandage: 3, drink: 1.5, grenade: 1.5, medkit: 1.5, rifle: 1.5, shotgun: 1.5 },
+  weights: { ammo: 4, bandage: 3, helmet1: 1 },
 };
 
 // Curación con tiempo. Mientras cura se camina más lento; disparar o cambiar de arma la cancela.

@@ -27,6 +27,16 @@ export const AREAS = {
   training: { x: 0, y: 0, r: 16 },
 };
 
+// Puntos de interés donde puede haber cajas fuera de un edificio (fase 23): el bosque y el campo
+// abierto no lo son. Toda caja posible está dentro de un edificio o de uno de estos.
+export const POIS = ['town', 'base', 'trenches', 'containers', 'terminal', 'market', 'airfield', 'stadium', 'canyon'].map((k) => AREAS[k]);
+
+// ¿El punto está dentro de la planta de un edificio o de un punto de interés?
+export function strategicSpot(x, y) {
+  const inRect = (r, margin = 0) => Math.abs(x - r.x) <= r.w / 2 + margin && Math.abs(y - r.y) <= r.h / 2 + margin;
+  return HOUSES.some((h) => inRect(h)) || POIS.some((a) => inRect(a));
+}
+
 // --- Edificios: el servidor usa sus paredes, tabiques y muebles; el cliente dibuja además techo ---
 // type: casa | bodega | cabana | hangar | barraca | bunker. roomTypes: amueblado de cada cuarto.
 // crate: rareza de la caja de cada cuarto con punto libre (null = sin caja); hot: siempre está.
@@ -255,39 +265,6 @@ function insideArea(x, y, margin) {
     a.r ? Math.hypot(x - a.x, y - a.y) < a.r + margin : Math.abs(x - a.x) < a.w / 2 + margin && Math.abs(y - a.y) < a.h / 2 + margin,
   );
 }
-// Cajas en campo abierto: pocas y raras (desde la fase 18 las cajas son de raro en adelante)
-const OPEN_CRATES = [
-  { x: 20, y: 30, rarity: 1, tag: 'open' },
-  { x: -22, y: -20, rarity: 1, tag: 'open' },
-  { x: 30, y: -8, rarity: 1, tag: 'open' },
-  { x: -30, y: 6, rarity: 1, tag: 'open' },
-  { x: 10, y: 52, rarity: 1, tag: 'open' },
-  { x: -10, y: -42, rarity: 1, tag: 'open' },
-  { x: 84, y: 20, rarity: 1, tag: 'open' },
-  { x: -84, y: 8, rarity: 1, tag: 'open' },
-  { x: 24, y: -84, rarity: 1, tag: 'open' },
-  { x: -20, y: 84, rarity: 1, tag: 'open' },
-  { x: 86, y: -84, rarity: 1, tag: 'open' },
-  { x: -86, y: 84, rarity: 1, tag: 'open' },
-  { x: -36, y: -34, rarity: 1, tag: 'open' },
-  { x: -78, y: -48, rarity: 1, tag: 'open' },
-  { x: -50, y: -80, rarity: 1, tag: 'open' },
-  { x: -60, y: 36, rarity: 1, tag: 'open' },
-  { x: -44, y: 56, rarity: 1, tag: 'open' },
-  { x: 60, y: 10, rarity: 1, tag: 'open' },
-  { x: -60, y: -10, rarity: 1, tag: 'open' },
-  { x: 40, y: 86, rarity: 1, tag: 'open' },
-  { x: 80, y: -30, rarity: 1, tag: 'open' },
-  // Anillo exterior (fase 18)
-  { x: -80, y: 100, rarity: 1, tag: 'open' },
-  { x: 70, y: -112, rarity: 1, tag: 'open' },
-  { x: -130, y: 44, rarity: 1, tag: 'open' },
-  { x: 130, y: 60, rarity: 1, tag: 'open' },
-  { x: 40, y: -124, rarity: 1, tag: 'open' },
-  { x: -60, y: -128, rarity: 1, tag: 'open' },
-  { x: 54, y: 104, rarity: 1, tag: 'open' },
-  { x: -130, y: -60, rarity: 1, tag: 'open' },
-];
 
 // Jeeps (solo en partida): en campo abierto. heading en radianes.
 export const VEHICLE_SPOTS = [
@@ -301,8 +278,8 @@ export const VEHICLE_SPOTS = [
   { x: 92, y: -48, heading: Math.PI / 2 },
 ];
 
-// Puntos que la cobertura dispersa deja libres (cajas en campo abierto y jeeps)
-const RESERVED = [...OPEN_CRATES, ...VEHICLE_SPOTS];
+// Puntos que la cobertura dispersa deja libres (jeeps)
+const RESERVED = VEHICLE_SPOTS;
 function scatteredCover() {
   const rand = seededRandom(20261022);
   const items = [];
@@ -384,9 +361,6 @@ export const SUPPLY_CRATES = [
   { x: -11.5, y: -70, rarity: 1, tag: 'inside' },
   { x: 6, y: -65.5, rarity: 1, tag: 'inside' },
   { x: 8, y: -75, rarity: 1, tag: 'inside' },
-  // Claros del bosque
-  { x: -48, y: -50, rarity: 1, tag: 'inside' },
-  { x: -70, y: -72, rarity: 1, tag: 'inside' },
   // Terminal de buses
   { x: -112, y: -14, rarity: 1, tag: 'inside' },
   { x: -106, y: 6, rarity: 1, tag: 'inside' },
@@ -406,7 +380,6 @@ export const SUPPLY_CRATES = [
   { x: -106, y: -104, rarity: 1, tag: 'inside' },
   { x: -98, y: -112, rarity: 2, tag: 'inside' },
   { x: -122, y: -120, rarity: 1, tag: 'inside' },
-  ...OPEN_CRATES,
 ];
 
 

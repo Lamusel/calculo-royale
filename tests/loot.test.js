@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ATTACHMENTS, BACKPACK, HEALING, HELMET, LOOT_IDS, LOOT_ITEMS, MAX_HP, TICK_MS, WEAPONS,
+  ATTACHMENTS, BACKPACK, HEALING, HELMET, LOOT_GROUND, MAX_HP, TICK_MS, WEAPONS,
 } from '@calculo-royale/shared/constants';
 import { decodeShot } from '@calculo-royale/shared/codec';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
@@ -13,6 +13,7 @@ import { damagePlayer, fire } from '../server/src/game/combat.js';
 import { Game } from '../server/src/game/Game.js';
 import { groundSpots, rollGroundItem, spawnGroundLoot } from '../server/src/game/loot.js';
 import { Player } from '../server/src/game/Player.js';
+import { LootStore } from '../client/src/net/lootStore.js';
 
 function makeRoom(phase = 'playing') {
   const room = {
@@ -56,7 +57,7 @@ const place = (room, item, x, y, state = null) => {
 };
 const OPEN = { x: 10, y: 30 }; // campo abierto, sin obstáculos
 
-test('botín del suelo: mismo mapa con la misma semilla, solo común o raro, en lugares libres', () => {
+test('botín del suelo: mismo mapa con la misma semilla, en lugares libres', () => {
   const a = makeRoom();
   const b = makeRoom();
   spawnGroundLoot(a.game, seeded(42));
@@ -65,17 +66,65 @@ test('botín del suelo: mismo mapa con la misma semilla, solo común o raro, en 
   assert.deepEqual(list(a), list(b));
   assert.ok(a.game.loot.size > 200, `${a.game.loot.size} objetos`);
   for (const e of a.game.loot.values()) {
-    assert.ok(LOOT_ITEMS[e.item].tier <= 1, `${e.item} en el suelo`);
     assert.ok(!overlapsObstacle(e.x, e.y, 0.5), `${e.item} dentro de un obstáculo`);
   }
-  // Todos los comunes y raros salen alguna vez; ningún épico
+  // Los tres permitidos salen
   const rand = seeded(7);
   const seen = new Set(Array.from({ length: 3000 }, () => rollGroundItem(rand)));
-  for (const id of LOOT_IDS.filter((i) => LOOT_ITEMS[i].tier <= 1)) assert.ok(seen.has(id), id);
-  assert.equal(seen.has('sniper') || seen.has('armor3') || seen.has('scope4x'), false);
+  assert.deepEqual([...seen].sort(), [...LOOT_GROUND].sort());
   assert.ok(groundSpots(seeded(1)).length > 200);
   // El sincronizado inicial llega a todos
   assert.ok(a.broadcasts.some((x) => x.event === EVENTS.LOOT_SYNC && x.data.length === a.game.loot.size));
+});
+
+test('fase 23: en el suelo solo munición, vendas y casco 1 en muchas partidas (nada de armas ni poder gratis)', () => {
+  const allowed = new Set(['ammo', 'bandage', 'helmet1']);
+  assert.deepEqual(new Set(LOOT_GROUND), allowed);
+  for (let seed = 1; seed <= 25; seed++) {
+    const room = makeRoom();
+    spawnGroundLoot(room.game, seeded(seed * 104729));
+    for (const e of room.game.loot.values()) assert.ok(allowed.has(e.item), `semilla ${seed}: ${e.item} en el suelo`);
+  }
+  // Al empezar: solo la pistola
+  const p = new Player({ id: 9, name: 'N', color: '#fff', token: 't' });
+  assert.equal(p.primary, null);
+  assert.equal(p.grenades + p.bandages + p.medkits + p.drinks + p.armorLevel + p.helmetLevel + p.backpackLevel, 0);
+  assert.deepEqual(Object.values(p.attachments).filter(Boolean), []);
+});
+
+test('fase 23: lo recogido desaparece para todos, también para quien entra después', () => {
+  const room = makeRoom();
+  // Dos clientes que reciben los mismos eventos que el servidor manda a la sala
+  const a = new LootStore();
+  const b = new LootStore();
+  const apply = (store, { event, data }) => {
+    if (event === EVENTS.LOOT_SYNC) store.sync(data);
+    if (event === EVENTS.LOOT_ADD) store.add(data);
+    if (event === EVENTS.LOOT_REMOVE) store.remove(data);
+  };
+  const forward = (from) => room.broadcasts.slice(from).forEach((m) => [a, b].forEach((store) => apply(store, m)));
+  spawnGroundLoot(room.game, seeded(3));
+  forward(0);
+  const target = [...room.game.loot.values()][0];
+  assert.ok(b.items.has(target.id));
+  const versionB = b.version;
+  const p = addPlayer(room, 1, target.x, target.y);
+  p.helmetLevel = 0;
+  p.bandages = 0;
+  p.pistolReserve = 0;
+  const before = room.broadcasts.length;
+  room.game.interact(p);
+  forward(before);
+  assert.equal(room.game.loot.has(target.id), false, 'el servidor lo quitó');
+  assert.equal(b.items.has(target.id), false, 'el otro cliente deja de verlo');
+  assert.ok(b.version > versionB, 'su escena tiene que redibujar');
+  // Quien entra o reconecta después recibe la lista ya sin ese objeto
+  const late = new LootStore();
+  room.game.syncLoot(p);
+  const sync = room.emitted.findLast((m) => m.event === EVENTS.LOOT_SYNC);
+  late.sync(sync.data);
+  assert.equal(late.items.has(target.id), false);
+  assert.equal(late.items.size, room.game.loot.size);
 });
 
 test('tomar con E: arma nueva reemplaza a la vieja, que queda en el suelo con su munición', () => {
