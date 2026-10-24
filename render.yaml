@@ -1,6 +1,12 @@
 # Blueprint de Render: servidor del juego (Socket.io) en el plan gratis.
 # En Render: New + → Blueprint → elegir este repositorio (ver la guía del README).
+#
+# Mudanza a Virginia (fase 22): la región de un servicio no se puede cambiar, así que se crea uno
+# nuevo (calculo-royale-server-va, en Virginia, más cerca de Colombia) y el viejo sigue funcionando
+# mientras se cambian VITE_SERVER_URL, CLIENT_ORIGIN y UptimeRobot (README, "Mudar el servidor a
+# Virginia"). Cuando el nuevo esté probado, se borra el viejo de aquí y de Render.
 services:
+  # Servidor actual (Oregón, la región por defecto): no se toca hasta terminar la mudanza
   - type: web
     name: calculo-royale-server
     runtime: node
@@ -16,6 +22,25 @@ services:
       - key: CLIENT_ORIGIN
         sync: false
       # Opcional: guardar resultados en Supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+  # Servidor nuevo en Virginia (menos ping desde Colombia)
+  - type: web
+    name: calculo-royale-server-va
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm ci --omit=dev --ignore-scripts -w @calculo-royale/server -w @calculo-royale/shared
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
+      - key: CLIENT_ORIGIN
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_KEY

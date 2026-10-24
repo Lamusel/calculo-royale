@@ -260,7 +260,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **19. Audio total** ✅ | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
 | **20. Modo presentación y modo fácil** ✅ | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
 | **21. Modo Profe Jefe Final** | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
-| **22. Revisión final** | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
+| **22. Revisión final** ✅ | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
 
 ### Planes por fase (modo maratón: el plan se escribe aquí antes de ejecutar cada fase)
@@ -421,6 +421,13 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Medallas** al final: más bajas, calculista, puntería matemática, más daño, baja más lejana y saqueador.
 - **6 frases rápidas** (💬 o T, y 1–6) con antispam en el servidor.
 - **CSV** de cada partida para el profe (botón en resultados del anfitrión y del proyector), sin Supabase.
+
+#### Fase 22: revisión final
+- **Calidad y brillo** en celular (844×390): calidad baja y alta de día, media de noche y con niebla; nada tapado y todo legible.
+- **Servidor en Virginia** (más cerca de Colombia que Oregón): servicio nuevo `calculo-royale-server-va` con `region: virginia` en `render.yaml`, **sin borrar el viejo** hasta comprobar el nuevo; pasos clic a clic en "Mudar el servidor a Virginia".
+- **Carga** con el mapa grande en los dos despliegues (`npm run loadtest -- 40 120` y `… --punto`), en local y contra Render.
+- **Checklist del día D** y **lista final de pruebas** en este README.
+- Celular antiguo real: queda en el checklist (no hay uno conectado a esta máquina).
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -629,6 +636,25 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 - Abre la URL de Vercel en el PC y crea una sala: el **QR** ya apunta a la URL de Vercel. Escanéalo con el celular (datos móviles o cualquier Wi-Fi).
 - Proyector: `https://<tu-cliente>.vercel.app/espectador?code=ABCD`.
 
+### Mudar el servidor a Virginia (menos ping desde Colombia)
+
+Render no deja cambiar la región de un servicio, así que se crea uno nuevo en Virginia y el viejo (Oregón) **sigue funcionando** hasta que el nuevo esté probado. `render.yaml` ya trae los dos: `calculo-royale-server` (el actual) y `calculo-royale-server-va` (`region: virginia`). Con Render en Oregón el ping desde Colombia es de ~210 ms; en Virginia debería bajar a ~80–120 ms.
+
+1. **Crear el servicio nuevo.** En **render.com** → menú izquierdo **Blueprints** → **calculo-royale**.
+   - Si dice **Auto-Sync: Yes**, el `git push` de este cambio ya creó **calculo-royale-server-va** (míralo en **Dashboard**).
+   - Si no, clic en **Manual Sync** → revisa que la lista diga *Create calculo-royale-server-va* y que **calculo-royale-server** no se borre ni cambie → **Apply**.
+   - Si Render pide las variables secretas del nuevo, deja **CLIENT_ORIGIN**, **SUPABASE_URL** y **SUPABASE_SERVICE_KEY** vacías por ahora.
+2. **Esperar el primer despliegue** (2 a 5 min): **Dashboard** → **calculo-royale-server-va** → **Logs** termina con `[server] escuchando en …`. Copia su URL (arriba, debajo del nombre), por ejemplo `https://calculo-royale-server-va.onrender.com`, y ábrela con `/health` al final: debe decir `{"ok":true,...}`.
+3. **CORS del nuevo:** en **calculo-royale-server-va** → **Environment** → **CLIENT_ORIGIN** → **Edit** → el mismo valor que tiene el viejo (por ejemplo `https://calculo-royale.vercel.app,https://calculo-royale-*.vercel.app`) → **Save Changes**. Si usas Supabase, copia también **SUPABASE_URL** y **SUPABASE_SERVICE_KEY** del viejo.
+4. **Apuntar el cliente al nuevo:** en **vercel.com** → proyecto **calculo-royale** → **Settings** → **Environment Variables** → en **VITE_SERVER_URL** clic en **⋯ → Edit** → pon la URL nueva (sin `/` al final) → **Save**. Luego **Deployments** → en el último, **⋯ → Redeploy** → **Redeploy** (la URL se incrusta al compilar: sin esto no cambia).
+5. **UptimeRobot:** en **uptimerobot.com** → el monitor **Cálculo Royale servidor** → **Edit** → **URL** `https://calculo-royale-server-va.onrender.com/health` → **Save Changes**. Importante: las 750 h/mes gratis de Render son **para todos tus servicios juntos**; con el monitor apuntando solo al nuevo, el viejo se duerme y casi no gasta horas.
+6. **Probar:** abre la URL de Vercel, crea una sala y juega un rato desde el celular. En el HUD, el ping (arriba a la izquierda) debería ser más bajo que antes. Proyector incluido.
+7. **Recién entonces borrar el viejo** (unos días después, o tras la presentación si prefieres no tocar nada antes):
+   1. En `render.yaml` borra el bloque de **calculo-royale-server** (de `- type: web` hasta antes del comentario "Servidor nuevo en Virginia"), haz commit y `git push`.
+   2. En Render → **calculo-royale-server** → **Settings** → abajo del todo **Delete Web Service** → escribe el nombre para confirmar.
+
+**Si algo sale mal**, vuelve atrás sin perder nada: en Vercel pon otra vez la URL vieja en **VITE_SERVER_URL** y **Redeploy**, y en UptimeRobot la URL vieja. El servidor viejo nunca dejó de funcionar.
+
 ### Si algo falla
 
 | Síntoma | Qué revisar |
@@ -637,6 +663,43 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | En la consola del navegador aparece un error de CORS | `CLIENT_ORIGIN` en Render debe contener la URL exacta de Vercel (con `https://`, sin `/` final). |
 | El build de Render falla por la versión de Node | La variable `NODE_VERSION` (22.12.0) está en `render.yaml`; si la borraste, vuelve a ponerla. |
 | `/espectador` da 404 en Vercel | `vercel.json` en la raíz debe tener la regla `rewrites`; el proyecto debe usar la raíz como **Root Directory**. |
+
+### Checklist del día D (presentación)
+
+**Uno o dos días antes**
+- [ ] `git pull` y `npm test` en verde; el último despliegue de Vercel y Render dice *Ready* / *Live*.
+- [ ] Abrir la URL de Vercel en un celular **antiguo** de la clase: probar Auto, y si va lento, Opciones → Calidad **Baja** y Escala **Pequeña**.
+- [ ] Completar `client/src/credits.js` (nombres reales) y hacer push.
+- [ ] Revisar que la voz del Mando suene en el PC del proyector (Opciones → Voz del Mando). Si no hay voz en español instalada, el texto igual sale en pantalla.
+- [ ] Jugar una partida de prueba con **Modo fácil** y **bots** para practicar el flujo (no cuenta para logros).
+
+**El día (30 min antes)**
+- [ ] Abrir `<servidor>/health` para despertarlo (o confirmar que UptimeRobot está en verde).
+- [ ] PC del profe: crear la sala, elegir **temas**, **clima**, **despliegue** y si hace falta **bots**; **desactivar Modo fácil** si la partida cuenta.
+- [ ] Proyector: `<cliente>/espectador?code=XXXX` en pantalla completa (F11), **🎬 Director** encendido, volumen del PC arriba.
+- [ ] Mostrar el **QR** grande para que entren; esperar a que todos digan "Conectado".
+- [ ] Recordar a los estudiantes: girar el celular (horizontal), subir el brillo, cerrar otras apps.
+
+**Durante y después**
+- [ ] Si alguien se queda colgado: recargar la página (vuelve a la misma sala con su sesión).
+- [ ] Al terminar: botón **⬇ CSV** en los resultados (anfitrión o proyector) y guardar el archivo.
+- [ ] **Volver al lobby** para la siguiente partida.
+
+### Lista final de pruebas
+
+| Prueba | Cómo | Estado |
+|---|---|---|
+| Pruebas automáticas | `npm test` | 173 en verde |
+| Build | `npm run build` | Sin errores |
+| Carga 40 clientes (bus y elegir punto) | `npm run loadtest -- 40 120` y `… --punto` (local y Render) | OK (ver bitácora, fase 22) |
+| Partida completa con bots hasta el duelo | Lobby → bots hasta 8 → Iniciar | OK en Edge |
+| Selector de skins y skins externas en partida | Lobby → Skin; dos navegadores | OK en Edge |
+| Botín, inventario y curación | Partida → E, 4/5/6 | OK en Edge |
+| Voz del Mando y audio | Partida (voz interceptada en la prueba) | OK en Edge; falta oírlo en el proyector |
+| Interfaz en 7 resoluciones | 640×360 a 1920×1080 | OK en Edge |
+| Celular antiguo real (FPS, calor, batería) | Una partida completa | **Pendiente** |
+| Mudanza a Virginia | Pasos de arriba | **Pendiente** (la hace el usuario en Render, Vercel y UptimeRobot) |
+| Partida con el curso completo (20–40 personas) | Día D | **Pendiente** |
 
 ## 9. Estado del proyecto
 
@@ -664,7 +727,7 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | 19 | ✅ Completa | Canales Música, Efectos y Voz con silencio, ducking, prioridad de voces, 19 efectos nuevos, archivos propios opcionales, música procedural por momento y voz del Mando en español. Falta escucharlo en un celular real |
 | 20 | ✅ Completa | Modo fácil, intro y créditos, director de cámara, bots del servidor, medallas, frases rápidas y CSV. Faltan los nombres reales de los créditos |
 | 21 | Pendiente | |
-| 22 | Pendiente | |
+| 22 | ✅ Completa | Calidad y brillo revisados, servidor en Virginia preparado (falta que el usuario haga la mudanza), carga en ambos despliegues, checklist del día D y lista final. Falta el celular antiguo real |
 
 ### Bitácora
 
@@ -760,3 +823,15 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | Build y 173 pruebas | PASS |
 | Pregunta fácil vista en el navegador y descarga del CSV al final de una partida real | Pendiente (cubierto por pruebas; falta verlo en una partida completa) |
 | Nombres reales en los créditos | Pendiente (lo completa el usuario en `client/src/credits.js`) |
+- 2026-10-23: **fase 22 completa (revisión final).** *Calidad y brillo* (Edge, 844×390 táctil, en el pueblo con 4 bots): calidad baja y alta de día, media de noche y con niebla densa. De día se ve claro; de noche se juega con la linterna y los anillos del botín siguen visibles; con niebla se distingue lo cercano. ~70 llamadas de dibujo y 163–183 mil triángulos (antes 100–120 mil: el terreno del mapa de 280 m pasa de ~31 mil a ~58 mil triángulos, más el botín y las zonas nuevas); razonable para gama media y en un celular antiguo queda la calidad Baja. *Corregido:* el chip del clima ("Noche", "Niebla densa") tapaba el botón 💬 de frases rápidas; bajó. *Servidor en Virginia*: `render.yaml` ahora tiene dos servicios: el actual (`calculo-royale-server`, Oregón) sin cambios y uno nuevo (`calculo-royale-server-va`, `region: virginia`), porque Render no deja cambiar la región de un servicio existente y así nada se corta durante la mudanza. Guía clic a clic en "Mudar el servidor a Virginia" (crear con Blueprint, CORS, `VITE_SERVER_URL` + Redeploy en Vercel, UptimeRobot, probar, y recién después borrar el viejo; también cómo volver atrás). La mudanza en sí la hace el usuario en sus cuentas. *Carga* (`npm run loadtest` ahora acepta `--punto`: el anfitrión elige "Elegir punto" y cada cliente toca un lugar al azar), 40 clientes con el mapa grande y botín: en local (60 s) bus 1,8 ms de tick y punto 1,1 ms, CPU 3–9 %, 102–132 MB, 0 desconexiones (los snapshots cada 62 ms son la resolución de los temporizadores de Windows); contra Render en Oregón (120 s, con la fase 20 recién desplegada) bus: tick 2,5 ms (pico aislado de 100 ms), CPU 9 %, 88 MB, snapshots cada 50 ms (p95 61), ping p50 212 / p95 267 ms; punto: tick 1,7 ms, CPU 9 %, 89 MB, snapshots p95 57 ms, ping p50 212 / p95 232 ms; 0 desconexiones en los dos. El ping es casi todo distancia hasta Oregón: es lo que debería mejorar Virginia. *Checklist del día D* y *lista final de pruebas* nuevas en este README. Pendiente: probar en un celular antiguo real, oír el audio en el proyector, la mudanza a Virginia y la partida con el curso.
+
+| Validación fase 22 | Estado |
+|---|---|
+| Calidad baja, media y alta; día, noche y niebla en celular (Edge) | PASS |
+| `render.yaml` con el servicio de Virginia sin tocar el actual | PASS |
+| Guía de mudanza clic a clic (Render, Vercel, UptimeRobot, volver atrás) | PASS |
+| Carga 40 clientes, bus y elegir punto, local y Render | PASS |
+| Checklist del día D y lista final de pruebas | PASS |
+| Build y 173 pruebas | PASS |
+| Celular antiguo real | Pendiente |
+| Mudanza a Virginia hecha | Pendiente (cuentas del usuario) |

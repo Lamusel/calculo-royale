@@ -1,14 +1,17 @@
 // Prueba de carga: crea una sala, conecta N clientes (anfitrión + bots que caminan, disparan,
 // saltan del bus y piden balas), inicia la partida y mide latencia, ritmo de snapshots y
 // las métricas de /health del servidor.
-// Uso: npm run loadtest -- [cantidad] [segundos]   (ej. npm run loadtest -- 40 180)
+// Uso: npm run loadtest -- [cantidad] [segundos] [--punto]   (ej. npm run loadtest -- 40 180)
+// Con --punto la partida usa el despliegue "Elegir punto" (cada cliente toca un lugar al azar).
 // Variable SERVER_URL (por defecto http://localhost:3001)
 import { io } from 'socket.io-client';
-import { SERVER_PORT, TICK_MS } from '@calculo-royale/shared/constants';
+import { MAP_HALF, SERVER_PORT, TICK_MS } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodeInput } from '@calculo-royale/shared/codec';
 
-const [countArg, secondsArg] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const POINT = args.includes('--punto');
+const [countArg, secondsArg] = args.filter((a) => !a.startsWith('--'));
 const COUNT = Number(countArg) || 40;
 const SECONDS = Number(secondsArg) || 180;
 const url = process.env.SERVER_URL || `http://localhost:${SERVER_PORT}`;
@@ -32,6 +35,10 @@ function client(name, { host = false } = {}) {
     c.snapshot = s;
   });
   socket.on(EVENTS.PONG, ({ clientTime }) => rtts.push(Date.now() - clientTime));
+  // Elegir punto: cada uno toca un lugar al azar
+  socket.on(EVENTS.MATCH_DEPLOY, (info) => {
+    if (info.mode === 'punto') socket.emit(EVENTS.DEPLOY_POINT, { x: (Math.random() * 2 - 1) * MAP_HALF * 0.8, y: (Math.random() * 2 - 1) * MAP_HALF * 0.8 });
+  });
   socket.on(EVENTS.AMMO_QUESTION, (q) => setTimeout(() => socket.emit(EVENTS.AMMO_ANSWER, { id: q.id, index: 0 }), 1500));
   socket.on('disconnect', () => disconnects++);
   socket.on('connect_error', () => errors++);
@@ -58,7 +65,7 @@ async function health() {
   }
 }
 
-console.log(`Prueba de carga: ${COUNT} clientes contra ${url} durante ${SECONDS} s`);
+console.log(`Prueba de carga: ${COUNT} clientes contra ${url} durante ${SECONDS} s (despliegue: ${POINT ? 'elegir punto' : 'bus'})`);
 const before = await health();
 console.log('health antes:', JSON.stringify(before));
 
@@ -84,6 +91,7 @@ console.log(`${clients.filter((c) => c.id).length} clientes en la sala`);
 
 const inputTimer = setInterval(() => clients.forEach(step), TICK_MS);
 const pingTimer = setInterval(() => clients.forEach((c) => c.socket.emit(EVENTS.PING, Date.now())), 2000);
+if (POINT) hostClient.socket.emit(EVENTS.ROOM_DEPLOY, 'punto');
 await wait(3000);
 const started = await new Promise((r) => hostClient.socket.emit(EVENTS.GAME_START, null, r));
 console.log('inicio:', started?.ok ? 'ok' : started?.error);
@@ -104,6 +112,7 @@ clearInterval(inputTimer);
 clearInterval(pingTimer);
 const summary = {
   clientes: COUNT,
+  despliegue: POINT ? 'punto' : 'bus',
   segundos: SECONDS,
   ping: { p50: pct(rtts, 0.5), p95: pct(rtts, 0.95), max: maxOf(rtts) },
   snapshotsMs: { p50: Math.round(pct(gaps, 0.5)), p95: Math.round(pct(gaps, 0.95)), max: Math.round(maxOf(gaps)) },

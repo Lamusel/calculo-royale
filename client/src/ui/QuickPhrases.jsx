@@ -49,7 +49,7 @@ export default function QuickPhrases({ client, roster }) {
           );
         })}
       </div>
-      <div className="absolute right-3 top-14 z-30 flex flex-col items-end gap-1">
+      <div className="absolute right-3 top-[5.25rem] z-30 flex flex-col items-end gap-1">
         <TouchButton onPress={() => setOpen((o) => !o)} className="rounded bg-black/55 px-2.5 py-1 text-sm" title="Frases rápidas (T)">
           💬
         </TouchButton>
