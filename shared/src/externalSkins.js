@@ -17,7 +17,7 @@ export default [
   },
   {
     "id": "luffy",
-    "source": "/assets/skins/external/luffy/luffy.glb",
+    "source": "/assets/skins/external/luffy/character.glb",
     "portrait": true
   }
 ]
