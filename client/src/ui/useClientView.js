@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { INTERACT_RADIUS, ITEM_NAMES, JEEP, RARITIES, WEAPONS } from '@calculo-royale/shared/constants';
+import { HEALING, INTERACT_RADIUS, ITEM_NAMES, JEEP, LOOT, LOOT_ITEMS, RARITIES, WEAPONS } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { nearestRack } from '@calculo-royale/shared/mapLayout';
 import { CRATES, cratePosition } from '../game/crateList.js';
 import { selfWeaponId } from '../net/GameClient.js';
 
 const RESULT_MS = 4500;
+const LOOT_TOAST_MS = 2200;
+// Color del aviso según la rareza del objeto (común gris, raro azul, épico violeta)
+const tierColor = (item) => RARITIES[LOOT_ITEMS[item]?.tier ?? 0].color;
 const CRATE_STATUS = {
   [CRATE_STATE.BUSY]: 'ocupada',
   [CRATE_STATE.LOCKED]: 'bloqueada',
@@ -21,8 +24,9 @@ function jeepAction(v) {
   return { label: 'Jeep lleno', enabled: false };
 }
 
-// Lo más cercano con lo que se puede interactuar: armero (lobby), caja visible o jeep
-function nearestInteractable(me, phase, crateStates, airdrop, vehicles, inVehicle) {
+// Lo más cercano con lo que se puede interactuar: armero (lobby), caja visible, jeep o botín del suelo
+// (el botín lleva la misma ventaja de 0,3 m que le da el servidor)
+function nearestInteractable(me, phase, crateStates, airdrop, vehicles, inVehicle, loot) {
   if (inVehicle) return { label: 'Bajarse del jeep', enabled: true, color: '#fb923c' };
   let best = null;
   let bestDist = INTERACT_RADIUS;
@@ -50,6 +54,14 @@ function nearestInteractable(me, phase, crateStates, airdrop, vehicles, inVehicl
     if (v.state === VEHICLE_STATE.DESTROYED || d > JEEP.enterRadius || d > bestDist) continue;
     bestDist = d;
     best = jeepAction(v);
+  }
+  for (const e of loot?.values() ?? []) {
+    const d = Math.hypot(e.x - me.x, e.y - me.y) - 0.3;
+    if (d > bestDist || d + 0.3 > LOOT.pickupRadius) continue;
+    bestDist = d;
+    best = e.item
+      ? { label: `Tomar ${LOOT_ITEMS[e.item].name}`, enabled: true, color: tierColor(e.item) }
+      : { label: `Revisar caja de botín (${e.count})`, enabled: true, color: '#f43f5e' };
   }
   return best;
 }
@@ -81,12 +93,19 @@ export function useClientView(client, frameRef, phase) {
         deathAt,
         interact:
           me && self?.alive && !client.question && !client.deploying
-            ? nearestInteractable(me, phase, crates ?? [], airdrop, vehicles, client.vehicleId !== null)
+            ? nearestInteractable(me, phase, crates ?? [], airdrop, vehicles, client.vehicleId !== null, client.loot)
             : null,
         vehicle: client.vehicleId !== null ? { ...vehicles?.get(client.vehicleId), seat: client.seat } : null,
         question: client.question,
         crateResult: result,
         radarLeft: Math.max(0, Math.ceil((client.radarEndsAt - now) / 1000)),
+        // Curándose: { item, progress } · bebida: segundos que le quedan
+        healing:
+          self?.healing && client.healingEndsAt > now
+            ? { item: self.healing.item, progress: 1 - (client.healingEndsAt - now) / HEALING[self.healing.item].useMs }
+            : null,
+        drinkLeft: Math.max(0, Math.ceil(((client.drinkEndsAt ?? 0) - now) / 1000)),
+        lootToast: client.lootToast && now - client.lootToast.at < LOOT_TOAST_MS ? client.lootToast : null,
       });
     };
     read();

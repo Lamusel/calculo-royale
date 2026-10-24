@@ -16,7 +16,7 @@ export function slopeFactor(x, y, ux, uy) {
   return clamp(1 - SLOPE_SPEED.k * (fx * ux + fy * uy), SLOPE_SPEED.min, SLOPE_SPEED.max);
 }
 
-// player: { x, y, aim, air? } — se modifica en el lugar
+// player: { x, y, aim, air?, speedFactor? } — se modifica en el lugar (speedFactor: curándose o con bebida)
 // input: { mx, my, aim, buttons } con mx, my en [-1, 1]
 // air: 'fall' | 'chute' mientras cae del bus (sin colisiones ni pendiente, otra velocidad)
 export function applyInput(player, input, dt) {
@@ -33,7 +33,7 @@ export function applyInput(player, input, dt) {
     return;
   }
   const aiming = input.buttons & BUTTONS.AIM ? AIM_MOVE_FACTOR : 1;
-  const step = PLAYER_SPEED * Math.min(len, 1) * aiming * slopeFactor(player.x, player.y, ux, uy) * dt;
+  const step = PLAYER_SPEED * (player.speedFactor ?? 1) * Math.min(len, 1) * aiming * slopeFactor(player.x, player.y, ux, uy) * dt;
   player.x = clamp(player.x + ux * step, -LIMIT, LIMIT);
   player.y = clamp(player.y + uy * step, -LIMIT, LIMIT);
   resolveCircle(player, PLAYER_RADIUS);

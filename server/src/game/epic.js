@@ -31,7 +31,7 @@ export function onLeaderDeath(game, target) {
   game.nextLeaderCheck = game.now + LEADER.checkMs;
   const hunter = game.room.players.get(target.killedBy);
   if (!hunter || hunter === target || !hunter.alive) return;
-  const loot = rollLoot(2).map((item) => applyLoot(hunter, item));
+  const loot = rollLoot(2).map((item) => applyLoot(hunter, item, game));
   game.room.emitTo(hunter, EVENTS.CRATE_RESULT, {
     crateId: null, outcome: 'correct', title: 'Recompensa: eliminaste al líder', loot, explicacion: '',
   });

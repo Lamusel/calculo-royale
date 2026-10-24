@@ -11,6 +11,7 @@ import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
+import { clearLoot, deathBox, nearestLoot, pickUp, spawnGroundLoot, syncLoot, updateHealing, useItem } from './loot.js';
 import { recordTick } from '../metrics.js';
 import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
@@ -42,6 +43,7 @@ export class Game {
     this.duel = null; // { ids, introEndsAt } al quedar 2 vivos
     this.deploy = null; // bus de despliegue o elegir punto (deploy.js)
     this.killTimes = new Map(); // id → momentos de sus bajas recientes (multi-baja)
+    clearLoot(this); // botín en el suelo (solo en partida)
     this.recorder = new Recorder();
     resetRadio(this);
     // Eventos del tick en curso (se vacían al empezar cada tick)
@@ -77,6 +79,10 @@ export class Game {
     if (this.vehicles) resetVehicles(this);
     for (const p of this.room.players.values()) p.question = null;
     resetCrates(this);
+    if (this.loot?.size) {
+      clearLoot(this);
+      this.room.broadcast?.(EVENTS.LOOT_SYNC, []);
+    }
     this.dummies = TRAINING.dummies.map((d) => ({ ...d, hp: DUMMY_HP, lastHitAt: 0 }));
   }
 
@@ -123,6 +129,9 @@ export class Game {
     if (crate) options.push({ dist: crate.dist, use: () => openCrate(this, player, crate.crate) });
     const vehicle = nearestVehicle(this, player.x, player.y);
     if (vehicle) options.push({ dist: vehicle.dist, use: () => interactVehicle(this, player, vehicle.vehicle) });
+    // Botín en el suelo: un poco de ventaja frente a cajas y jeeps (es lo que más se toca)
+    const loot = nearestLoot(this, player.x, player.y);
+    if (loot) options.push({ dist: loot.dist - 0.3, use: () => pickUp(this, player, loot.entry) });
     options.sort((a, b) => a.dist - b.dist);
     options[0]?.use();
   }
@@ -143,6 +152,7 @@ export class Game {
 
   onPlayerDeath(player) {
     if (player.vehicleId !== null) exitVehicle(this, player);
+    if (this.room.phase === 'playing') deathBox(this, player);
     if (player.engineQuestion) cancelEngine(this, player, 'Caíste en combate');
     onLeaderDeath(this, player);
     if (this.room.phase === 'playing') this.recorder.consider(scoreKill(this, player));
@@ -166,9 +176,19 @@ export class Game {
     if (!player.deploying) requestAmmo(this, player);
   }
 
-  // Cajas de esta partida (lo pide la sala; en las pruebas están todas)
+  // Cajas y botín del suelo de esta partida (lo pide la sala; en las pruebas están todas las cajas)
   pickCrates(rand) {
     pickMatchCrates(this, rand);
+    spawnGroundLoot(this, rand);
+  }
+
+  useItem(player, item) {
+    useItem(this, player, item);
+  }
+
+  // Al reconectar: el botín que hay en el suelo
+  syncLoot(player) {
+    syncLoot(this, player);
   }
 
   // Despliegue al iniciar (lo pide la sala; las pruebas que arman escenarios lo omiten)
@@ -224,6 +244,7 @@ export class Game {
     updateLeader(this);
     checkDuel(this);
     updateAmmo(this);
+    updateHealing(this);
 
     if (this.room.phase === 'lobby') {
       for (const d of this.dummies) {
@@ -277,11 +298,11 @@ export class Game {
     for (const p of players) {
       if (!p.connected) continue;
       // Los tiempos restantes cambian cada tick: solo cuenta si hay o no (el cliente lleva la cuenta)
-      const { reloadLeft, ammoCooldownLeft, ...rest } = p.selfState(this.now);
-      const key = JSON.stringify(rest) + (reloadLeft > 0) + (ammoCooldownLeft > 0);
+      const { reloadLeft, ammoCooldownLeft, healing, drinkLeft, ...rest } = p.selfState(this.now);
+      const key = JSON.stringify(rest) + (reloadLeft > 0) + (ammoCooldownLeft > 0) + (healing?.item ?? '') + (drinkLeft > 0);
       if (this.selfCache.get(p.id) === key) continue;
       this.selfCache.set(p.id, key);
-      this.room.emitTo(p, EVENTS.PLAYER_SELF, { ...rest, reloadLeft, ammoCooldownLeft });
+      this.room.emitTo(p, EVENTS.PLAYER_SELF, { ...rest, reloadLeft, ammoCooldownLeft, healing, drinkLeft });
     }
   }
 

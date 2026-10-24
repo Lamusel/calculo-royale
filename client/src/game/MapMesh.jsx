@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { MAP_HALF, MAP_SIZE } from '@calculo-royale/shared/constants';
-import { AREAS } from '@calculo-royale/shared/mapLayout';
+import { AREAS, RUNWAY } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { distanceToPaths } from './paths.js';
 
@@ -19,6 +19,9 @@ const GRAVEL = new THREE.Color('#938d7d');
 const PATH = new THREE.Color('#a58a5f');
 const GRASS_DRY = new THREE.Color('#999953');
 const FOREST = new THREE.Color('#4a6630');
+const ASPHALT = new THREE.Color('#55564f');
+const PITCH = new THREE.Color('#5f9a3c');
+const ROCKY = new THREE.Color('#9b7a5a');
 
 function hash(ix, iy) {
   let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263);
@@ -67,6 +70,13 @@ function groundColor(x, y, out) {
   out.lerp(GRAVEL, rectWeight(AREAS.base, x, y, 4) * 0.55 * smooth(0.2, 0.55, noise(x / 6 + 9, y / 6)));
   out.lerp(FOREST, rectWeight(AREAS.forest, x, y, 8) * 0.8);
   out.lerp(DIRT, rectWeight(AREAS.trenches, x, y, 5) * 0.75);
+  // Anillo exterior: terminal y mercado empedrados, cancha del estadio, cañón de tierra rojiza y pista
+  out.lerp(GRAVEL, rectWeight(AREAS.terminal, x, y, 4) * 0.7);
+  out.lerp(GRAVEL, rectWeight(AREAS.market, x, y, 4) * 0.6);
+  out.lerp(GRAVEL, rectWeight(AREAS.airfield, x, y, 4) * 0.35);
+  out.lerp(PITCH, rectWeight({ x: 114, y: -8, w: 26, h: 42 }, x, y, 1) * 0.9);
+  out.lerp(ROCKY, rectWeight(AREAS.canyon, x, y, 6) * 0.7);
+  out.lerp(ASPHALT, rectWeight(RUNWAY, x, y, 0.5));
   // Caminos de tierra con borde irregular
   const path = 1 - smooth(1.1, 2.6, distanceToPaths(x, y) + (noise(x / 3, y / 3) - 0.5) * 1.2);
   out.lerp(PATH, path * 0.9);

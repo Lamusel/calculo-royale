@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AIM_CANCEL_ZONE, DEPLOY, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
+import { AIM_CANCEL_ZONE, DEPLOY, SCOPES, SNIPER_LOOK_AHEAD } from '@calculo-royale/shared/constants';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { aimPreview, currentAim, inputState } from '../input/inputState.js';
 import { isTouchDevice } from '../input/TouchControls.jsx';
@@ -12,6 +12,8 @@ import BombingMesh from './BombingMesh.jsx';
 import Buildings from './Buildings.jsx';
 import Bus from './Bus.jsx';
 import MapProps from './MapProps.jsx';
+import GroundLoot from './GroundLoot.jsx';
+import OuterRing from './OuterRing.jsx';
 import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
@@ -55,11 +57,15 @@ function FrameDriver({ client, frameRef, followId }) {
   return null;
 }
 
-// Cuánto se desplaza la cámara: con el mouse, completo; con el joystick, según cuánto se arrastra
+// Cuánto se desplaza la cámara al apuntar: el francotirador trae su mira; las demás armas, la que
+// lleve el jugador (punto rojo, 2x, 4x). Con el mouse, completo; con el joystick, según cuánto se arrastra.
 function sniperLook() {
-  if (aimPreview() !== 'sniper') return 0;
-  if (inputState.adsHeld) return SNIPER_LOOK_AHEAD;
-  return SNIPER_LOOK_AHEAD * Math.max(0, (inputState.stickForce - AIM_CANCEL_ZONE) / (1 - AIM_CANCEL_ZONE));
+  const sniper = aimPreview() === 'sniper';
+  const aiming = inputState.adsHeld || inputState.stickAim !== null;
+  if (!sniper && (!aiming || inputState.grenadeMode)) return 0;
+  const reach = Math.max(sniper ? SNIPER_LOOK_AHEAD : 0, SCOPES[inputState.scope ?? 'none'] ?? 0);
+  if (inputState.adsHeld) return reach;
+  return reach * Math.max(0, (inputState.stickForce - AIM_CANCEL_ZONE) / (1 - AIM_CANCEL_ZONE));
 }
 
 // Cámara que sigue al jugador, se adelanta hacia la mira y tiembla al recibir daño.
@@ -252,6 +258,8 @@ export default function Scene({
       <Scenery quality={quality} />
       <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
       <MapProps frameRef={frameRef} />
+      <OuterRing />
+      {phase !== 'lobby' && client.loot && <GroundLoot client={client} />}
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
       <ZoneMesh frameRef={frameRef} />

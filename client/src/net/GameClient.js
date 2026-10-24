@@ -1,4 +1,5 @@
-import { GRENADE, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { GRENADE, LOOT, LOOT_IDS, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { weaponWith } from '@calculo-royale/shared/inventory';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/codec';
 import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
@@ -18,11 +19,13 @@ const KILLFEED_MS = 6000;
 const vibrate = (pattern) => navigator.vibrate?.(pattern);
 
 // Trazadoras, fogonazos y explosiones de un snapshot (también los usa la repetición)
-export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null, audible = false) {
+// heardShot: solo los disparos sin silenciador (el minimapa nocturno los marca)
+export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null, audible = false, heardShot = null) {
   for (const raw of snap.shots) {
     const shot = decodeShot(raw);
     if (shot.shooterId === skipShooter) continue; // ya se dibujó al predecir
-    if (audible) sound.shot(shot.weaponIndex, shot.x, shot.y);
+    if (audible) sound.shot(shot.weaponIndex, shot.x, shot.y, shot.silent);
+    if (!shot.silent) heardShot?.set(shot.shooterId, now);
     for (const { angle, dist } of shot.pellets) {
       effects.push({ type: 'tracer', x: shot.x, y: shot.y, angle, dist, weapon: shot.weaponIndex });
     }
@@ -97,6 +100,10 @@ export class GameClient {
     this.results = null; // ranking al terminar la partida
     this.privateResults = null; // aciertos por tema y preguntas falladas (solo mías)
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
+    this.heardShot = new Map(); // lo mismo, sin los disparos con silenciador (minimapa de noche)
+    this.loot = new Map(); // botín en el suelo: id → { id, item (o null si es caja), x, y, count }
+    this.lootVersion = 0; // sube con cada cambio (la escena redibuja el botín solo entonces)
+    this.lootToast = null; // { names } o { full, name } al tomar algo
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
     this.vehicleId = null; // jeep en el que voy
     this.seat = null; // 'driver' | 'passenger'
@@ -225,6 +232,24 @@ export class GameClient {
         const answered = Object.values(mine.byTopic ?? {}).reduce((n, t) => n + t.total, 0);
         if (this.results?.winnerId === this.myId && answered > 0 && mine.failed.length === 0) this.achieve('flawlessWin');
       },
+      [EVENTS.LOOT_SYNC]: (list) => {
+        this.loot = new Map();
+        for (const e of list) this.addLoot(e);
+        this.lootVersion++;
+      },
+      [EVENTS.LOOT_ADD]: (list) => {
+        for (const e of list) this.addLoot(e);
+        this.lootVersion++;
+      },
+      [EVENTS.LOOT_REMOVE]: (ids) => {
+        for (const id of ids) this.loot.delete(id);
+        this.lootVersion++;
+      },
+      [EVENTS.LOOT_TAKEN]: (result) => {
+        this.lootToast = { ...result, at: performance.now() };
+        if (!result.full) sound.reload();
+        vibrate(result.full ? 60 : 15);
+      },
       [EVENTS.COMBAT_KILL]: ([killer, victim, weapon]) => {
         this.killfeed.push({ killer, victim, weapon, at: performance.now() });
         if (this.killfeed.length > 5) this.killfeed.shift();
@@ -235,6 +260,7 @@ export class GameClient {
     actions.switchWeapon = (slot) => socket.emit(EVENTS.WEAPON_SWITCH, slot);
     actions.interact = () => socket.emit(EVENTS.INTERACT);
     actions.requestAmmo = () => this.requestAmmo();
+    actions.useItem = (item) => this.useItem(item);
     actions.jump = () => this.deploying === 'bus' && press(BUTTONS.JUMP);
 
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
@@ -266,7 +292,11 @@ export class GameClient {
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
     this.ammoCooldownEndsAt = self.ammoCooldownLeft ? now + self.ammoCooldownLeft : 0;
     this.predictedMag = selfMag(self);
+    this.predictor.speedFactor = self.speedFactor ?? 1;
+    this.healingEndsAt = self.healing ? now + self.healing.left : 0;
+    this.drinkEndsAt = self.drinkLeft ? now + self.drinkLeft : 0;
     inputState.weapon = selfWeaponId(self);
+    inputState.scope = self.attachments?.scope ?? null;
     if (self.grenades === 0) inputState.grenadeMode = false;
   }
 
@@ -354,7 +384,7 @@ export class GameClient {
     if (this.ammoQuestion || this.deploying) return; // respondiendo "Obtener balas" o en el aire
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
-    const w = WEAPONS[id];
+    const w = weaponWith(id, this.self.attachments);
     this.localNextFire = now + w.intervalMs;
     this.predictedMag -= 1;
 
@@ -398,7 +428,7 @@ export class GameClient {
     } else {
       frame.follow = null;
     }
-    this.buffer.drainEvents(now, (snap) => snapshotEffects(snap, this.effects, this.lastShot, now, this.myId, !this.spectator));
+    this.buffer.drainEvents(now, (snap) => snapshotEffects(snap, this.effects, this.lastShot, now, this.myId, !this.spectator, this.heardShot));
     this.updateAudio(frame);
     this.lastFrame = frame;
     this.killfeed = this.killfeed.filter((k) => now - k.at < KILLFEED_MS);
@@ -472,6 +502,30 @@ export class GameClient {
     this.followId = ids[(i + step + ids.length) % ids.length];
   }
 
+  // [id, índice en LOOT_IDS (−1 = caja de botín), x, y, cantidad]
+  addLoot([id, index, x, y, count]) {
+    this.loot.set(id, { id, item: index >= 0 ? LOOT_IDS[index] : null, x, y, count });
+  }
+
+  // Botín al alcance (el más cercano), para el aviso "Tomar …"
+  nearestLoot(x, y) {
+    let best = null;
+    let bestDist = LOOT.pickupRadius;
+    for (const e of this.loot.values()) {
+      const d = Math.hypot(e.x - x, e.y - y);
+      if (d <= bestDist) {
+        best = e;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  // Venda, botiquín o bebida (el servidor decide si se puede)
+  useItem(item) {
+    if (this.alive && !this.self?.healing) this.socket.emit(EVENTS.USE_ITEM, item);
+  }
+
   requestAmmo() {
     if (!this.ammoQuestion && this.alive) this.socket.emit(EVENTS.AMMO_REQUEST);
   }
@@ -511,6 +565,7 @@ export class GameClient {
     for (const [event, handler] of Object.entries(this.handlers)) this.socket.off(event, handler);
     actions.switchWeapon = () => {};
     actions.interact = () => {};
+    actions.useItem = () => {};
     actions.requestAmmo = () => {};
     actions.jump = () => {};
   }

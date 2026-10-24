@@ -1,3 +1,4 @@
+import { ATTACHMENTS } from '@calculo-royale/shared/constants';
 import { onSettings, settings } from '../settings.js';
 import { masterLevel, SHOT_VOICES, spatial } from './mix.js';
 
@@ -85,12 +86,14 @@ function tone(dest, { type = 'sine', freq = 440, to = null, attack = 0.005, deca
 }
 
 export const sound = {
-  shot(weapon, x, y) {
+  // Con silenciador: más bajo, más seco y solo se oye de cerca
+  shot(weapon, x, y, silent = false) {
     const v = SHOT_VOICES[weapon] ?? SHOT_VOICES[0];
-    const out = output(v.level, { x, y });
+    if (silent && Math.hypot(x - listener.x, y - listener.y) > ATTACHMENTS.silencerHearRadius) return;
+    const out = output(silent ? v.level * 0.3 : v.level, { x, y });
     if (!out) return;
-    noiseBurst(out, { filter: v.filter, decay: v.decay, peak: 0.9, sweepTo: v.filter * 0.25 });
-    tone(out, { freq: v.thump, to: v.thump * 0.4, decay: v.decay * 0.8, peak: 0.6 });
+    noiseBurst(out, { filter: silent ? v.filter * 0.5 : v.filter, decay: silent ? v.decay * 0.5 : v.decay, peak: 0.9, sweepTo: v.filter * 0.25 });
+    if (!silent) tone(out, { freq: v.thump, to: v.thump * 0.4, decay: v.decay * 0.8, peak: 0.6 });
   },
   reload() {
     const out = output(0.35);

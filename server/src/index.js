@@ -64,6 +64,7 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.CRATE_ANSWER, (data) => rooms.crateAnswer(socket, data));
   socket.on(EVENTS.CRATE_CANCEL, () => rooms.crateCancel(socket));
   socket.on(EVENTS.AMMO_REQUEST, () => rooms.ammoRequest(socket));
+  socket.on(EVENTS.USE_ITEM, (item) => rooms.useItem(socket, item));
   socket.on(EVENTS.AMMO_ANSWER, (data) => rooms.ammoAnswer(socket, data));
   socket.on(EVENTS.ROOM_SPECTATE, (data, ack) => reply(ack, rooms.spectate(socket, data)));
   socket.on(EVENTS.TRANSMISSION_ANSWER, (data) => rooms.transmissionAnswer(socket, data));

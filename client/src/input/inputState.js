@@ -30,12 +30,14 @@ export const inputState = {
   pendingDist: null, // distancia de lanzamiento de la granada
 
   weapon: 'pistol', // arma en mano (la fija el GameClient)
+  scope: null, // mira del jugador: 'reddot' | 'scope2x' | 'scope4x' (la cámara se adelanta al apuntar)
 };
 
 // Acciones que no van en el input (las conecta el GameClient)
 export const actions = {
   switchWeapon: () => {},
   interact: () => {},
+  useItem: () => {},
   requestAmmo: () => {},
   jump: () => {},
 };

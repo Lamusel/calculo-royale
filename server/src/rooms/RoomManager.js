@@ -165,6 +165,12 @@ export class RoomManager {
     if (player) this.roomOf(socket).game.answerCrate(player, data?.crateId, data?.index);
   }
 
+  // Curarse: venda, botiquín o bebida (el servidor valida que tenga y pueda)
+  useItem(socket, item) {
+    const player = this.playerOf(socket);
+    if (player && typeof item === 'string') this.roomOf(socket).game.useItem(player, item);
+  }
+
   ammoRequest(socket) {
     const player = this.playerOf(socket);
     if (player) this.roomOf(socket).game.requestAmmo(player);
@@ -204,7 +210,11 @@ export class RoomManager {
 
   requestSelf(socket) {
     const player = this.playerOf(socket);
-    if (player) this.roomOf(socket).game.resendSelf(player.id);
+    if (!player) return;
+    const { game } = this.roomOf(socket);
+    game.resendSelf(player.id);
+    // El cliente se (re)creó: necesita el botín que hay en el suelo
+    game.syncLoot(player);
   }
 
   playerOf(socket) {

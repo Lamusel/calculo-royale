@@ -187,7 +187,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
         ) : (
           <>
             WASD moverse · clic disparar
-            <br />R recargar · B balas · 1/2 armas · G granada · E tomar
+            <br />R recargar · B balas · 1/2 armas · G granada · E tomar · 4/5/6 curar
           </>
         )}
       </div>

@@ -24,6 +24,7 @@ export class Predictor {
     this.snapNext = false;
     this.drive = null; // jeep que maneja: { x, y, heading, speed }
     this.prevDrive = null;
+    this.speedFactor = 1; // curándose o con bebida (llega en el estado privado)
   }
 
   step(input, now) {
@@ -34,6 +35,7 @@ export class Predictor {
       applyVehicleInput(this.drive, input, DT);
       Object.assign(this.state, seatPosition(this.drive, 'driver'));
     } else {
+      this.state.speedFactor = this.speedFactor;
       applyInput(this.state, input, DT);
     }
     this.pending.push(input);
@@ -64,7 +66,7 @@ export class Predictor {
     // Subir o bajar del jeep, saltar o aterrizar cambia el modo: sin suavizar
     if (Boolean(vehicle) !== Boolean(this.drive) || Boolean(air) !== Boolean(this.state.air)) this.snapNext = true;
     this.pending = this.pending.filter((i) => i.seq > lastSeq);
-    const next = { x, y, aim: this.state.aim, air };
+    const next = { x, y, aim: this.state.aim, air, speedFactor: this.speedFactor };
     let dx;
     let dy;
     if (vehicle) {

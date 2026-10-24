@@ -29,7 +29,7 @@ export const RECONNECT_GRACE_MS = 60_000;
 // --- Mapa ---
 // Cuadrado centrado en el origen: x e y van de -MAP_HALF a MAP_HALF
 // ~2,5 veces el área del mapa original (120): para 40 jugadores
-export const MAP_SIZE = 190;
+export const MAP_SIZE = 280;
 export const MAP_HALF = MAP_SIZE / 2;
 
 // Terreno z = A·sin(x/k)·cos(y/k), solo interno. Colinas suaves: pendiente máxima ≈ A/k
@@ -139,9 +139,9 @@ export const AMMO = { questionMs: 15_000, failCooldownMs: 10_000, okCooldownMs: 
 
 // Rareza = dificultad de la pregunta = calidad del botín. El índice es la dificultad − 1.
 export const RARITIES = [
-  { id: 'comun', name: 'Común', color: '#9ca3af', difficulty: 1, timeMs: 25_000, loot: ['Munición', 'Venda', 'Granada'] },
-  { id: 'raro', name: 'Raro', color: '#3b82f6', difficulty: 2, timeMs: 35_000, loot: ['Escopeta', 'Rifle de asalto', 'Chaleco 1–2', 'Munición'] },
-  { id: 'epico', name: 'Épico', color: '#a855f7', difficulty: 3, timeMs: 45_000, loot: ['Francotirador', 'Chaleco 3', 'Botiquín'] },
+  { id: 'comun', name: 'Común', color: '#9ca3af', difficulty: 1, timeMs: 25_000, loot: ['Munición', 'Venda', 'Bebida', 'Granada'] },
+  { id: 'raro', name: 'Raro', color: '#3b82f6', difficulty: 2, timeMs: 35_000, loot: ['Escopeta o rifle', 'Chaleco 2 y casco', 'Mochila 2', 'Mira 2x', 'Accesorios'] },
+  { id: 'epico', name: 'Épico', color: '#a855f7', difficulty: 3, timeMs: 45_000, loot: ['Francotirador con mira 4x', 'Chaleco 3', 'Casco 3', 'Mochila 3', 'Silenciador'] },
   { id: 'legendario', name: 'Legendario', color: '#eab308', difficulty: 4, timeMs: 60_000, loot: ['Todo o nada: botín épico doble', 'Si fallas pierdes el chaleco'] },
 ];
 
@@ -153,27 +153,26 @@ export const ALARM_MS = 3_000; // alarma visible para todos tras un fallo
 export const PRACTICE_CRATE_RESET_MS = 4_000; // la caja de práctica se vuelve a cerrar
 export const STREAK_FOR_RADAR = 3;
 export const RADAR_MS = 10_000;
-export const BANDAGE_HEAL = 25;
 
 // --- Zona segura ---
 // Todas las zonas son elipses (x − cx)²/p² + (y − cy)²/q² ≤ 1; el círculo es p = q.
-// La inicial cubre todo el mapa (las esquinas están a 60·√2 ≈ 85).
-export const ZONE_START = { cx: 0, cy: 0, p: 136, q: 136 };
+// La inicial cubre todo el mapa (las esquinas están a 140·√2 ≈ 198).
+export const ZONE_START = { cx: 0, cy: 0, p: 200, q: 200 };
 // Cada fase: aviso (waitMs), cierre (shrinkMs), radio de la zona nueva y daño por segundo fuera.
 // `ellipse` escala los semiejes (idea #3: una fase con elipse).
 export const ZONE_PHASES = [
-  // Radios del mapa grande (×1,58) y tiempos algo más largos: ~9 min 15 s de zona
-  { radius: 92, waitMs: 75_000, shrinkMs: 60_000, dps: 2 },
-  { radius: 63, waitMs: 65_000, shrinkMs: 55_000, dps: 4 },
-  { radius: 43, waitMs: 60_000, shrinkMs: 50_000, dps: 6, ellipse: [1.3, 0.75] },
-  { radius: 24, waitMs: 55_000, shrinkMs: 45_000, dps: 9 },
-  { radius: 9, waitMs: 50_000, shrinkMs: 40_000, dps: 14 },
+  // Mapa de 280 m (radios ×1,47 respecto del de 190): ~10 min de zona; con despliegue y duelo, 11–12 min
+  { radius: 135, waitMs: 80_000, shrinkMs: 70_000, dps: 2 },
+  { radius: 93, waitMs: 70_000, shrinkMs: 60_000, dps: 4 },
+  { radius: 63, waitMs: 60_000, shrinkMs: 55_000, dps: 6, ellipse: [1.3, 0.75] },
+  { radius: 35, waitMs: 55_000, shrinkMs: 45_000, dps: 9 },
+  { radius: 13, waitMs: 50_000, shrinkMs: 40_000, dps: 14 },
 ];
 // Daño fuera de la zona cuando ya terminó la última fase
 export const ZONE_FINAL_DPS = 20;
 
 // Lanzamiento aéreo: a mitad de partida cae una caja dorada en paracaídas
-export const AIRDROP = { atMs: 280_000, fallMs: 20_000, rarity: 3 };
+export const AIRDROP = { atMs: 320_000, fallMs: 20_000, rarity: 3 };
 
 // Cuadrícula militar de sectores: 6 × 6 (A1 arriba a la izquierda)
 export const SECTORS = 6;
@@ -269,3 +268,78 @@ export const DEPLOY = {
 export const RADIO_PRIORITY = { bombing: 3, closing: 2, final: 2, zone: 2, duel: 2, airdrop: 1, intercept: 1, leader: 1, revive: 0 };
 export const RADIO_MAX_WAIT_MS = 15000;
 export const RADIO_MIN_SHOW_MS = 2500; // si lo interrumpen antes, vuelve a la cola con lo que le faltaba
+
+// --- Botín de battle royale (fase 18) ---
+// Objetos del suelo y de las cajas. kind: weapon | ammo | heal | grenade | armor | helmet | backpack | attachment
+// tier: 0 común, 1 raro (en el suelo solo hay común y raro; las cajas dan de raro en adelante)
+export const LOOT_ITEMS = {
+  shotgun: { name: 'Escopeta', kind: 'weapon', tier: 1 },
+  rifle: { name: 'Rifle de asalto', kind: 'weapon', tier: 1 },
+  sniper: { name: 'Francotirador', kind: 'weapon', tier: 2 },
+  ammo: { name: 'Munición', kind: 'ammo', tier: 0 },
+  bandage: { name: 'Venda', kind: 'heal', tier: 0 },
+  medkit: { name: 'Botiquín', kind: 'heal', tier: 1 },
+  drink: { name: 'Bebida energética', kind: 'heal', tier: 0 },
+  grenade: { name: 'Granada', kind: 'grenade', tier: 0 },
+  armor1: { name: 'Chaleco 1', kind: 'armor', level: 1, tier: 0 },
+  armor2: { name: 'Chaleco 2', kind: 'armor', level: 2, tier: 1 },
+  armor3: { name: 'Chaleco 3', kind: 'armor', level: 3, tier: 2 },
+  helmet1: { name: 'Casco 1', kind: 'helmet', level: 1, tier: 0 },
+  helmet2: { name: 'Casco 2', kind: 'helmet', level: 2, tier: 1 },
+  helmet3: { name: 'Casco 3', kind: 'helmet', level: 3, tier: 2 },
+  backpack1: { name: 'Mochila 1', kind: 'backpack', level: 1, tier: 0 },
+  backpack2: { name: 'Mochila 2', kind: 'backpack', level: 2, tier: 1 },
+  backpack3: { name: 'Mochila 3', kind: 'backpack', level: 3, tier: 2 },
+  reddot: { name: 'Mira de punto rojo', kind: 'attachment', slot: 'scope', tier: 0 },
+  scope2x: { name: 'Mira 2x', kind: 'attachment', slot: 'scope', tier: 1 },
+  scope4x: { name: 'Mira 4x', kind: 'attachment', slot: 'scope', tier: 2 },
+  extmag: { name: 'Cargador ampliado', kind: 'attachment', slot: 'mag', tier: 1 },
+  stock: { name: 'Culata', kind: 'attachment', slot: 'stock', tier: 1 },
+  silencer: { name: 'Silenciador', kind: 'attachment', slot: 'muzzle', tier: 1 },
+};
+// Índice fijo de cada objeto (eventos de botín); no cambiar el orden, solo agregar al final
+export const LOOT_IDS = Object.keys(LOOT_ITEMS);
+
+// Botín en el suelo por partida: cuántos por punto de zona y peso de cada objeto (común o raro)
+export const LOOT = {
+  perHouseRoom: 2, // objetos por cuarto de casa
+  perArea: 14, // objetos sueltos por zona con nombre
+  scattered: 40, // objetos sueltos por el campo abierto
+  rareChance: 0.3, // probabilidad de que un objeto del suelo sea raro (si no, común)
+  pickupRadius: 2.2,
+  dropSpread: 1.2, // al soltar algo queda a esta distancia, alrededor del jugador
+  deathBox: true,
+  // Peso de cada objeto al sortear (los que no figuran pesan 1)
+  weights: { ammo: 4, bandage: 3, drink: 1.5, grenade: 1.5, medkit: 1.5, rifle: 1.5, shotgun: 1.5 },
+};
+
+// Curación con tiempo. Mientras cura se camina más lento; disparar o cambiar de arma la cancela.
+// La bebida no se canaliza: suma vida de a poco durante durationMs y da algo de velocidad.
+export const HEALING = {
+  bandage: { useMs: 2_000, heal: 15 },
+  medkit: { useMs: 6_000, heal: 100 },
+  drink: { useMs: 1_000, heal: 40, durationMs: 10_000, speedBoost: 1.12 },
+  moveFactor: 0.5,
+};
+
+// Mochila: cuánto se puede llevar de cada consumible (nivel 0 = sin mochila)
+export const BACKPACK = [
+  { bandage: 3, medkit: 1, drink: 1, grenade: 2, reserve: 2 },
+  { bandage: 5, medkit: 2, drink: 2, grenade: 3, reserve: 2.5 },
+  { bandage: 8, medkit: 3, drink: 3, grenade: 4, reserve: 3 },
+  { bandage: 10, medkit: 4, drink: 4, grenade: 5, reserve: 4 },
+];
+// reserve: tope de munición de reserva = WEAPONS[arma].reserve × este valor
+
+// Casco: fracción del daño que resta (después del chaleco)
+export const HELMET = [0, 0.1, 0.16, 0.22];
+
+// Accesorios del arma (valen para la que se tenga en mano)
+export const ATTACHMENTS = {
+  extmag: 1.5, // multiplica el cargador
+  stock: 0.7, // multiplica la dispersión
+  reddot: 0.85, // la mira de punto rojo también cierra un poco la dispersión
+  silencerHearRadius: 12, // con silenciador solo lo oyen los muy cercanos (y no sale en su minimapa)
+};
+// Mira: cuánto se adelanta la cámara al apuntar (metros); el francotirador ya trae la suya
+export const SCOPES = { none: 0, reddot: 3, scope2x: 8, scope4x: 14 };

@@ -211,3 +211,13 @@ export function seededRandom(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+// --- Piezas de las zonas del anillo exterior (fase 18) ---
+// Bus estacionado (terminal): 10 × 2,6, sirve de cobertura alta
+export const parkedBus = (x, y, vertical = false) => ({ kind: 'bus', shape: 'rect', x, y, w: vertical ? 2.6 : 10, h: vertical ? 10 : 2.6, height: 3, vertical });
+// Tribuna del estadio: bloque escalonado (se dibuja con gradas); `face` es hacia dónde mira la cancha
+export const stand = (x, y, w, h, face) => ({ kind: 'stand', shape: 'rect', x, y, w, h, height: 4, face });
+// Puesto de mercado: mesa con toldo (cobertura baja; el toldo es solo visual)
+export const stall = (x, y, vertical = false) => ({ kind: 'stall', shape: 'rect', x, y, w: vertical ? 1.4 : 2.6, h: vertical ? 2.6 : 1.4, height: 1, vertical });
+// Pared de roca del cañón (alta, no se ve a través)
+export const cliff = (x, y, w, h) => ({ kind: 'cliff', shape: 'rect', x, y, w, h, height: 6 });

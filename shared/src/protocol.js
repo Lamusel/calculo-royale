@@ -44,6 +44,12 @@ export const EVENTS = {
   AMMO_QUESTION: 'ammo:question', // S → C: { id, tema, enunciado, opciones, timeLimitMs } (sin la respuesta)
   AMMO_ANSWER: 'ammo:answer', // C → S: { id, index }
   AMMO_RESULT: 'ammo:result', // S → C: { id, correct, weapon?, explicacion?, cooldownMs?, timedOut?, cancelled? }
+  // Botín en el suelo (fase 18). Cada objeto: [id, índice en LOOT_IDS (−1 = caja de botín), x, y, cantidad]
+  LOOT_SYNC: 'loot:sync', // S → C: todos los objetos (al iniciar la partida o al reconectar)
+  LOOT_ADD: 'loot:add', // S → C: objetos nuevos (soltados o caja de botín)
+  LOOT_REMOVE: 'loot:remove', // S → C: ids tomados
+  USE_ITEM: 'item:use', // C → S: 'bandage' | 'medkit' | 'drink'
+  LOOT_TAKEN: 'loot:taken', // S → C (solo a quien tomó): { names: [...] } o { full: true } si no le cabía
   // S → C: { crateId, outcome: 'correct'|'wrong'|'timeout'|'cancelled', loot: [nombres], explicacion?, reason? }
   CRATE_RESULT: 'crate:result',
 

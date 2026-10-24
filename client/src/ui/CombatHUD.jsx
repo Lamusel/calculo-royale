@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ARMOR_ABSORB, GRENADE, JEEP, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { ARMOR_ABSORB, BACKPACK, GRENADE, JEEP, LOOT_ITEMS, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
 import WeaponIcon from './WeaponIcon.jsx';
@@ -110,7 +110,7 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
       <Slot active={inputState.grenadeMode || inputState.grenadeAiming || inputState.grenadeHeld} alert={noGrenades} label={isTouch ? '' : 'G'} onPress={onGrenade}>
         <WeaponIcon weapon="grenade" className="h-4 w-8" />
         <span className="font-mono">
-          {self.grenades}/{GRENADE.max}
+          {self.grenades}/{BACKPACK[self.backpackLevel ?? 0]?.grenade ?? GRENADE.max}
         </span>
       </Slot>
       {(inputState.grenadeMode || inputState.grenadeAiming || noGrenades) && (
@@ -133,6 +133,68 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
     </div>
   );
 }
+
+// Curaciones (tocar o 4, 5, 6), equipo y accesorios (fase 18)
+const HEALS = [
+  ['bandage', 'bandages', 'Venda', '4', '🩹'],
+  ['medkit', 'medkits', 'Botiquín', '5', '✚'],
+  ['drink', 'drinks', 'Bebida', '6', '⚡'],
+];
+const SHORT = { reddot: 'Punto rojo', scope2x: '2x', scope4x: '4x', extmag: 'Cargador+', stock: 'Culata', silencer: 'Silenciador' };
+
+function Inventory({ self, isTouch, drinkLeft }) {
+  const cap = BACKPACK[self.backpackLevel ?? 0];
+  const gear = [
+    ['Ch', self.armorLevel],
+    ['Ca', self.helmetLevel ?? 0],
+    ['Mo', self.backpackLevel ?? 0],
+  ];
+  const attachments = Object.values(self.attachments ?? {}).filter(Boolean);
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex flex-wrap gap-1">
+        {gear.map(([label, level]) => (
+          <span
+            key={label}
+            className={`rounded px-1.5 py-0.5 font-mono text-[0.65rem] ${level > 0 ? 'bg-black/65 text-sky-200' : 'bg-black/35 text-stone-500'}`}
+            title={{ Ch: 'Chaleco', Ca: 'Casco', Mo: 'Mochila' }[label]}
+          >
+            {label} {level || '–'}
+          </span>
+        ))}
+        {attachments.map((a) => (
+          <span key={a} className="rounded bg-black/65 px-1.5 py-0.5 text-[0.65rem] text-amber-200" title={LOOT_ITEMS[a].name}>
+            {SHORT[a]}
+          </span>
+        ))}
+        {drinkLeft > 0 && <span className="rounded bg-emerald-800/80 px-1.5 py-0.5 text-[0.65rem] text-emerald-100">⚡ {drinkLeft} s</span>}
+      </div>
+      <div className="flex gap-1">
+        {HEALS.map(([item, counter, name, key, icon]) => {
+          const n = self[counter] ?? 0;
+          return (
+            <TouchButton
+              key={item}
+              onPress={() => n > 0 && actions.useItem(item)}
+              className={`flex h-[2.6rem] w-[3.3rem] flex-col items-center justify-center rounded border text-[0.65rem] leading-tight ${
+                n > 0 ? 'border-white/20 bg-black/60 text-stone-100' : 'border-white/5 bg-black/30 text-stone-500'
+              }`}
+            >
+              <span className="text-sm leading-none">{icon}</span>
+              <span className="font-mono">
+                {n}/{cap[item]}
+              </span>
+              {!isTouch && <span className="sr-only">{name} ({key})</span>}
+            </TouchButton>
+          );
+        })}
+      </div>
+      {!isTouch && <p className="text-[0.6rem] text-stone-400">4 venda · 5 botiquín · 6 bebida</p>}
+    </div>
+  );
+}
+
+const HEAL_LABEL = { bandage: 'Vendándote', medkit: 'Usando botiquín', drink: 'Bebiendo' };
 
 // Munición del arma en mano
 function handAmmo(self) {
@@ -192,7 +254,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
 
 // Interfaz de combate: vida, armas, botones táctiles, aviso para tomar armas y pantalla de muerte
 export default function CombatHUD({ view, phase, roster, myId, isTouch, client }) {
-  const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle } = view;
+  const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle, healing, drinkLeft, lootToast } = view;
   if (!self) return null;
 
   return (
@@ -208,8 +270,28 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
         <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1.5">
           {vehicle && <JeepBar vehicle={vehicle} />}
           <HealthBar self={self} />
+          {healing && (
+            <div className="w-40">
+              <p className="text-center text-[10px] uppercase tracking-widest text-emerald-300">{HEAL_LABEL[healing.item]}</p>
+              <div className="h-1 overflow-hidden rounded bg-black/60">
+                <div className="h-full bg-emerald-400" style={{ width: `${Math.min(1, healing.progress) * 100}%` }} />
+              </div>
+            </div>
+          )}
           <WeaponBar self={self} reloadProgress={reloadProgress} isTouch={isTouch} />
         </div>
+      )}
+
+      {self.alive && phase === 'playing' && (
+        <div className="absolute bottom-3 left-3 z-20">
+          <Inventory self={self} isTouch={isTouch} drinkLeft={drinkLeft} />
+        </div>
+      )}
+
+      {lootToast && (
+        <p className="pointer-events-none absolute bottom-[9.5rem] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-xs text-stone-100">
+          {lootToast.full ? `No te sirve o no te cabe: ${lootToast.name}` : `+ ${lootToast.names.join(', ')}`}
+        </p>
       )}
 
       {interact && (

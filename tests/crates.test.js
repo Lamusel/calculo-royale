@@ -58,7 +58,9 @@ test('abrir una caja manda la pregunta sin la respuesta correcta y marca al juga
   assert.equal(question.opciones.length, optionCount(RARITIES[c.rarity].difficulty));
   assert.equal(question.timeLimitMs, RARITIES[c.rarity].timeMs);
   const json = JSON.stringify(question);
-  assert.ok(!json.includes('correcta') && !json.includes('explicacion') && !json.includes('valor'), json);
+  // Ninguna clave con la respuesta (el enunciado sí puede decir «el valor mínimo…»)
+  assert.ok(!('correcta' in question) && !('explicacion' in question) && !('valor' in question), json);
+  assert.ok(!json.includes('"correcta"') && !json.includes('"explicacion"'), json);
   tick(room);
   const snap = room.game.snapshot([...room.players.values()]);
   assert.ok(snap[1][0][8] & PLAYER_FLAGS.ANSWERING);
@@ -203,13 +205,16 @@ test('caja de práctica: solo en el lobby, no cuenta en las estadísticas y se v
   assert.equal(states[0], CRATE_STATE.HIDDEN);
 });
 
-test('botín: venda, botiquín, munición y armas', () => {
+test('botín de cajas: curaciones al inventario, munición, armas y lo que no cabe', () => {
   const p = new Player({ id: 1, name: 'A', color: '#fff', token: 't' });
   p.hp = 50;
   applyLoot(p, 'bandage');
-  assert.equal(p.hp, 75);
   applyLoot(p, 'medkit');
-  assert.equal(p.hp, MAX_HP);
+  assert.equal(p.hp, 50, 'curar ahora toma tiempo: van al inventario');
+  assert.equal(p.bandages, 1);
+  assert.equal(p.medkits, 1);
+  applyLoot(p, 'medkit');
+  assert.match(applyLoot(p, 'medkit'), /quedó en el suelo/, 'sin mochila caben 1 botiquín');
   applyLoot(p, 'rifle');
   const reserve = p.primary.reserve;
   applyLoot(p, 'ammo');
@@ -218,5 +223,7 @@ test('botín: venda, botiquín, munición y armas', () => {
   applyLoot(p, 'armor1');
   assert.equal(p.armorLevel, 3, 'no baja de nivel');
   for (const table of LOOT_TABLES) for (const combo of table) for (const item of combo) assert.ok(applyLoot(p, item));
+  assert.equal(p.helmetLevel, 3);
+  assert.equal(p.backpackLevel, 3);
   assert.equal(rollLoot(3).length >= 2, true);
 });

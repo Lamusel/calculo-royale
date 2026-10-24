@@ -65,6 +65,9 @@ export function attachKeyboardMouse() {
     else if (isKey(e, 'E')) actions.interact();
     else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);
     else if (e.code === 'Digit2' || e.key === '2') actions.switchWeapon(2);
+    else if (e.code === 'Digit4' || e.key === '4') actions.useItem('bandage');
+    else if (e.code === 'Digit5' || e.key === '5') actions.useItem('medkit');
+    else if (e.code === 'Digit6' || e.key === '6') actions.useItem('drink');
     else if (e.code === 'Escape') inputState.grenadeAiming = false;
   };
   const onKeyUp = (e) => {

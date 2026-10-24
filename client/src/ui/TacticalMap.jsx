@@ -13,8 +13,20 @@ import MathText from './MathText.jsx';
 
 const CONTAINERS = OBSTACLES.filter((o) => o.kind === 'container');
 const SANDBAGS = OBSTACLES.filter((o) => o.kind === 'sandbag');
+// Piezas del anillo exterior: buses, tribunas, puestos y paredes del cañón
+const RING_PIECES = OBSTACLES.filter((o) => ['bus', 'stand', 'stall', 'cliff'].includes(o.kind));
+const RING_COLORS = { bus: 'rgba(214, 162, 38, 0.8)', stand: 'rgba(181, 178, 164, 0.75)', stall: 'rgba(192, 57, 43, 0.7)', cliff: 'rgba(125, 95, 69, 0.95)' };
 const NAMED = Object.values(AREAS).filter((a) => a.name);
-const AREA_TINT = { 'Base militar': 'rgba(150, 150, 130, 0.22)', Bosque: 'rgba(20, 50, 20, 0.45)', Trincheras: 'rgba(120, 90, 50, 0.3)' };
+const AREA_TINT = {
+  'Base militar': 'rgba(150, 150, 130, 0.22)',
+  Bosque: 'rgba(20, 50, 20, 0.45)',
+  Trincheras: 'rgba(120, 90, 50, 0.3)',
+  'Terminal de buses': 'rgba(150, 150, 140, 0.25)',
+  'Plaza de mercado': 'rgba(170, 150, 120, 0.25)',
+  Aeródromo: 'rgba(90, 90, 85, 0.3)',
+  Estadio: 'rgba(95, 154, 60, 0.35)',
+  Cañón: 'rgba(155, 122, 90, 0.35)',
+};
 
 export function draw(ctx, size, data, detailed) {
   const s = size / MAP_SIZE;
@@ -42,6 +54,10 @@ export function draw(ctx, size, data, detailed) {
   for (const h of HOUSES) ctx.fillRect(X(h.x - h.w / 2), Y(h.y + h.h / 2), h.w * s, h.h * s);
   ctx.fillStyle = 'rgba(160, 120, 90, 0.6)';
   for (const c of CONTAINERS) ctx.fillRect(X(c.x - c.w / 2), Y(c.y + c.h / 2), c.w * s, c.h * s);
+  for (const o of RING_PIECES) {
+    ctx.fillStyle = RING_COLORS[o.kind];
+    ctx.fillRect(X(o.x - o.w / 2), Y(o.y + o.h / 2), Math.max(1, o.w * s), Math.max(1, o.h * s));
+  }
 
   // Sectores
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';

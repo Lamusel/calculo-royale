@@ -47,17 +47,22 @@ export function encodePlayerState(p, weaponIndex, flags) {
   return entry;
 }
 
-export function encodeShot(shooterId, weaponIndex, x, y, pellets) {
-  const shot = [shooterId, weaponIndex, round2(x), round2(y)];
+// Disparo con silenciador: el índice del arma lleva este bit (no sale en el minimapa de los demás)
+export const SHOT_SILENT = 64;
+
+export function encodeShot(shooterId, weaponIndex, x, y, pellets, silent = false) {
+  const shot = [shooterId, silent ? weaponIndex | SHOT_SILENT : weaponIndex, round2(x), round2(y)];
   for (const { angle, dist } of pellets) shot.push(round2(angle), round2(dist));
   return shot;
 }
 
 export function decodeShot(shot) {
-  const [shooterId, weaponIndex, x, y] = shot;
+  const [shooterId, flagged, x, y] = shot;
+  const weaponIndex = flagged & ~SHOT_SILENT;
+  const silent = Boolean(flagged & SHOT_SILENT);
   const pellets = [];
   for (let i = 4; i < shot.length; i += 2) pellets.push({ angle: shot[i], dist: shot[i + 1] });
-  return { shooterId, weaponIndex, x, y, pellets };
+  return { shooterId, weaponIndex, x, y, pellets, silent };
 }
 
 export { round2 };

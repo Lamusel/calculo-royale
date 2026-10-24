@@ -132,7 +132,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         isTouch={isTouch}
         intel={view.self?.intel}
         night={room.phase === 'playing' && room.weather === 'noche'}
-        lastShot={client.lastShot}
+        lastShot={client.heardShot}
         deployRoute={client.deploying === 'bus' && client.deployInfo?.route ? client.deployInfo.route : null}
       />
       {room.phase === 'playing' && <WeatherChip weather={room.weather} windAngle={room.windAngle} />}

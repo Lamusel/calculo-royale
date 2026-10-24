@@ -4,7 +4,8 @@
 
 import { MAP_HALF } from './constants.js';
 import {
-  barrel, container, crate, fence, furnishRoom, houseShell, localFrame, partitions, rock, sandbags, seededRandom, tree, towerLegs,
+  barrel, cliff, container, crate, fence, furnishRoom, houseShell, localFrame, parkedBus, partitions, rock, sandbags, seededRandom, stall,
+  stand, tree, towerLegs,
 } from './mapBuild.js';
 
 export { WALL_HEIGHT, FURNITURE_SIZES } from './mapBuild.js';
@@ -17,6 +18,12 @@ export const AREAS = {
   forest: { x: -56, y: -57, w: 64, h: 62, name: 'Bosque' },
   trenches: { x: 0, y: -73, w: 50, h: 30, name: 'Trincheras' },
   containers: { x: 55, y: -50, w: 48, h: 46, name: 'Contenedores' },
+  // Anillo exterior del mapa de 280 m (fase 18)
+  terminal: { x: -114, y: 0, w: 40, h: 56, name: 'Terminal de buses' },
+  market: { x: -4, y: 114, w: 52, h: 36, name: 'Plaza de mercado' },
+  airfield: { x: 100, y: 112, w: 64, h: 40, name: 'Aeródromo' },
+  stadium: { x: 114, y: -8, w: 42, h: 58, name: 'Estadio' },
+  canyon: { x: -104, y: -108, w: 46, h: 42, name: 'Cañón' },
   training: { x: 0, y: 0, r: 16 },
 };
 
@@ -41,6 +48,19 @@ export const HOUSES = [
   { x: -62, y: -40, w: 8, h: 7, door: 'e', type: 'cabana', rooms: 1, roomTypes: ['cuarto'], crates: [1] },
   // Trincheras (sur)
   { x: 12, y: -81, w: 7, h: 6, door: 'n', type: 'bunker', rooms: 1, roomTypes: ['bunker'], crates: [2], hot: true },
+  // Terminal de buses (oeste): sala de espera y taquilla
+  { x: -118, y: 14, w: 18, h: 12, door: 'e', doorWidth: 6, type: 'hangar', rooms: 1, roomTypes: ['hangar'], crates: [2], hot: true },
+  { x: -103, y: -15, w: 9, h: 8, door: 'n', type: 'casa', rooms: 1, roomTypes: ['sala'], crates: [1] },
+  // Plaza de mercado (norte): almacén y tienda
+  { x: -24, y: 125, w: 10, h: 8, door: 's', type: 'casa', rooms: 2, roomTypes: ['cocina', 'sala'], crates: [1, 1] },
+  { x: 16, y: 125, w: 10, h: 8, door: 's', type: 'bodega', rooms: 1, roomTypes: ['bodega'], crates: [2], hot: true },
+  // Aeródromo (noreste): hangar grande y barraca de pilotos
+  { x: 116, y: 124, w: 20, h: 13, door: 's', doorWidth: 7, type: 'hangar', rooms: 1, roomTypes: ['hangar'], crates: [3], hot: true },
+  { x: 84, y: 125, w: 8, h: 7, door: 's', type: 'barraca', rooms: 1, roomTypes: ['literas'], crates: [1] },
+  // Estadio (este): camerinos detrás de la tribuna norte
+  { x: 124, y: 28, w: 10, h: 8, door: 's', type: 'barraca', rooms: 1, roomTypes: ['literas'], crates: [2] },
+  // Cañón (suroeste): cabaña del guardabosques al fondo
+  { x: -110, y: -125, w: 8, h: 7, door: 'n', type: 'cabana', rooms: 1, roomTypes: ['cuarto'], crates: [2], hot: true },
 ];
 
 const houseObstacles = [];
@@ -72,6 +92,8 @@ export const TOWERS = [
   { x: 77, y: 37 },
   { x: 37, y: 75 },
   { x: 77, y: 75 },
+  // Torre de control del aeródromo
+  { x: 97, y: 126 },
 ];
 const base = [
   // Cerca perimetral (x 32..82, y 32..80): portón sur (x 49..55) y oeste (y 53..59)
@@ -142,6 +164,70 @@ const containers = [
   barrel(64, -50.2),
 ];
 
+// --- Terminal de buses: buses estacionados en los andenes, bancas y canecas ---
+const terminal = [
+  parkedBus(-123, -6, true),
+  parkedBus(-117, -6, true),
+  parkedBus(-121, -24),
+  parkedBus(-114, 24),
+  crate(-109, 4, 1.2),
+  crate(-109, -1, 1.2),
+  barrel(-104, 22),
+  barrel(-103, 23.2),
+  fence(-114, -30, 26, 0.3),
+];
+
+// --- Plaza de mercado: dos filas de puestos alrededor de una fuente ---
+const market = [
+  ...[-22, -15, -8].map((x) => stall(x, 110)),
+  ...[2, 9, 16].map((x) => stall(x, 110)),
+  ...[-20, -12].map((x) => stall(x, 101)),
+  ...[4, 12].map((x) => stall(x, 101)),
+  rock(-4, 105, 1.6), // fuente
+  barrel(-28, 104),
+  barrel(22, 104),
+  crate(-30, 114),
+  crate(24, 116),
+];
+
+// --- Aeródromo: pista (solo visual), bidones y cajas de carga (las patas de la torre van con TOWERS) ---
+const airfield = [
+  barrel(104, 112),
+  barrel(105.2, 112),
+  barrel(104.6, 113.1),
+  crate(88, 112),
+  crate(89.5, 112),
+  crate(128, 110, 2),
+  sandbags(74, 118, 0.9, 6),
+];
+
+// --- Estadio: cuatro tribunas con entradas por las esquinas y por el oeste ---
+const stadium = [
+  stand(114, 16, 30, 5, 's'),
+  stand(114, -32, 30, 5, 'n'),
+  stand(131, -8, 5, 36, 'w'),
+  stand(97, 4, 5, 14, 'e'),
+  stand(97, -20, 5, 14, 'e'),
+  // Arcos de la cancha
+  fence(103, -8, 0.3, 6),
+  fence(125, -8, 0.3, 6),
+  crate(114, -1, 1.2),
+  crate(114, -15, 1.2),
+];
+
+// --- Cañón: paredes de roca en zigzag y piedras sueltas ---
+const canyon = [
+  cliff(-116, -94, 24, 4),
+  cliff(-92, -104, 20, 4),
+  cliff(-118, -112, 22, 4),
+  cliff(-93, -120, 18, 4),
+  rock(-104, -100, 1.6),
+  rock(-100, -114, 1.4),
+  rock(-122, -104, 1.8),
+  rock(-86, -112, 1.5),
+  rock(-100, -125, 1.2),
+];
+
 // --- Bosque: árboles con semilla, con claros y la cabaña libres ---
 const CLEARINGS = [
   { x: -48, y: -50, r: 7 },
@@ -169,29 +255,38 @@ function insideArea(x, y, margin) {
     a.r ? Math.hypot(x - a.x, y - a.y) < a.r + margin : Math.abs(x - a.x) < a.w / 2 + margin && Math.abs(y - a.y) < a.h / 2 + margin,
   );
 }
-// Cajas en campo abierto: pocas y comunes
+// Cajas en campo abierto: pocas y raras (desde la fase 18 las cajas son de raro en adelante)
 const OPEN_CRATES = [
-  { x: 20, y: 30, rarity: 0, tag: 'open' },
-  { x: -22, y: -20, rarity: 0, tag: 'open' },
-  { x: 30, y: -8, rarity: 0, tag: 'open' },
-  { x: -30, y: 6, rarity: 0, tag: 'open' },
-  { x: 10, y: 52, rarity: 0, tag: 'open' },
-  { x: -10, y: -42, rarity: 0, tag: 'open' },
-  { x: 84, y: 20, rarity: 0, tag: 'open' },
-  { x: -84, y: 8, rarity: 0, tag: 'open' },
-  { x: 24, y: -84, rarity: 0, tag: 'open' },
-  { x: -20, y: 84, rarity: 0, tag: 'open' },
-  { x: 86, y: -84, rarity: 0, tag: 'open' },
-  { x: -86, y: 84, rarity: 0, tag: 'open' },
-  { x: -36, y: -34, rarity: 0, tag: 'open' },
-  { x: -78, y: -48, rarity: 0, tag: 'open' },
-  { x: -50, y: -80, rarity: 0, tag: 'open' },
-  { x: -60, y: 36, rarity: 0, tag: 'open' },
-  { x: -44, y: 56, rarity: 0, tag: 'open' },
-  { x: 60, y: 10, rarity: 0, tag: 'open' },
-  { x: -60, y: -10, rarity: 0, tag: 'open' },
-  { x: 40, y: 86, rarity: 0, tag: 'open' },
-  { x: 80, y: -30, rarity: 0, tag: 'open' },
+  { x: 20, y: 30, rarity: 1, tag: 'open' },
+  { x: -22, y: -20, rarity: 1, tag: 'open' },
+  { x: 30, y: -8, rarity: 1, tag: 'open' },
+  { x: -30, y: 6, rarity: 1, tag: 'open' },
+  { x: 10, y: 52, rarity: 1, tag: 'open' },
+  { x: -10, y: -42, rarity: 1, tag: 'open' },
+  { x: 84, y: 20, rarity: 1, tag: 'open' },
+  { x: -84, y: 8, rarity: 1, tag: 'open' },
+  { x: 24, y: -84, rarity: 1, tag: 'open' },
+  { x: -20, y: 84, rarity: 1, tag: 'open' },
+  { x: 86, y: -84, rarity: 1, tag: 'open' },
+  { x: -86, y: 84, rarity: 1, tag: 'open' },
+  { x: -36, y: -34, rarity: 1, tag: 'open' },
+  { x: -78, y: -48, rarity: 1, tag: 'open' },
+  { x: -50, y: -80, rarity: 1, tag: 'open' },
+  { x: -60, y: 36, rarity: 1, tag: 'open' },
+  { x: -44, y: 56, rarity: 1, tag: 'open' },
+  { x: 60, y: 10, rarity: 1, tag: 'open' },
+  { x: -60, y: -10, rarity: 1, tag: 'open' },
+  { x: 40, y: 86, rarity: 1, tag: 'open' },
+  { x: 80, y: -30, rarity: 1, tag: 'open' },
+  // Anillo exterior (fase 18)
+  { x: -80, y: 100, rarity: 1, tag: 'open' },
+  { x: 70, y: -112, rarity: 1, tag: 'open' },
+  { x: -130, y: 44, rarity: 1, tag: 'open' },
+  { x: 130, y: 60, rarity: 1, tag: 'open' },
+  { x: 40, y: -124, rarity: 1, tag: 'open' },
+  { x: -60, y: -128, rarity: 1, tag: 'open' },
+  { x: 54, y: 104, rarity: 1, tag: 'open' },
+  { x: -130, y: -60, rarity: 1, tag: 'open' },
 ];
 
 // Jeeps (solo en partida): en campo abierto. heading en radianes.
@@ -202,6 +297,8 @@ export const VEHICLE_SPOTS = [
   { x: -86, y: 18, heading: -Math.PI / 2 },
   { x: 18, y: -46, heading: 0 },
   { x: -8, y: 82, heading: Math.PI },
+  { x: -96, y: 30, heading: -Math.PI / 2 },
+  { x: 92, y: -48, heading: Math.PI / 2 },
 ];
 
 // Puntos que la cobertura dispersa deja libres (cajas en campo abierto y jeeps)
@@ -210,10 +307,11 @@ function scatteredCover() {
   const rand = seededRandom(20261022);
   const items = [];
   const limit = MAP_HALF - 4;
-  for (let attempts = 0; items.length < 110 && attempts < 5000; attempts++) {
+  for (let attempts = 0; items.length < 210 && attempts < 9000; attempts++) {
     const x = (rand() * 2 - 1) * limit;
     const y = (rand() * 2 - 1) * limit;
     if (insideArea(x, y, 3)) continue;
+    if (HOUSES.some((h) => Math.abs(x - h.x) < h.w / 2 + 3 && Math.abs(y - h.y) < h.h / 2 + 3)) continue;
     if (items.some((o) => Math.hypot(o.x - x, o.y - y) < 7.5)) continue;
     if (RESERVED.some((p) => Math.hypot(p.x - x, p.y - y) < 4)) continue;
     const pick = rand();
@@ -222,7 +320,10 @@ function scatteredCover() {
   return items;
 }
 
-export const OBSTACLES = [...houseObstacles, ...furnitureObstacles, ...town, ...base, ...trenches, ...containers, ...forest(), ...scatteredCover()];
+export const OBSTACLES = [
+  ...houseObstacles, ...furnitureObstacles, ...town, ...base, ...trenches, ...containers, ...terminal, ...market, ...airfield, ...stadium, ...canyon,
+  ...forest(), ...scatteredCover(),
+];
 export const TREES = OBSTACLES.filter((o) => o.kind === 'tree');
 
 // Caminos de tierra (solo visuales): polilíneas de puntos (x, y)
@@ -238,7 +339,17 @@ export const PATHS = [
   [[-42, -40], [-26, -60], [-14, -66]],
   [[42, -38], [30, -56], [20, -66]],
   [[52, 30], [72, 12], [80, -20], [70, -36]],
+  // Anillo exterior
+  [[-52, 34], [-80, 22], [-100, 8]],
+  [[-48, 74], [-30, 96], [-4, 100]],
+  [[34, 56], [60, 90], [84, 104]],
+  [[80, -20], [94, -8]],
+  [[-48, -50], [-76, -84], [-96, -100]],
+  [[-100, 8], [-110, -12], [-118, -36], [-120, -70], [-112, -90]],
 ];
+
+// Pista del aeródromo (solo visual): rectángulo de asfalto
+export const RUNWAY = { x: 102, y: 100, w: 60, h: 7 };
 
 // Cajas de suministro (sin colisión): todos los puntos posibles. En cada partida se elige una
 // parte con semilla (ver server/src/game/crates.js): 'hot' siempre, la mayoría de 'inside' y
@@ -264,18 +375,37 @@ export const SUPPLY_CRATES = [
   { x: 76, y: 66, rarity: 1, tag: 'inside' },
   { x: 40, y: -48, rarity: 1, tag: 'inside' },
   { x: 66, y: -52, rarity: 1, tag: 'inside' },
-  { x: 52, y: -62, rarity: 0, tag: 'inside' },
-  { x: 36, y: -66, rarity: 0, tag: 'inside' },
+  { x: 52, y: -62, rarity: 1, tag: 'inside' },
+  { x: 36, y: -66, rarity: 1, tag: 'inside' },
   // Trincheras
   { x: -16, y: -65.5, rarity: 1, tag: 'inside' },
   { x: 14, y: -65.5, rarity: 1, tag: 'inside' },
   { x: -4, y: -75, rarity: 2, tag: 'inside' },
   { x: -11.5, y: -70, rarity: 1, tag: 'inside' },
-  { x: 6, y: -65.5, rarity: 0, tag: 'inside' },
+  { x: 6, y: -65.5, rarity: 1, tag: 'inside' },
   { x: 8, y: -75, rarity: 1, tag: 'inside' },
   // Claros del bosque
   { x: -48, y: -50, rarity: 1, tag: 'inside' },
-  { x: -70, y: -72, rarity: 0, tag: 'inside' },
+  { x: -70, y: -72, rarity: 1, tag: 'inside' },
+  // Terminal de buses
+  { x: -112, y: -14, rarity: 1, tag: 'inside' },
+  { x: -106, y: 6, rarity: 1, tag: 'inside' },
+  // Plaza de mercado
+  { x: -18, y: 104, rarity: 1, tag: 'inside' },
+  { x: 8, y: 104, rarity: 1, tag: 'inside' },
+  { x: -4, y: 118, rarity: 2, tag: 'inside' },
+  // Aeródromo
+  { x: 80, y: 106, rarity: 1, tag: 'inside' },
+  { x: 128, y: 104, rarity: 1, tag: 'inside' },
+  { x: 102, y: 116, rarity: 2, tag: 'inside' },
+  // Estadio: el centro de la cancha siempre tiene caja
+  { x: 114, y: -8, rarity: 2, tag: 'hot' },
+  { x: 106, y: 8, rarity: 1, tag: 'inside' },
+  { x: 122, y: -24, rarity: 1, tag: 'inside' },
+  // Cañón
+  { x: -106, y: -104, rarity: 1, tag: 'inside' },
+  { x: -98, y: -112, rarity: 2, tag: 'inside' },
+  { x: -122, y: -120, rarity: 1, tag: 'inside' },
   ...OPEN_CRATES,
 ];
 

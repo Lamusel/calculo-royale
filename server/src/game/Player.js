@@ -1,6 +1,7 @@
 import { ARMOR_ABSORB, GRENADE, MAX_HP, MAX_INPUT_BURST, WEAPONS } from '@calculo-royale/shared/constants';
 import { applyInput } from '@calculo-royale/shared/movement';
 import { DEFAULT_SKIN } from '@calculo-royale/shared/skins';
+import { magazineOf, noAttachments } from '@calculo-royale/shared/inventory';
 
 // Ticks de historia de posiciones para la compensación de lag
 const HISTORY_TICKS = 10;
@@ -69,6 +70,16 @@ export class Player {
     this.ammoQuestion = null; // "Obtener balas" pendiente
     this.deploy = null; // { phase: 'bus' | 'pick' | 'fall' | 'chute', z } durante el despliegue
     this.ammoCooldownUntil = 0;
+    // Botín de battle royale (fase 18)
+    this.helmetLevel = 0;
+    this.backpackLevel = 0;
+    this.bandages = 0;
+    this.medkits = 0;
+    this.drinks = 0;
+    this.attachments = noAttachments();
+    this.healing = null; // { item, until } mientras se venda o usa un botiquín
+    this.drinkUntil = 0; // la bebida cura de a poco y da velocidad hasta este momento
+    this.speedFactor = 1;
   }
 
   // Cayendo del bus: el movimiento compartido usa otra velocidad y no choca
@@ -114,7 +125,7 @@ export class Player {
   giveItem(item) {
     if (WEAPONS[item]) {
       const w = WEAPONS[item];
-      this.primary = { id: item, mag: w.magazine, reserve: w.reserve };
+      this.primary = { id: item, mag: magazineOf(item, this.attachments), reserve: w.reserve };
       this.slot = 2;
       this.reloadUntil = 0;
     } else if (item === 'grenade') {
@@ -196,6 +207,15 @@ export class Player {
       ammoCooldownLeft: Math.max(0, this.ammoCooldownUntil - now),
       primary: this.primary && { ...this.primary },
       grenades: this.grenades,
+      helmetLevel: this.helmetLevel,
+      backpackLevel: this.backpackLevel,
+      bandages: this.bandages,
+      medkits: this.medkits,
+      drinks: this.drinks,
+      attachments: { ...this.attachments },
+      healing: this.healing && { item: this.healing.item, ms: this.healing.until - this.healing.startedAt, left: Math.max(0, this.healing.until - now) },
+      drinkLeft: Math.max(0, this.drinkUntil - now),
+      speedFactor: this.speedFactor,
       reloadLeft: this.reloadUntil ? Math.max(0, this.reloadUntil - now) : 0,
       streak: this.streak,
       radar: this.radarUntil > now,

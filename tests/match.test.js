@@ -111,8 +111,9 @@ test('fuera de la zona se recibe daño que el chaleco no absorbe', () => {
   advance(room, ZONE_PHASES[0].waitMs + ZONE_PHASES[0].shrinkMs);
   const z = zone.current;
   inside.teleport(z.cx, z.cy);
-  outside.teleport(Math.max(-59, Math.min(59, z.cx + z.p + 3)), z.cy);
-  if (insideZone(z, outside.x, outside.y)) outside.teleport(z.cx > 0 ? -59 : 59, z.cy > 0 ? -59 : 59);
+  const edge = MAP_HALF - 2;
+  outside.teleport(Math.max(-edge, Math.min(edge, z.cx + z.p + 3)), z.cy);
+  if (insideZone(z, outside.x, outside.y)) outside.teleport(z.cx > 0 ? -edge : edge, z.cy > 0 ? -edge : edge);
   outside.giveItem('armor');
   advance(room, 1000);
   assert.equal(inside.hp, MAX_HP);

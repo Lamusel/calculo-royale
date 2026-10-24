@@ -1,6 +1,7 @@
 import {
-  GRENADE, LAG_COMP_MAX_MS, MAP_HALF, PLAYER_RADIUS, TICK_MS, WEAPON_IDS, WEAPONS,
+  GRENADE, HELMET, LAG_COMP_MAX_MS, MAP_HALF, PLAYER_RADIUS, TICK_MS, WEAPON_IDS, WEAPONS,
 } from '@calculo-royale/shared/constants';
+import { magazineOf, weaponWith } from '@calculo-royale/shared/inventory';
 import { BUTTONS, dummyTargetId, EVENTS } from '@calculo-royale/shared/protocol';
 import { encodeShot } from '@calculo-royale/shared/codec';
 import { hasLineOfSight, overlapsObstacle, raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
@@ -41,13 +42,12 @@ export function targetsAt(game, shooter, viewTick) {
 
 export function startReload(game, p) {
   const w = WEAPONS[p.weaponId];
-  if (p.reloadUntil || p.mag >= w.magazine || p.reserve <= 0) return;
+  if (p.reloadUntil || p.healing || p.mag >= magazineOf(p.weaponId, p.attachments) || p.reserve <= 0) return;
   p.reloadUntil = game.now + w.reloadMs;
 }
 
 export function finishReload(p) {
-  const w = WEAPONS[p.weaponId];
-  const take = Math.min(w.magazine - p.mag, p.reserve);
+  const take = Math.min(magazineOf(p.weaponId, p.attachments) - p.mag, p.reserve);
   p.mag += take;
   p.reserve -= take;
   p.reloadUntil = 0;
@@ -56,6 +56,7 @@ export function finishReload(p) {
 export function switchWeapon(game, p, slot) {
   if (slot === p.slot || (slot === 2 && !p.primary) || ![1, 2].includes(slot)) return;
   p.slot = slot;
+  p.healing = null; // cambiar de arma cancela la curación
   p.reloadUntil = 0;
   p.nextFireAt = Math.max(p.nextFireAt, game.now + 250);
 }
@@ -76,7 +77,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
     target.armor = 0;
     target.armorLevel = 0;
   }
-  const toHp = amount - absorbed;
+  // El casco resta un porcentaje de lo que pasa el chaleco
+  const toHp = (amount - absorbed) * (ignoreArmor ? 1 : 1 - HELMET[target.helmetLevel ?? 0]);
   target.hp -= toHp;
   if (target.hp > 0) return { dealt: amount, killed: false };
 
@@ -111,8 +113,10 @@ function damageTarget(game, target, amount, attackerId, weaponIndex) {
 // Disparo hitscan con compensación de lag: los objetivos se ubican donde el tirador los veía
 export function fire(game, p, input) {
   const id = p.weaponId;
-  const w = WEAPONS[id];
+  // Culata y punto rojo cierran la dispersión
+  const w = weaponWith(id, p.attachments);
   if (game.now < p.nextFireAt || p.reloadUntil) return;
+  p.healing = null; // disparar cancela la curación
   if (p.mag <= 0) {
     startReload(game, p);
     return;
@@ -150,13 +154,14 @@ export function fire(game, p, input) {
     const { killed } = damageTarget(game, target, amount, p.id, weaponIndex);
     game.room.emitTo(p, EVENTS.COMBAT_HIT, [target.id, amount, target.x, target.y, killed ? 1 : 0]);
   }
-  game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, pellets));
+  game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, pellets, p.attachments?.muzzle === 'silencer'));
   if (p.mag === 0) startReload(game, p);
 }
 
 export function throwGrenade(game, p, input) {
   if (p.grenades <= 0 || game.now < p.nextGrenadeAt) return;
   p.grenades -= 1;
+  p.healing = null;
   p.nextGrenadeAt = game.now + GRENADE.intervalMs;
 
   let aim = input.aim;

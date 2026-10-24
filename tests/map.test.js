@@ -87,7 +87,7 @@ test('las casas tienen muebles y algunas varios cuartos; hay árboles en el bosq
   assert.ok(OBSTACLES.filter((o) => o.kind === 'sandbag' && inArea(o, AREAS.trenches)).length >= 10);
 });
 
-test('zona a escala: la primera cubre casi todo el mapa y la partida dura ~9 a 11 minutos', () => {
+test('zona a escala: la primera cubre casi todo el mapa y la zona dura ~9 a 11 minutos (partida de 10–12 con despliegue y duelo)', () => {
   assert.ok(ZONE_START.p >= MAP_HALF * Math.SQRT2);
   assert.ok(ZONE_PHASES[0].radius >= MAP_HALF * 0.9);
   const total = ZONE_PHASES.reduce((t, p) => t + p.waitMs + p.shrinkMs, 0) / 60000;
@@ -123,7 +123,9 @@ test('la rejilla de colisiones da lo mismo que revisar todos los obstáculos', (
     if (bruteOverlap(x, y, 1e-6)) continue;
     let t = 0;
     while (t < 55 && !bruteOverlap(x + Math.cos(a) * t, y + Math.sin(a) * t, 1e-6)) t += 0.05;
-    assert.ok(Math.abs(Math.min(t, 55) - d) < 0.08, `rayo desde (${x.toFixed(1)}, ${y.toFixed(1)}): ${d} vs ${t}`);
+    // Un rayo que roza justo una esquina: los pasos de 5 cm no lo ven, pero ahí hay un obstáculo
+    const grazes = d < 55 && bruteOverlap(x + Math.cos(a) * d, y + Math.sin(a) * d, 0.02);
+    assert.ok(Math.abs(Math.min(t, 55) - d) < 0.08 || grazes, `rayo desde (${x.toFixed(1)}, ${y.toFixed(1)}): ${d} vs ${t}`);
   }
 });
 
@@ -139,7 +141,9 @@ test('cajas por partida: las calientes siempre; la mayoría dentro de edificios 
     assert.ok(active.filter((c) => c.tag === 'hot').length === SUPPLY_CRATES.filter((c) => c.tag === 'hot').length, 'todas las calientes');
     const inside = active.filter((c) => c.tag !== 'open').length;
     assert.ok(inside / active.length > 0.65, `mayoría dentro (${inside}/${active.length})`);
-    for (const c of active.filter((x) => x.tag === 'open')) assert.equal(c.rarity, 0, 'en campo abierto solo comunes');
+    // Desde la fase 18 las cajas son de raro en adelante (lo común está en el suelo); en campo abierto, raras
+    for (const c of active) assert.ok(c.rarity >= 1, 'ninguna caja común en partida');
+    for (const c of active.filter((x) => x.tag === 'open')) assert.equal(c.rarity, 1, 'en campo abierto solo raras');
     runs.push(active.map((c) => c.id).join(','));
   }
   assert.ok(new Set(runs).size > 25, 'cada partida tiene otras cajas');

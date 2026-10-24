@@ -1,7 +1,9 @@
 import {
-  AIRDROP, ALARM_MS, ARMOR_ABSORB, BANDAGE_HEAL, CRATE_LOCK_MS, CRATE_SPAWN, GRENADE, INTERACT_RADIUS, MAX_HP,
-  PRACTICE_CRATE_RESET_MS, RADAR_MS, RARITIES, STREAK_FOR_RADAR, TOPICS, WEAPONS,
+  AIRDROP, ALARM_MS, CRATE_LOCK_MS, CRATE_SPAWN, INTERACT_RADIUS, LOOT_ITEMS, PRACTICE_CRATE_RESET_MS, RADAR_MS, RARITIES,
+  STREAK_FOR_RADAR, TOPICS,
 } from '@calculo-royale/shared/constants';
+import { take, wants } from '@calculo-royale/shared/inventory';
+import { dropAround } from './loot.js';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { drawQuestion } from '../questions/QuestionBank.js';
@@ -9,24 +11,13 @@ import { drawQuestion } from '../questions/QuestionBank.js';
 // Cajas de suministro con candado de código: la pregunta ABCD es el código.
 // La pregunta (con su respuesta correcta) vive solo aquí, en player.question.
 
-const LOOT_NAMES = {
-  ammo: 'Munición',
-  bandage: 'Venda (+25)',
-  medkit: 'Botiquín',
-  grenade: 'Granada',
-  shotgun: WEAPONS.shotgun.name,
-  rifle: WEAPONS.rifle.name,
-  sniper: WEAPONS.sniper.name,
-  armor1: 'Chaleco 1',
-  armor2: 'Chaleco 2',
-  armor3: 'Chaleco 3',
-};
-
 // Combinaciones posibles por rareza (se elige una al azar). Legendario = dos tiradas épicas.
+// La común solo la usa la caja de práctica del lobby: en partida las cajas son de raro en adelante
+// (lo común está en el suelo).
 export const LOOT_TABLES = [
-  [['ammo', 'bandage'], ['ammo', 'grenade'], ['bandage', 'grenade'], ['ammo', 'ammo']],
-  [['shotgun', 'ammo'], ['rifle', 'ammo'], ['armor1', 'bandage'], ['armor2']],
-  [['sniper', 'bandage'], ['armor3'], ['medkit', 'grenade'], ['rifle', 'armor2']],
+  [['ammo', 'bandage'], ['ammo', 'grenade'], ['bandage', 'drink'], ['ammo', 'ammo']],
+  [['shotgun', 'ammo'], ['rifle', 'ammo'], ['armor2', 'helmet1'], ['backpack2', 'bandage'], ['scope2x', 'extmag'], ['medkit', 'stock']],
+  [['sniper', 'scope4x'], ['armor3', 'helmet2'], ['medkit', 'grenade', 'silencer'], ['rifle', 'extmag', 'reddot'], ['backpack3', 'medkit'], ['helmet3', 'drink']],
 ];
 
 export function rollLoot(rarity, rand = Math.random) {
@@ -35,29 +26,17 @@ export function rollLoot(rarity, rand = Math.random) {
   return roll(LOOT_TABLES[rarity]);
 }
 
-// Aplica un objeto al jugador; devuelve el nombre de lo que recibió
-export function applyLoot(player, item) {
-  if (item === 'ammo') {
-    // Un cargador para el arma en mano (también la pistola)
-    player.addMagazine();
-  } else if (item === 'bandage') {
-    player.hp = Math.min(MAX_HP, player.hp + BANDAGE_HEAL);
-  } else if (item === 'medkit') {
-    player.hp = MAX_HP;
-  } else if (item === 'grenade') {
-    player.grenades = Math.min(GRENADE.max, player.grenades + 1);
-  } else if (WEAPONS[item]) {
-    // La misma arma suma munición; otra la reemplaza
-    if (player.primary?.id === item) player.primary.reserve += WEAPONS[item].magazine;
-    else player.giveItem(item);
-  } else if (item.startsWith('armor')) {
-    const level = Number(item.slice(5));
-    if (level >= player.armorLevel) {
-      player.armorLevel = level;
-      player.armor = ARMOR_ABSORB[level];
-    }
+// Aplica un objeto al jugador; devuelve su nombre. Lo que reemplaza (o lo que no le cabe en la
+// mochila) queda en el suelo a su alrededor si hay partida (game); sin game se descarta.
+export function applyLoot(player, item, game = null) {
+  const name = LOOT_ITEMS[item].name;
+  if (!wants(player, item)) {
+    if (game?.loot) dropAround(game, player.x, player.y, [{ item }]);
+    return `${name} (quedó en el suelo)`;
   }
-  return LOOT_NAMES[item];
+  const drops = take(player, item);
+  if (game?.loot && drops.length) dropAround(game, player.x, player.y, drops);
+  return name;
 }
 
 // Orden fijo (el snapshot manda un estado por caja): las del mapa, la de práctica y al
@@ -162,7 +141,7 @@ function finish(game, player, outcome, chosen = null) {
   if (!crate.practice) recordStats(player, q, correct, chosen);
 
   if (correct) {
-    const loot = rollLoot(crate.rarity).map((item) => applyLoot(player, item));
+    const loot = rollLoot(crate.rarity).map((item) => applyLoot(player, item, game));
     crate.state = CRATE_STATE.OPEN;
     if (crate.practice) crate.reopenAt = game.now + PRACTICE_CRATE_RESET_MS;
     player.streak++;
