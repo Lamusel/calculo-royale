@@ -257,7 +257,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **16. Selector de skins con retratos** ✅ | Registro único, skins externas guiadas por las carpetas reales (manifiesto en el build), retratos 2D con respaldo, selector sin GLB, precarga y respaldo en partida | Elegir una externa por su retrato y verla en partida |
 | **17. Gráficos estables y responsive** ✅ | Calidad automática que recorta en orden (resolución, sombras, decoración, niebla) con histéresis, calidad manual y escala de interfaz en Opciones, toda la interfaz con `clamp()` y zonas seguras, cola de mensajes | Se ve digno en un celular antiguo y nada se sale de la pantalla |
 | **18. Botín de battle royale y mapa más grande** ✅ | Mapa de ~280 m con terminal, mercado, estadio, cañón y aeródromo; botín en el suelo, inventario, miras, curación con tiempo, accesorios, mochila, casco y caja de botín al morir | Saquear y equiparse como en un battle royale |
-| **19. Audio total** | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
+| **19. Audio total** ✅ | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
 | **20. Modo presentación y modo fácil** | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
 | **21. Modo Profe Jefe Final** | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
 | **22. Revisión final** | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
@@ -404,6 +404,15 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Constantes** en `shared/src/constants.js` (`LOOT`, `HEALING`, `BACKPACK`, `HELMET`, `ATTACHMENTS`, `SCOPES`); eventos nuevos en `protocol.js`.
 - **Pruebas:** mapa (zonas nuevas dentro, sin solaparse, cajas y jeeps libres), botín (semilla, solo común/raro en el suelo, tomar, reemplazar y soltar, capacidad de mochila), curación con tiempo, casco, accesorios, caja al morir, que todo lo valida el servidor.
 
+#### Fase 19: audio total
+- **Canales** Música, Efectos y Voz con su volumen, más el volumen general y "Silenciar todo" en Opciones (guardados en el navegador).
+- **Ducking:** mientras habla el Mando, la música y los efectos bajan. **Límite de voces** con prioridad: si hay demasiados sonidos a la vez, primero se descartan pasos y casquillos, nunca disparos cercanos, explosiones ni avisos.
+- **Efectos ampliados:** impacto acertado, baja confirmada, daño recibido, curación (empezar y terminar), tomar objeto, cambiar de arma, sin balas, pulso fuera de la zona, cuenta regresiva, aparición de pregunta y tiempo acabándose, avión del lanzamiento aéreo, motor del bus, aterrizaje, arranque y choque del jeep, radar, logro y clic de interfaz.
+- **Archivos propios opcionales:** `client/public/assets/audio/sfx/<nombre>.mp3` reemplaza al efecto sintetizado y `client/public/assets/audio/music/<momento>.mp3` a la música de ese momento. Un manifiesto en el build (`scripts/audio-manifest.js`) anota cuáles existen: el juego nunca pide archivos que no están. Lista de nombres en la sección "Sonido" de este README.
+- **Música procedural por momento:** lobby, bus, partida, zona cerrándose, duelo, victoria y resultados; cambia con fundido.
+- **Voz del Mando** con `speechSynthesis` en español (es-CO, si no es-MX, si no es-ES): lee el título y la desigualdad en palabras ("equis menos treinta y nueve al cuadrado más…").
+- **Pruebas:** números y desigualdades en palabras, elección de voz, manifiesto de audio, prioridad de voces, ducking y momento musical.
+
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
 
@@ -535,6 +544,15 @@ Las skins externas ("Personajes especiales" en el selector) salen de las carpeta
 
 **Probar rendimiento:** `/skins/stress?calidad=media&clima=noche` muestra 40 personajes (una de cada tres con skin externa) con FPS, llamadas de dibujo, triángulos, geometrías y texturas. `?debugSkins=1` en el juego muestra esqueletos, cajas y sockets, y un panel con la skin, el modo y los triángulos de cada jugador.
 
+### Sonido (archivos propios opcionales)
+
+Todo suena sin archivos (efectos sintetizados y música procedural). Para reemplazar un sonido, pon un `.mp3` (o `.ogg`, `.wav`, `.m4a`) con el nombre exacto y corre `npm run dev` o `npm run build` (el manifiesto `scripts/audio-manifest.js` anota los que existen; el juego nunca pide los que faltan):
+
+- **Efectos** en `client/public/assets/audio/sfx/<nombre>.mp3`: `disparo-pistola`, `disparo-escopeta`, `disparo-rifle`, `disparo-francotirador`, `recarga`, `granada`, `explosion`, `paso`, `candado-abierto`, `candado-fallido`, `sirena`, `radio`, `salto`, `paracaidas`, `impacto`, `baja`, `dano`, `curar`, `curado`, `tomar`, `cambio-arma`, `sin-balas`, `fuera-zona`, `cuenta`, `pregunta`, `tiempo`, `avion`, `aterrizaje`, `jeep-arranque`, `jeep-choque`, `radar`, `logro`, `clic`. Cortos (menos de 1,5 s) y sin silencio al principio.
+- **Música** en `client/public/assets/audio/music/<momento>.mp3` (se repite en bucle): `lobby`, `bus`, `partida`, `zona` (la zona se cierra o estás caído), `duelo`, `victoria` y `resultados`.
+
+Los efectos suenan en el canal Efectos (con volumen y paneo según dónde ocurren) y la música en el canal Música; los dos bajan solos mientras habla el Mando. La voz usa la del sistema en español (es-CO, si no es-MX, si no es-ES): en Windows y Android suele venir instalada; si el navegador no tiene ninguna, el Mando solo se lee en pantalla.
+
 ### Probar desde el celular (recomendado: túnel)
 
 1. Con `npm run dev` corriendo, en otra terminal: `npm run tunnel`. La primera vez descarga `cloudflared`; luego imprime una URL `https://….trycloudflare.com` (cambia cada vez).
@@ -634,7 +652,7 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | 16 | ✅ Completa | Externas leídas de las carpetas reales (2B, Furina, Ghost, Luffy), selector con retratos y sin GLB, respaldo a la skin base, ajustes revisados en `/skins`. Falta probar en un celular real |
 | 17 | ✅ Completa | Calidad por pasos con histéresis, calidad y escala manuales, zonas seguras, cola del Mando. Falta medir FPS en un celular real |
 | 18 | ✅ Completa | Mapa de 280 m con 5 zonas nuevas y 8 jeeps, botín en el suelo, inventario con mochila, casco, accesorios y curación con tiempo, caja de botín al caer. Falta jugar una partida completa con el curso |
-| 19 | Pendiente | |
+| 19 | ✅ Completa | Canales Música, Efectos y Voz con silencio, ducking, prioridad de voces, 19 efectos nuevos, archivos propios opcionales, música procedural por momento y voz del Mando en español. Falta escucharlo en un celular real |
 | 20 | Pendiente | |
 | 21 | Pendiente | |
 | 22 | Pendiente | |
@@ -707,3 +725,16 @@ El plan gratis de Render duerme el servidor tras 15 minutos sin visitas; al desp
 | Carga local con 40 clientes | PASS |
 | Build y 158 pruebas | PASS |
 | Partida completa de 10–12 min con el curso y en celular | Pendiente (hace falta gente) |
+- 2026-10-23: **fase 19 completa (audio total).** *Canales* (`client/src/audio/sound.js`): Efectos y Música son dos buses de Web Audio; la Voz es `speechSynthesis`. Cada uno con su volumen bajo el general (curva perceptual) y "Silenciar todo" en Opciones (guardado con el resto de los ajustes). *Ducking:* mientras habla el Mando, la música baja al 30 % y los efectos al 60 %. *Límite de voces con prioridad* (`mix.js`): 28 a la vez; con 18 sonando ya no entran pasos, con 24 solo disparos, explosiones y avisos. *Efectos nuevos* (sintetizados): impacto acertado y baja confirmada, daño recibido, empezar y terminar de curarse, tomar objeto, cambiar de arma, gatillo sin balas (con espera para no repetir en ráfaga), latido cada segundo fuera de la zona, cuenta regresiva de los últimos 3 s al elegir punto, aparición de pregunta y pitido en sus últimos 5 s, avión al anunciarse el lanzamiento aéreo, zumbido del bus mientras vas en él, aterrizaje, arranque del jeep al subir de conductor y choque si pierde 25 o más de vida de golpe, radar, logro desbloqueado y clic suave en cada botón. *Archivos propios:* `scripts/audio-manifest.js` (encadenado antes de `dev` y `build`) escribe `client/src/audio/audio-manifest.json` con lo que haya en `client/public/assets/audio/sfx/` y `music/`; cada efecto busca su archivo por nombre (la primera vez suena el sintetizado mientras se descarga) y cada momento musical su pista en bucle. Hoy no hay ninguno: todo es sintetizado. *Música procedural* (`client/src/audio/music.js`): secuenciador con anticipación de 250 ms en semicorcheas, con colchón de acordes, bajo, batería (patrones ligero, escaso, pulso, marcha e intenso) y arpegio con semilla; siete momentos con su tempo, tónica, escala y progresión (lobby en dórico a 92, partida en menor a 96, zona en frigio a 124, duelo en menor armónico a 140, victoria en mayor a 112…). El momento lo elige `useMusic` dos veces por segundo según la fase, el despliegue, el duelo, si la zona se cierra o si estás caído y si ganaste; el cambio es con fundido. *Voz del Mando* (`client/src/audio/speech.js`): lee el título y el texto de cada transmisión; las fórmulas se leen en palabras (números hasta millones, "al cuadrado", "sobre", "menor o igual que", "equis", "ye") y "75 s" se dice "setenta y cinco segundos". Elige es-CO, si no es-MX, si no es-ES, si no cualquier español; una transmisión a la vez y como mucho una esperando. *Corregido en el camino:* si el navegador rechazaba la voz elegida, la excepción cortaba el manejo del mensaje de radio; ahora la voz nunca rompe el juego. *Verificado en Edge* (con `speechSynthesis` interceptado): el contexto de audio arranca con el primer toque, Opciones muestra los cuatro volúmenes y el silencio, y al iniciar la partida el Mando dijo, con voz es-MX elegida antes que es-ES y volumen 0,7² × 0,9²: "Zona 1 de 5. Aquí Mando. Nueva zona segura: equis más siete al cuadrado más ye más veintiséis al cuadrado menor o igual que dieciocho mil doscientos veinticinco. Tienen ochenta segundos." Sin errores. 8 pruebas nuevas (166 en total).
+
+| Validación fase 19 | Estado |
+|---|---|
+| Números y desigualdades en palabras (prueba) | PASS |
+| Elección de voz es-CO → es-MX → es-ES (prueba y Edge) | PASS |
+| Manifiesto de audio: solo los archivos que existen (prueba) | PASS |
+| Prioridad de voces, canales con silencio y ducking (prueba) | PASS |
+| Momento musical y acordes (prueba) | PASS |
+| Audio arranca con el primer toque, voz del Mando en partida, sin errores (Edge) | PASS |
+| Opciones con volumen general, Música, Efectos, Voz y silencio (Edge) | PASS |
+| Build y 166 pruebas | PASS |
+| Escuchar la mezcla en un celular y en el proyector | Pendiente (el navegador de prueba no tiene salida de audio) |

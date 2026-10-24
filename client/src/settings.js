@@ -1,7 +1,8 @@
-// Ajustes del jugador guardados en el navegador (menú Opciones): brillo, volumen, calidad y escala de la interfaz.
+// Ajustes del jugador guardados en el navegador (menú Opciones): brillo, volumen general y de cada
+// canal (música, efectos, voz), silencio, calidad y escala de la interfaz.
 
 const KEY = 'calculo-royale:ajustes';
-const DEFAULTS = { brightness: 1, volume: 0.7, quality: 'auto', uiScale: 'normal' };
+const DEFAULTS = { brightness: 1, volume: 0.7, musicVolume: 0.5, sfxVolume: 1, voiceVolume: 0.9, muted: false, quality: 'auto', uiScale: 'normal' };
 export const QUALITY_OPTIONS = [['auto', 'Auto'], ['high', 'Alta'], ['medium', 'Media'], ['low', 'Baja']];
 export const UI_SCALES = { small: 0.85, normal: 1, large: 1.18 };
 export const UI_SCALE_OPTIONS = [['small', 'Pequeña'], ['normal', 'Normal'], ['large', 'Grande']];

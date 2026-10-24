@@ -10,7 +10,8 @@ import { actions, currentAim, inputState, press, readInput, resetInput } from '.
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
-import { setListener, sound, updateEngine } from '../audio/sound.js';
+import { setListener, sound, speak, updateBusHum, updateEngine } from '../audio/sound.js';
+import { insideZone } from '@calculo-royale/shared/zone';
 
 // Contador global: si se recrea el cliente sin recargar, las secuencias siguen creciendo
 let seq = 0;
@@ -122,8 +123,13 @@ export class GameClient {
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
         const riding = vehicles.find((v) => v[7] === this.myId);
+        const wasDriving = this.seat === 'driver';
         this.vehicleId = (driving ?? riding)?.[0] ?? null;
         this.seat = driving ? 'driver' : riding ? 'passenger' : null;
+        if (this.seat === 'driver' && !wasDriving) sound.jeepStart();
+        const mine = driving ?? riding;
+        if (mine && this.vehicleHp !== undefined && this.vehicleHp - mine[5] >= 25) sound.jeepCrash(mine[1], mine[2]);
+        this.vehicleHp = mine ? mine[5] : undefined;
         const me = players.find((p) => p[0] === this.myId);
         if (me) {
           const flags = me[8];
@@ -132,6 +138,7 @@ export class GameClient {
           if (deploying !== this.deploying) {
             if (deploying === 'fall') sound.jump();
             if (deploying === 'chute') sound.parachute();
+            if (!deploying && this.deploying === 'chute') sound.landing();
           }
           this.deploying = deploying;
           this.altitude = me[9] ?? 0;
@@ -146,11 +153,14 @@ export class GameClient {
       [EVENTS.PLAYER_SELF]: (self) => this.onSelf(self),
       [EVENTS.COMBAT_HIT]: ([, amount, x, y, killed]) => {
         this.effects.push({ type: 'damage', x, y, amount, killed: Boolean(killed) });
+        sound.hit(Boolean(killed));
+        if (killed) sound.kill();
         vibrate(killed ? [30, 40, 30] : 12);
       },
       [EVENTS.CRATE_QUESTION]: (question) => {
         this.question = { ...question, receivedAt: performance.now() };
         this.lastCrateRarity = question.rarity;
+        sound.question();
         this.crateResult = null;
         resetInput();
         vibrate(20);
@@ -171,11 +181,14 @@ export class GameClient {
         this.radio.push({ ...message, at: performance.now() });
         if (message.kind === 'bombing') sound.siren();
         else sound.radio();
+        if (message.kind === 'airdrop') sound.plane();
+        if (!this.spectator) speak(message.title, message.text);
         if (this.radio.length > 6) this.radio.shift();
         vibrate(25);
       },
       [EVENTS.TRANSMISSION]: (t) => {
         const entry = { ...t, receivedAt: performance.now() };
+        sound.question();
         if (t.kind === 'operator') this.transmission = entry;
         else this.intercept = entry;
         vibrate(15);
@@ -199,6 +212,7 @@ export class GameClient {
       },
       [EVENTS.AMMO_QUESTION]: (q) => {
         this.ammoQuestion = { ...q, receivedAt: performance.now() };
+        sound.question();
         this.ammoResult = null;
         vibrate(15);
       },
@@ -247,7 +261,7 @@ export class GameClient {
       },
       [EVENTS.LOOT_TAKEN]: (result) => {
         this.lootToast = { ...result, at: performance.now() };
-        if (!result.full) sound.reload();
+        if (!result.full) sound.pickup();
         vibrate(result.full ? 60 : 15);
       },
       [EVENTS.COMBAT_KILL]: ([killer, victim, weapon]) => {
@@ -278,6 +292,7 @@ export class GameClient {
     if (prev) {
       const before = prev.hp + prev.armor;
       if (self.hp + self.armor < before && self.alive) {
+        sound.hurt();
         this.damageFlashAt = now;
         this.trauma = Math.min(1, this.trauma + (before - self.hp - self.armor) / 35);
         vibrate(40);
@@ -285,7 +300,16 @@ export class GameClient {
       if (prev.alive && !self.alive) vibrate([80, 60, 220]);
       if (!prev.alive && self.alive) this.predictor.forceSnap();
     }
-    if (self.radar && !prev?.radar) this.radarEndsAt = now + RADAR_MS;
+    if (self.radar && !prev?.radar) {
+      this.radarEndsAt = now + RADAR_MS;
+      sound.radar();
+    }
+    if (self.healing && !prev?.healing) sound.healStart();
+    if (!self.healing && prev?.healing && self.alive) {
+      const counter = { bandage: 'bandages', medkit: 'medkits', drink: 'drinks' }[prev.healing.item];
+      if (self[counter] < prev[counter]) sound.healEnd();
+    }
+    if (prev && self.slot !== prev.slot) sound.weaponSwitch();
     if (!self.radar) this.radarEndsAt = 0;
     if (self.reloadLeft && !(prev?.reloadLeft > 0)) sound.reload();
     this.self = self;
@@ -382,6 +406,10 @@ export class GameClient {
     if (!me || !this.self || !(input.buttons & BUTTONS.FIRE) || input.buttons & BUTTONS.GRENADE) return;
     if (this.seat === 'driver') return; // el conductor no dispara
     if (this.ammoQuestion || this.deploying) return; // respondiendo "Obtener balas" o en el aire
+    if (this.predictedMag <= 0 && now >= this.reloadEndsAt && now - (this.dryFireAt ?? 0) > 350) {
+      this.dryFireAt = now;
+      sound.dryFire();
+    }
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
     const w = weaponWith(id, this.self.attachments);
@@ -458,6 +486,24 @@ export class GameClient {
     const at = frame.follow ?? frame.me;
     if (!at || this.spectator) return;
     setListener(at.x, at.y);
+    const now = performance.now();
+    updateBusHum(this.deploying === 'bus');
+    const second = Math.floor(now / 1000);
+    if (second !== this.audioSecond) {
+      this.audioSecond = second;
+      // Fuera de la zona: latido cada segundo
+      const z = frame.zone;
+      if (z?.length && this.alive && frame.me && !this.deploying && !insideZone({ cx: z[0], cy: z[1], p: z[2], q: z[3] }, frame.me.x, frame.me.y)) sound.zonePulse();
+      // Elegir punto: los últimos 3 segundos
+      const pickLeft = this.deployInfo?.pickUntil && this.deploying === 'bus' ? Math.ceil((this.deployInfo.pickUntil - now) / 1000) : 0;
+      if (pickLeft > 0 && pickLeft <= 3) sound.countdown(pickLeft === 1);
+      // Pregunta con el tiempo acabándose (últimos 5 s)
+      for (const q of [this.question, this.ammoQuestion, this.transmission, this.intercept]) {
+        if (!q?.timeLimitMs) continue;
+        const left = (q.receivedAt + q.timeLimitMs - now) / 1000;
+        if (left > 0 && left <= 5) sound.timeWarning();
+      }
+    }
     let nearest = null;
     let best = Infinity;
     for (const v of frame.vehicles?.values() ?? []) {
@@ -477,7 +523,10 @@ export class GameClient {
   }
 
   achieve(type, value) {
-    for (const id of recordEvent(type, value)) this.unlocks.push({ id, at: performance.now() });
+    for (const id of recordEvent(type, value)) {
+      this.unlocks.push({ id, at: performance.now() });
+      sound.achievement();
+    }
   }
 
   answerTransmission(id, index) {
@@ -562,6 +611,8 @@ export class GameClient {
   dispose() {
     clearInterval(this.inputTimer);
     clearInterval(this.pingTimer);
+    updateBusHum(false);
+    updateEngine(null);
     for (const [event, handler] of Object.entries(this.handlers)) this.socket.off(event, handler);
     actions.switchWeapon = () => {};
     actions.interact = () => {};

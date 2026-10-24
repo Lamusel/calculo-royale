@@ -5,7 +5,8 @@ import { createQualityController, initialQuality } from '../game/quality.js';
 import { onSettings, settings } from '../settings.js';
 import Scene from '../game/Scene.jsx';
 import { loadSkinSystem } from '../game/character/Character.js';
-import { unlockAudio } from '../audio/sound.js';
+import { sound, unlockAudio } from '../audio/sound.js';
+import { useMusic } from '../audio/useMusic.js';
 import { isExternalSkin } from '../game/character/skins/index.js';
 import { debugSkinsEnabled } from '../game/character/debug.js';
 import { attachKeyboardMouse } from '../input/KeyboardMouse.js';
@@ -229,12 +230,17 @@ export default function Game({ room, myId, sessionKey, onLeave }) {
     if (room.phase !== 'results') setReplayDone(false);
   }, [client, room.phase]);
   const onReplayDone = useCallback(() => setReplayDone(true), []);
+  useMusic(client, room, myId);
   // Al terminar la partida, primero la repetición (en lugar de la escena en vivo: un solo WebGL)
   const replaying = room.phase === 'results' && Boolean(client?.replay) && !replayDone;
 
   // El audio solo puede arrancar después de un toque o una tecla (regla de los navegadores)
   useEffect(() => {
-    const unlock = () => unlockAudio();
+    // Además, un clic suave en cada botón de la interfaz
+    const unlock = (e) => {
+      unlockAudio();
+      if (e.target instanceof Element && e.target.closest('button')) sound.click();
+    };
     addEventListener('pointerdown', unlock);
     addEventListener('keydown', unlock);
     return () => {

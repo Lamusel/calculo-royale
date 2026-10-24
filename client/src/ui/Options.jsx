@@ -21,19 +21,42 @@ function Choice({ label, options, value, onChange }) {
   );
 }
 
+// Deslizador de volumen (0 a 100 %) atado a un ajuste guardado
+function Volume({ label, setting, values, onChange, disabled }) {
+  return (
+    <label className={`mt-2 flex flex-col text-sm ${disabled ? 'opacity-40' : ''}`}>
+      <span className="flex justify-between">
+        {label} <span className="font-mono text-khaki-light">{Math.round(values[setting] * 100)} %</span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={values[setting]}
+        disabled={disabled}
+        onChange={(e) => onChange(setting, Number(e.target.value))}
+        className="h-6 w-full accent-khaki"
+      />
+    </label>
+  );
+}
+
+const AUDIO_DEFAULTS = { volume: 0.7, musicVolume: 0.5, sfxVolume: 1, voiceVolume: 0.9, muted: false };
+
 // Menú Opciones: ajustes del jugador guardados en este navegador
 export default function Options({ onClose }) {
   const [brightness, setBrightness] = useState(settings.brightness);
-  const [volume, setVolume] = useState(settings.volume);
+  const [audio, setAudio] = useState(() => Object.fromEntries(Object.keys(AUDIO_DEFAULTS).map((k) => [k, settings[k]])));
   const [quality, setQuality] = useState(settings.quality);
   const [uiScale, setUiScale] = useState(settings.uiScale);
   const change = (value) => {
     setBrightness(value);
     setSetting('brightness', value);
   };
-  const changeVolume = (value) => {
-    setVolume(value);
-    setSetting('volume', value);
+  const changeAudio = (key, value) => {
+    setAudio((a) => ({ ...a, [key]: value }));
+    setSetting(key, value);
   };
   const changeQuality = (value) => {
     setQuality(value);
@@ -65,20 +88,19 @@ export default function Options({ onClose }) {
             className="h-8 w-full accent-khaki"
           />
         </label>
-        <label className="mt-3 flex flex-col gap-1 text-sm">
-          <span className="flex justify-between">
-            Volumen <span className="font-mono text-khaki-light">{Math.round(volume * 100)} %</span>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={volume}
-            onChange={(e) => changeVolume(Number(e.target.value))}
-            className="h-8 w-full accent-khaki"
-          />
-        </label>
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span>Sonido</span>
+          <button
+            onClick={() => changeAudio('muted', !audio.muted)}
+            className={`rounded px-2 py-1 text-xs font-semibold ${audio.muted ? 'bg-red-800 text-red-100' : 'bg-black/40 text-stone-200'}`}
+          >
+            {audio.muted ? '🔇 Silenciado' : '🔊 Silenciar todo'}
+          </button>
+        </div>
+        <Volume label="Volumen general" setting="volume" values={audio} onChange={changeAudio} disabled={audio.muted} />
+        <Volume label="Música" setting="musicVolume" values={audio} onChange={changeAudio} disabled={audio.muted} />
+        <Volume label="Efectos" setting="sfxVolume" values={audio} onChange={changeAudio} disabled={audio.muted} />
+        <Volume label="Voz del Mando" setting="voiceVolume" values={audio} onChange={changeAudio} disabled={audio.muted} />
         <Choice label="Calidad" options={QUALITY_OPTIONS} value={quality} onChange={changeQuality} />
         <p className="mt-1 text-[0.7rem] text-stone-400">
           {quality === 'auto' ? 'Auto baja la resolución, las sombras y los detalles solo si el juego va lento.' : 'Fija: no cambia aunque el juego vaya lento.'}
@@ -88,7 +110,7 @@ export default function Options({ onClose }) {
           <button
             onClick={() => {
               change(1);
-              changeVolume(0.7);
+              for (const [k, v] of Object.entries(AUDIO_DEFAULTS)) changeAudio(k, v);
               changeQuality('auto');
               changeScale('normal');
             }}
