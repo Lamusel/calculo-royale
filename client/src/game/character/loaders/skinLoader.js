@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { ExternalSkin } from '../external/ExternalSkin.js';
 import { getSkinEntry } from '../skins/index.js';
+import { fixSkeleton } from '../external/repair.js';
 
 // Carga de skins externas (GLB). Este módulo se carga con import() dinámico: no pesa en la
 // carga inicial. Cada archivo se descarga una vez (caché por ruta); cada jugador recibe un
@@ -108,7 +109,11 @@ async function fetchAsset(entry) {
   if (!isGlb(buffer)) throw new Error('no es un GLB (¿falta el archivo?)');
   const gltf = await deps.parse(buffer, entry.source.replace(/[^/]*$/, ''));
   prepareMaterials(gltf.scene);
+  // Esqueleto con todos los huesos en el origen (exportadores como Tripo): se repara o se quita
+  const skeleton = fixSkeleton(gltf.scene);
+  if (skeleton !== 'ok') console.info(`Skin ${entry.id}: esqueleto ${skeleton}`);
   const stats = analyzeScene(gltf.scene, buffer.byteLength, gltf.animations);
+  stats.skeleton = skeleton;
   stats.warnings = limitWarnings(stats);
   for (const w of stats.warnings) console.warn(`Skin ${entry.id}: ${w}`);
   return { scene: gltf.scene, animations: gltf.animations ?? [], stats };

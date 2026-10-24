@@ -11,6 +11,14 @@ import { normalizeExternalSkin } from './normalize.js';
 const LOD_NAME = /(^|[_\s.-])LOD([0-2])$/i;
 const SECONDARY_RATIO = 0.15; // piezas con menos del 15 % de los triángulos de la principal
 
+// Distancia vertical (en reposo) del hueso de la cabeza a lo más alto del modelo, menos un poco
+// para que el casco se apoye (sin pasar de 0,22 m: sombreros y adornos altos no lo levantan)
+function headTop(holder, head) {
+  holder.updateMatrixWorld(true);
+  const top = new THREE.Box3().setFromObject(holder).max.y;
+  return Math.min(0.22, Math.max(0.05, top - head.getWorldPosition(new THREE.Vector3()).y - 0.08));
+}
+
 // La cabeza tiene que quedar bien por encima de la cadera (en metros, ya normalizado a 1,8 m)
 function usableSkeleton(holder, mapping) {
   holder.updateMatrixWorld(true);
@@ -41,6 +49,8 @@ export class ExternalSkin {
     // ¿Los huesos están donde van? (algunos exportadores dejan todo el esqueleto en el origen):
     // si no, casco y mochila se muestran como iconos (fase 25)
     this.bonesUsable = this.mode === 'C' && usableSkeleton(holder, this.mapping);
+    // Cuánto más arriba de la cabeza va el casco: hasta lo más alto del modelo (pelo, sombrero)
+    this.headTopOffset = this.bonesUsable ? headTop(holder, this.mapping.head) : null;
 
     const clips = asset.animations ?? [];
     this.clips = clips;

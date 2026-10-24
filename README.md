@@ -264,7 +264,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **23. Botín y cajas (correcciones)** ✅ | En el suelo solo munición, vendas y casco 1; todo lo demás sale de cajas con pregunta; ninguna caja en campo abierto; lo recogido desaparece para todos | El cálculo vuelve a ser la llave del poder |
 | **24. Cámara más cercana** ✅ | Soldado ~2 veces más grande, cámara dinámica (edificios, campo abierto, jeep, mira) y "Distancia de cámara" en Opciones | Ver bien al personaje en celular y PC |
 | **25. Accesorios que se notan** ✅ | Accesorios visibles en el modelo, efectos reales (dispersión, retroceso, capacidad, casco) e iconos y tarjetas que los explican | Saber qué hace cada cosa |
-| **26. Skins con esqueleto** | Los 4 GLB nuevos (Mixamo) en modo C, comprimidos si hace falta y ajustados con la cámara nueva | Personajes especiales animados de verdad |
+| **26. Skins con esqueleto** ✅ | Los 4 GLB nuevos (Mixamo) en modo C, comprimidos si hace falta y ajustados con la cámara nueva | Personajes especiales animados de verdad |
 | **27. Cuadrícula 8×8, sin jefe e interfaz** | Sectores A1–H8, se quita el modo Profe Jefe Final, lobby y ayuda de controles que no se enciman | Interfaz limpia y un solo modo |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
 
@@ -457,6 +457,12 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Visibles en el modelo:** mira (punto rojo, 2x, 4x) sobre el arma, cargador ampliado más largo, culata o estabilizador, silenciador en el cañón, casco por nivel en la cabeza y mochila por nivel (más grande) en la espalda. El equipo de cada jugador viaja en el snapshot (`shared/src/gear.js`) para que todos lo vean. Si la skin no puede llevarlos, iconos junto a su barra de vida.
 - **Efectos reales** (valores en `constants.js`, validados en el servidor): punto rojo −15 % de dispersión y retícula; miras 2x/4x alejan y adelantan la cámara al apuntar, con su retícula; **retroceso** nuevo (disparar seguido abre la dispersión y la cámara salta) que la culata reduce a la mitad; cargador ampliado +50 % (se ve en el HUD); silenciador; mochila (límites en el HUD); casco que resta más daño del francotirador, y el número de daño que ve el que dispara es el real.
 - **Explicados en pantalla:** tarjeta al recoger (icono, nombre, efecto), iconos en lugar de "Ch/Ca/Mo" y panel "Tu equipo" al tocarlos, retícula de la mira al apuntar.
+
+#### Fase 26: skins con esqueleto
+- Revisar los 4 GLB nuevos (2B, Furina, Ghost, Luffy): modo A/B/C, triángulos, peso y textura más grande.
+- Alias de huesos si alguno queda en modo B; texturas a 1024 y archivo comprimido si pasa de 3 MB (sin instalar `gltf-transform` en el proyecto).
+- Reparar esqueletos mal exportados al cargar (`external/repair.js`); si no tienen arreglo, el modelo anima entero (modo A) en lugar de deformarse.
+- Ajustar escala, rotación y arma con la cámara nueva (caminar, apuntar, jeep, autobús, paracaídas, victoria) y revisar casco y mochila o sus iconos.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -760,7 +766,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 23 | ✅ Completa | En el suelo solo munición, vendas y casco 1; todas las cajas en edificios o puntos de interés; lo recogido desaparece para todos |
 | 24 | ✅ Completa | Cámara a 16 m y 52° (soldado ~1,9 veces más grande), dinámica, "Distancia de cámara" en Opciones, oclusión con la cámara real |
 | 25 | ✅ Completa | Accesorios visibles en el modelo y en la red, retroceso y culata, casco contra francotirador, retícula por mira, tarjetas e iconos que los explican |
-| 26 | Pendiente | |
+| 26 | ✅ Completa | Esqueletos de Tripo reparados al cargar; Furina en modo C con casco, mochila y arma en su mano; 2B, Ghost y Luffy en modo A (sus archivos no traen pesos usables); texturas a 1024 |
 | 27 | Pendiente | |
 
 ### Bitácora
@@ -915,3 +921,22 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Tarjeta, iconos y panel en el HUD; equipo visible en `/skins` (Edge) | PASS |
 | Build y 191 pruebas | PASS |
 | Retícula de mira en partida vista en celular | Pendiente (las miras solo salen de cajas con pregunta) |
+
+- 2026-10-24: **fase 26 completa (skins con esqueleto).** Los 4 GLB tienen huesos con nombres de Mixamo (todos detectados como modo C, no hizo falta agregar alias), pero el exportador (Tripo) los dejó mal: *todos los huesos en el origen* y la posición de cada articulación guardada solo en su matriz de enlace inversa, además en un marco girado 90°. Así cualquier animación hacía girar todo alrededor de los pies. Nuevo `client/src/game/character/external/repair.js`, que corre al cargar cada GLB: reconstruye cada hueso desde su matriz, elige entre las 24 rotaciones de ejes la que pone cada articulación en el centro de los vértices que mueve, y recalcula las matrices para que en reposo la malla quede idéntica (`restMatches`). Si no queda bien (matrices inválidas) o si casi todos los vértices cuelgan de un solo hueso (más del 90 %: el auto-riggeo no repartió los pesos), se le quita la piel y el personaje anima entero (modo A), que se ve mucho mejor que un modelo deformado. En modo C el casco y la mochila siguen la cabeza y el pecho del propio modelo (el casco a la altura de su pelo, hasta 22 cm) y el arma va en su mano. Texturas reducidas de 2048 a 1024 con `npx @gltf-transform/cli resize` (sin instalarlo en el proyecto); los nombres de archivo y carpeta no cambiaron. *Recomendación:* para que 2B, Ghost y Luffy doblen brazos y piernas, volver a riggearlos en mixamo.com (subir el FBX/GLB sin esqueleto) y reemplazar `character.glb`; el juego los pasa a modo C solo.
+
+| Modelo | Modo | Triángulos | Peso (antes → ahora) | Textura más grande (antes → ahora) | Nota |
+|---|---|---|---|---|---|
+| 2B | A | 4 980 | 2,12 → 0,82 MB | 2048 → 1024 (3 texturas) | 7 matrices de enlace inválidas: sin esqueleto usable |
+| Furina | C | 4 962 | 2,87 → 1,07 MB | 2048 → 1024 | Esqueleto reparado: anima con el Master Rig, casco y mochila en el modelo |
+| Ghost | A | 4 996 | 1,96 → 0,77 MB | 2048 → 1024 | 3495 de 3496 vértices en la cadera: sin pesos |
+| Luffy | A | 4 996 | 2,34 → 0,91 MB | 2048 → 1024 | 3680 de 3681 vértices en la cadera: sin pesos |
+
+| Validación fase 26 | Estado |
+|---|---|
+| Esqueleto en el origen detectado y reparado; marco girado corregido; reposo idéntico (prueba) | PASS |
+| Matrices inválidas o pesos en un solo hueso → modo A sin deformar (prueba) | PASS |
+| Los 4 modelos en `/skins`: quieto, apuntar, jeep, con equipo (Edge) | PASS |
+| Furina y Ghost en partida: lobby, paracaídas y caminando con la cámara nueva, sin errores (Edge) | PASS |
+| Todos bajo 3 MB y texturas ≤ 1024 | PASS |
+| Build y 196 pruebas | PASS |
+| Animación completa de 2B, Ghost y Luffy | Pendiente (necesitan re-riggeo en Mixamo) |

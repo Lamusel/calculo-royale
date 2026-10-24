@@ -13,8 +13,9 @@ let loaderModule = null;
 export const loadSkinSystem = () => (loaderModule ??= import('./loaders/skinLoader.js'));
 
 const handWorld = new THREE.Vector3();
-// Modo C: cuánto más arriba de la base de la cabeza va el casco y cuánto detrás del pecho la mochila
-const HEAD_TOP = 0.2;
+// Modo C: cuánto más arriba de la base de la cabeza va el casco (si el modelo no lo dice) y cuánto
+// detrás del pecho la mochila
+const HEAD_TOP = 0.12;
 const BACK_OFFSET = -0.18;
 const warned = new Set(); // un solo aviso por skin que falla
 
@@ -242,7 +243,7 @@ export class Character {
     back.position.copy(back.userData.rest ??= back.position.clone());
     if (this.external.boneWorldPosition('head', handWorld)) {
       head.position.copy(head.parent.worldToLocal(handWorld));
-      head.position.y += HEAD_TOP;
+      head.position.y += this.external.headTopOffset ?? HEAD_TOP;
     }
     if (this.external.boneWorldPosition('chest', handWorld)) {
       back.position.copy(back.parent.worldToLocal(handWorld));
