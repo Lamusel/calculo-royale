@@ -30,6 +30,7 @@ import { DuelIntro } from '../ui/Cinema.jsx';
 import TacticalMap, { minimapSize } from '../ui/TacticalMap.jsx';
 import HostPanel from '../ui/HostPanel.jsx';
 import QuickPhrases from '../ui/QuickPhrases.jsx';
+import BossHUD from '../ui/BossHUD.jsx';
 import { InterceptCard, OperatorPanel, TransmissionToast } from '../ui/Operator.jsx';
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
@@ -112,7 +113,9 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
   const view = useClientView(client, frameRef, room.phase);
   const isHost = room.hostId === myId;
   const [panel, setPanel] = useState(false);
-  const operating = room.phase === 'playing' && view.self && !view.self.alive;
+  // Modo jefe: los caídos no son operadores de radio, esperan para volver
+  const bossMode = room.mode === 'jefe' && room.phase === 'playing';
+  const operating = room.phase === 'playing' && view.self && !view.self.alive && !bossMode;
   const followName = room.players.find((p) => p.id === client.followId)?.name;
   return (
     <>
@@ -126,7 +129,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         onPanel={() => setPanel(true)}
       />
       <Killfeed killfeed={view.killfeed} roster={room.players} myId={myId} />
-      {!replaying && <QuickPhrases client={client} roster={room.players} />}
+      {!replaying && <QuickPhrases client={client} roster={room.players} isTouch={isTouch} />}
       <TacticalMap
         frameRef={frameRef}
         myId={myId}
@@ -140,7 +143,9 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       />
       {room.phase === 'playing' && <WeatherChip weather={room.weather} windAngle={room.windAngle} />}
       <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
-      <RadioFeed radio={client.radio} />
+      {bossMode && <BossHUD client={client} frameRef={frameRef} self={view.self} isTouch={isTouch} />}
+      {/* Con la pregunta del jefe abierta, la radio no se superpone (celular acostado) */}
+      {!(bossMode && client.bossQuestion) && <RadioFeed radio={client.radio} below={bossMode ? 4.6 : 0} />}
       <BombingWarning bombing={frameRef.current.bombing} me={view.me} alive={view.self?.alive} />
       {!operating && <InterceptCard client={client} />}
       <TransmissionToast result={client.transmissionResult} />

@@ -12,6 +12,7 @@ import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadi
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
 import { driveBots } from './bots.js';
+import { answerBoss, encodeBoss, onBossDeath, requestBossQuestion, startBoss, stopBoss, updateBoss } from './boss.js';
 import { clearLoot, deathBox, nearestLoot, pickUp, spawnGroundLoot, syncLoot, updateHealing, useItem } from './loot.js';
 import { recordTick } from '../metrics.js';
 import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
@@ -142,17 +143,37 @@ export class Game {
     this.duel = null;
     this.killTimes.clear();
     this.recorder.reset();
+    // Modo Profe Jefe Final: sin zona, mando, bombardeos ni intercepciones
+    if (this.room.mode === 'jefe') {
+      resetRadio(this);
+      startBoss(this);
+      return;
+    }
+    stopBoss(this);
     startMatch(this);
     startRadio(this);
   }
 
   stopMatch() {
     stopMatch(this);
+    stopBoss(this);
     resetRadio(this);
+  }
+
+  bossRequest(player, kind) {
+    requestBossQuestion(this, player, kind);
+  }
+
+  answerBoss(player, id, index) {
+    answerBoss(this, player, id, index);
   }
 
   onPlayerDeath(player) {
     if (player.vehicleId !== null) exitVehicle(this, player);
+    if (this.boss) {
+      onBossDeath(this, player);
+      return;
+    }
     if (this.room.phase === 'playing') deathBox(this, player);
     if (player.engineQuestion) cancelEngine(this, player, 'Caíste en combate');
     onLeaderDeath(this, player);
@@ -241,6 +262,7 @@ export class Game {
     updateGrenades(this, DT);
     updateCrates(this);
     updateMatch(this, DT);
+    updateBoss(this, DT);
     updateRadio(this);
     updateVehicles(this, DT);
     updateLeader(this);
@@ -292,6 +314,7 @@ export class Game {
       encodeBombing(this),
       encodeVehicles(this),
       encodeBus(this),
+      encodeBoss(this),
     ];
   }
 

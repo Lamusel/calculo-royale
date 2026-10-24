@@ -108,6 +108,9 @@ export class GameClient {
     this.phrases = []; // frases rápidas recientes: { id, index, at }
     this.csv = null; // CSV de la última partida (anfitrión y proyector)
     this.easy = false; // modo fácil de la sala: no cuenta para los logros
+    this.bossQuestion = null; // modo jefe: pregunta del escudo o de volver
+    this.bossResult = null;
+    this.reviveAt = 0; // modo jefe: cuándo se puede pedir la pregunta para volver
     this.trauma = 0; // sacudida de cámara (0 a 1), sube al recibir daño
     this.vehicleId = null; // jeep en el que voy
     this.seat = null; // 'driver' | 'passenger'
@@ -121,8 +124,8 @@ export class GameClient {
     this.effectViews = new EffectViews();
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = [], bus = []]) => {
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles, bus);
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = [], bus = [], boss = []]) => {
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles, bus, boss);
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
         const riding = vehicles.find((v) => v[7] === this.myId);
@@ -249,6 +252,21 @@ export class GameClient {
         const answered = Object.values(mine.byTopic ?? {}).reduce((n, t) => n + t.total, 0);
         if (this.results?.winnerId === this.myId && answered > 0 && mine.failed.length === 0) this.achieve('flawlessWin');
       },
+      [EVENTS.BOSS_QUESTION]: (q) => {
+        this.bossQuestion = { ...q, receivedAt: performance.now() };
+        this.bossResult = null;
+        sound.question();
+        vibrate(15);
+      },
+      [EVENTS.BOSS_RESULT]: (r) => {
+        if (this.bossQuestion?.id === r.id) this.bossQuestion = null;
+        this.bossResult = { ...r, at: performance.now() };
+        if (r.correct) {
+          sound.lockOpen();
+          this.achieve('correct');
+        } else sound.lockFail();
+        vibrate(r.correct ? [20, 30, 20] : 120);
+      },
       [EVENTS.PHRASE]: ({ id, index }) => {
         this.phrases.push({ id, index, at: performance.now() });
         if (this.phrases.length > 6) this.phrases.shift();
@@ -287,6 +305,7 @@ export class GameClient {
     actions.requestAmmo = () => this.requestAmmo();
     actions.useItem = (item) => this.useItem(item);
     actions.phrase = (index) => this.socket.emit(EVENTS.QUICK_PHRASE, index);
+    actions.bossShield = () => this.bossRequest('shield');
     actions.jump = () => this.deploying === 'bus' && press(BUTTONS.JUMP);
 
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
@@ -331,6 +350,7 @@ export class GameClient {
     this.predictor.speedFactor = self.speedFactor ?? 1;
     this.healingEndsAt = self.healing ? now + self.healing.left : 0;
     this.drinkEndsAt = self.drinkLeft ? now + self.drinkLeft : 0;
+    this.reviveAt = self.reviveIn !== null && self.reviveIn !== undefined ? now + self.reviveIn : 0;
     inputState.weapon = selfWeaponId(self);
     inputState.scope = self.attachments?.scope ?? null;
     if (self.grenades === 0) inputState.grenadeMode = false;
@@ -583,6 +603,15 @@ export class GameClient {
     return best;
   }
 
+  // Modo jefe: pedir la pregunta del escudo ('shield') o la de volver ('revive')
+  bossRequest(kind) {
+    if (!this.bossQuestion) this.socket.emit(EVENTS.BOSS_REQUEST, kind);
+  }
+
+  answerBoss(index) {
+    if (this.bossQuestion) this.socket.emit(EVENTS.BOSS_ANSWER, { id: this.bossQuestion.id, index });
+  }
+
   // Venda, botiquín o bebida (el servidor decide si se puede)
   useItem(item) {
     if (this.alive && !this.self?.healing) this.socket.emit(EVENTS.USE_ITEM, item);
@@ -631,6 +660,7 @@ export class GameClient {
     actions.interact = () => {};
     actions.useItem = () => {};
     actions.phrase = () => {};
+    actions.bossShield = () => {};
     actions.requestAmmo = () => {};
     actions.jump = () => {};
   }

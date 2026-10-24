@@ -20,6 +20,11 @@ export const EVENTS = {
   QUICK_PHRASE: 'phrase:say', // C → S: índice en QUICK_PHRASES
   PHRASE: 'phrase', // S → C: { id, index }
   RESULTS_CSV: 'results:csv', // S → C (host y proyector): { filename, csv }
+  ROOM_MODE: 'room:mode', // C → S (solo host, en el lobby): 'royale' | 'jefe'
+  BOSS_REQUEST: 'boss:request', // C → S: pide pregunta 'shield' (romper escudo) o 'revive' (volver)
+  BOSS_QUESTION: 'boss:question', // S → C: { id, kind, tema, enunciado, opciones, timeLimitMs } (sin la respuesta)
+  BOSS_ANSWER: 'boss:answer', // C → S: { id, index }
+  BOSS_RESULT: 'boss:result', // S → C: { id, kind, correct, explicacion?, progress?, goal? }
   // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby
   PLAYER_SKIN: 'player:skin',
 

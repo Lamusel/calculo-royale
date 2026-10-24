@@ -64,6 +64,7 @@ export function attachKeyboardMouse() {
     else if (isKey(e, 'B')) actions.requestAmmo();
     else if (isKey(e, 'E')) actions.interact();
     else if (isKey(e, 'T')) actions.phraseMenu();
+    else if (isKey(e, 'Q')) actions.bossShield();
     else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);
     else if (e.code === 'Digit2' || e.key === '2') actions.switchWeapon(2);
     else if (e.code === 'Digit4' || e.key === '4') actions.useItem('bandage');

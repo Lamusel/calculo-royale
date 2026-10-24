@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { DEPLOY_MODES, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, GAME_MODES, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -135,6 +135,7 @@ function PresentationPicker({ room, isHost }) {
   if (!isHost) {
     return (
       <>
+        {room.mode === 'jefe' && <span className="rounded bg-red-800/80 px-2 py-1 text-xs text-red-50">🎓 Profe Jefe Final</span>}
         {room.easy && <span className="rounded bg-amber-700/70 px-2 py-1 text-xs text-amber-50">Modo fácil</span>}
         {bots > 0 && <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">🤖 {bots} bots</span>}
       </>
@@ -142,6 +143,18 @@ function PresentationPicker({ room, isHost }) {
   }
   return (
     <>
+      <select
+        value={room.mode ?? 'royale'}
+        onChange={(e) => socket.emit(EVENTS.ROOM_MODE, e.target.value)}
+        className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100"
+        title="Modo de juego"
+      >
+        {Object.entries(GAME_MODES).map(([id, name]) => (
+          <option key={id} value={id} className="bg-olive-900">
+            {id === 'jefe' ? '🎓' : '🪖'} {name}
+          </option>
+        ))}
+      </select>
       <button
         onClick={() => socket.emit(EVENTS.ROOM_EASY, !room.easy)}
         className={`rounded px-2 py-1 text-xs ${room.easy ? 'bg-amber-600 font-bold text-black' : 'bg-white/10 text-stone-200'}`}

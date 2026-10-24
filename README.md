@@ -259,7 +259,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **18. Botín de battle royale y mapa más grande** ✅ | Mapa de ~280 m con terminal, mercado, estadio, cañón y aeródromo; botín en el suelo, inventario, miras, curación con tiempo, accesorios, mochila, casco y caja de botín al morir | Saquear y equiparse como en un battle royale |
 | **19. Audio total** ✅ | Canales Música, Efectos y Voz, ducking, efectos ampliados, archivos propios opcionales, música por momento y voz del Mando | La partida suena completa |
 | **20. Modo presentación y modo fácil** ✅ | Preguntas fáciles para probar, intro y créditos, director de cámara en el proyector, completar con bots, medallas, frases rápidas, exportar CSV | Presentar el día D |
-| **21. Modo Profe Jefe Final** | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
+| **21. Modo Profe Jefe Final** ✅ | Modo aparte: un jefe gigante con escudo matemático que solo baja con aciertos del equipo | Partida de jefe de 8 min |
 | **22. Revisión final** ✅ | Calidad y brillo en celular, servidor en Virginia (más cerca), carga con el mapa grande, checklist del día D | Todo listo para la presentación |
 | *Backlog* | Modo "Profe jefe final" (el profe es un jefe gigante y el salón coopera respondiendo para derribarlo), #4 campos vectoriales, #6 centro de masa | |
 
@@ -428,6 +428,13 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Carga** con el mapa grande en los dos despliegues (`npm run loadtest -- 40 120` y `… --punto`), en local y contra Render.
 - **Checklist del día D** y **lista final de pruebas** en este README.
 - Celular antiguo real: queda en el checklist (no hay uno conectado a esta máquina).
+
+#### Fase 21: modo Profe Jefe Final
+- **Modo aparte** que elige el anfitrión en el lobby ("🎓 Profe Jefe Final"): todos contra un jefe gigante en la cancha del estadio, como equipo (sin fuego amigo), con rifle, chaleco 2 y vendas; sin zona, cajas, botín, despliegue, operadores ni bombardeos.
+- **Escudo matemático:** con el escudo arriba las balas lo chocan sin daño. Solo baja con aciertos del equipo ("Romper escudo", Q): cada acierto suma, cada fallo da 6 s de espera; al llegar a la meta el escudo cae 15 s y vuelve con la cuenta en cero.
+- **3 fases:** cada una con más vida (escalada por cantidad de jugadores), ráfagas más seguidas y, desde la segunda, onda expansiva con aviso; la meta del escudo sube por fase y cada 6 jugadores.
+- **Caídos:** a los 20 s piden una pregunta; si aciertan vuelven a la cancha con 75 de vida; si fallan, 10 s más.
+- **8 minutos:** si no lo derrotan, gana el profe. Resultados para todo el equipo con daño al jefe, aciertos y CSV.
 
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
@@ -689,7 +696,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 
 | Prueba | Cómo | Estado |
 |---|---|---|
-| Pruebas automáticas | `npm test` | 173 en verde |
+| Pruebas automáticas | `npm test` | 179 en verde |
 | Build | `npm run build` | Sin errores |
 | Carga 40 clientes (bus y elegir punto) | `npm run loadtest -- 40 120` y `… --punto` (local y Render) | OK (ver bitácora, fase 22) |
 | Partida completa con bots hasta el duelo | Lobby → bots hasta 8 → Iniciar | OK en Edge |
@@ -726,7 +733,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 18 | ✅ Completa | Mapa de 280 m con 5 zonas nuevas y 8 jeeps, botín en el suelo, inventario con mochila, casco, accesorios y curación con tiempo, caja de botín al caer. Falta jugar una partida completa con el curso |
 | 19 | ✅ Completa | Canales Música, Efectos y Voz con silencio, ducking, prioridad de voces, 19 efectos nuevos, archivos propios opcionales, música procedural por momento y voz del Mando en español. Falta escucharlo en un celular real |
 | 20 | ✅ Completa | Modo fácil, intro y créditos, director de cámara, bots del servidor, medallas, frases rápidas y CSV. Faltan los nombres reales de los créditos |
-| 21 | Pendiente | |
+| 21 | ✅ Completa | Modo aparte con escudo que solo baja con aciertos del equipo, 3 fases, volver con un acierto y límite de 8 min. Falta jugarlo con el curso |
 | 22 | ✅ Completa | Calidad y brillo revisados, servidor en Virginia preparado (falta que el usuario haga la mudanza), carga en ambos despliegues, checklist del día D y lista final. Falta el celular antiguo real |
 
 ### Bitácora
@@ -835,3 +842,16 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Build y 173 pruebas | PASS |
 | Celular antiguo real | Pendiente |
 | Mudanza a Virginia hecha | Pendiente (cuentas del usuario) |
+- 2026-10-24: **fase 21 completa (modo Profe Jefe Final).** *Servidor* (`server/src/game/boss.js`, constantes `BOSS` y `GAME_MODES`): el anfitrión elige el modo en el lobby; al iniciar, todos aparecen en el borde de la cancha del estadio con rifle, chaleco 2 y 3 vendas (sin bus, zona, cajas, botín, operadores, bombardeos, intercepciones, líder ni duelo). El jefe camina despacio hacia el más cercano sin salir de 9 m del centro y dispara ráfagas con dispersión al jugador visible al azar (3 balas de 8 cada 1,5 s en la fase 1; 5 de 12 cada 0,9 s en la 3); desde la fase 2, onda expansiva cada 9 s (6,5 s en la 3) con 1,5 s de aviso y 22 de daño a menos de 11 m. Vida por fase 700/800/900 × (1 + 0,2 por cada jugador extra). *Escudo:* con el escudo arriba el jefe es un blanco de 3,8 m que las balas chocan sin daño; "Romper escudo" (botón o Q) pide una pregunta de los temas de la sala (dificultad según la fase, 2 opciones, 20 s, se puede caminar); cada acierto suma a la meta del equipo (3, 4 y 5 por fase, +1 cada 6 jugadores), cada fallo da 6 s de espera; al llegar a la meta el escudo cae 15 s (aviso del Mando) y vuelve con la cuenta en cero. Al bajarle la vida pasa de fase con el escudo arriba; en la última, gana el equipo. *Sin fuego amigo:* en este modo el único blanco de las balas y granadas de los jugadores es el jefe. *Caídos:* sin caja de botín ni operador; a los 20 s aparece "Responder para volver" (dificultad 1); si aciertan vuelven al borde de la cancha con 75 de vida, si fallan esperan 10 s más. *Fin:* a los 8 minutos gana el profe; si cae, todo el equipo queda en el puesto 1. El ranking suma 1 punto cada 10 de daño al jefe, 5 por acierto y 50 si ganaron, con columna "Daño"; las medallas y el CSV funcionan igual. *Bots:* en este modo le disparan solo al jefe (con más alcance), no se alejan de la cancha y responden al azar las preguntas de volver y, de vez en cuando, las del escudo. *Cliente:* jefe en 3D con el mismo Master Rig de los jugadores (skin de Newton ×3,2) y el rifle, escudo translúcido que late con el color de la fase y anillo naranja que crece hasta el radio de la onda (`client/src/game/Boss.jsx`); barra arriba con fase, tiempo, vida y casillas de aciertos del escudo, aviso "¡Escudo abajo!" y de la onda, botón "Romper escudo (Q)", tarjeta de la pregunta, resultado y pantalla "Caíste · Puedes volver en N s" (`client/src/ui/BossHUD.jsx`); el Mando se ve debajo de la barra (y se oculta mientras hay una pregunta abierta, para no taparse en celular); el killfeed nombra al jefe; música del duelo; el proyector muestra la misma barra. *Corregido en el camino:* el botón 💬 de frases rápidas quedaba sobre el killfeed (arriba a la derecha): pasó a la izquierda, bajo el minimapa, y las frases recientes encima del inventario. *Verificado en Edge* (1366×768 y 844×390 táctil, con 4 bots): elegir el modo en el lobby, la cancha con el jefe gigante y su escudo, barra con "Fase 1/3 · 7:57", pregunta del escudo con KaTeX, "+1 al escudo (2/3)", "Incorrecto · espera 6 s", el equipo pasando a la fase 2 (meta 4) y el killfeed "Profe Jefe Final → Bot 1"; sin errores. 6 pruebas nuevas (179 en total).
+
+| Validación fase 21 | Estado |
+|---|---|
+| Inicio en la cancha con equipo, sin zona, cajas ni despliegue (prueba) | PASS |
+| Escudo: sin daño con escudo, solo baja con aciertos, espera tras fallar, vuelve a los 15 s (prueba) | PASS |
+| 3 fases y victoria del equipo; ranking por daño (prueba) | PASS |
+| Sin fuego amigo; el jefe es blanco (prueba) | PASS |
+| Volver a los 20 s con acierto; 10 s más si falla (prueba) | PASS |
+| El jefe dispara; a los 8 min gana él (prueba) | PASS |
+| Modo en el lobby, jefe, barra, pregunta y fases en PC y celular (Edge) | PASS |
+| Build y 179 pruebas | PASS |
+| Partida completa de 8 min con el curso | Pendiente |

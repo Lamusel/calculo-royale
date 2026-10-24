@@ -91,7 +91,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
       <div className="mx-auto flex max-w-4xl flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-2xl font-black uppercase tracking-wider text-khaki sm:text-3xl">
-            {winner ? `🏆 Gana ${winner.name}` : 'Fin de la partida'}
+            {results.boss ? (results.boss.victory ? '🏆 ¡El equipo venció al Profe!' : '🎓 El Profe resistió') : winner ? `🏆 Gana ${winner.name}` : 'Fin de la partida'}
           </p>
           {me && <p className="rounded bg-white/10 px-3 py-1 font-mono">Tu puesto: {me.place}° · {me.score} pts</p>}
           {results.easy && <p className="rounded bg-amber-800/70 px-2 py-1 text-xs text-amber-100">Modo fácil · no cuenta para logros</p>}
@@ -124,6 +124,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                   <th className="pb-1 text-right">Puesto</th>
                   <th className="pb-1 text-right">Bajas</th>
                   <th className="pb-1 text-right">Aciertos</th>
+                  {results.boss && <th className="pb-1 text-right">Daño</th>}
                   {results.ranking[0]?.score !== undefined && <th className="pb-1 text-right">Puntos</th>}
                 </tr>
               </thead>
@@ -140,6 +141,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                     <td className="py-0.5 text-right">
                       {r.correct}/{r.answered}
                     </td>
+                    {results.boss && <td className="py-0.5 text-right">{r.bossDamage ?? 0}</td>}
                     {r.score !== undefined && <td className="py-0.5 text-right">{r.score}</td>}
                   </tr>
                 ))}
@@ -153,7 +155,11 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
             {spectator ? <ClassTopics stats={classStats} /> : <TopicBars byTopic={mine?.byTopic} />}
           </div>
         </div>
-        <p className="text-xs text-stone-400">Puntos: 10 por cada puesto superado, 15 por baja y 5 por acierto (cajas, transmisiones e intercepciones).</p>
+        <p className="text-xs text-stone-400">
+          {results.boss
+            ? 'Puntos: 1 por cada 10 de daño al Profe, 5 por acierto y 50 para todos si lo vencieron.'
+            : 'Puntos: 10 por cada puesto superado, 15 por baja y 5 por acierto (cajas, transmisiones e intercepciones).'}
+        </p>
 
         {!spectator && <div className="flex flex-col gap-2">
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">

@@ -28,6 +28,7 @@ export class Room {
     this.deployMode = 'bus'; // despliegue: 'bus' | 'punto' (lo elige el host)
     this.weather = 'despejado';
     this.windAngle = 0;
+    this.mode = 'royale'; // 'royale' | 'jefe' (modo Profe Jefe Final)
     this.easy = false; // modo fácil: preguntas de aritmética (no cuenta para los logros; el CSV lo marca)
     this.players = new Map(); // id → Player
     this.nextId = 1;
@@ -156,8 +157,13 @@ export class Room {
     this.results = null;
     Object.assign(this, pickWeather(this.weatherChoice));
     this.game.startMatch();
-    this.game.pickCrates();
-    this.game.startDeploy(this.deployMode);
+    if (this.mode === 'jefe') {
+      // Sin cajas, botín ni despliegue: todos aparecen en la cancha del estadio con equipo
+      for (const c of this.game.crates) c.inMatch = false;
+    } else {
+      this.game.pickCrates();
+      this.game.startDeploy(this.deployMode);
+    }
     this.broadcastInfo();
   }
 
@@ -170,6 +176,7 @@ export class Room {
     const ranking = players
       .map((p) => {
         const place = p.place ?? players.length;
+        const boss = this.bossOutcome;
         return {
           id: p.id,
           name: p.name,
@@ -178,12 +185,15 @@ export class Room {
           kills: p.kills,
           correct: p.stats.correct,
           answered: p.stats.answered,
-          score: score(place, players.length, p.kills, p.stats.correct),
+          // Modo jefe: 1 punto cada 10 de daño al jefe, 5 por acierto y 50 si ganaron
+          score: boss ? Math.round((p.bossDamage ?? 0) / 10) + p.stats.correct * SCORE.correct + (boss.victory ? 50 : 0) : score(place, players.length, p.kills, p.stats.correct),
+          bossDamage: boss ? Math.round(p.bossDamage ?? 0) : undefined,
           bot: p.bot || undefined,
         };
       })
       .sort((a, b) => b.score - a.score || a.place - b.place);
-    this.results = { winnerId, ranking, medals: awardMedals(players), easy: this.easy || undefined };
+    this.results = { winnerId, ranking, medals: awardMedals(players), easy: this.easy || undefined, boss: this.bossOutcome };
+    this.bossOutcome = undefined;
     // Primero la repetición de la mejor jugada: el cliente la muestra antes de los resultados
     const replay = this.game.recorder.take();
     if (replay) this.broadcast(EVENTS.MATCH_REPLAY, replay);
@@ -202,6 +212,14 @@ export class Room {
     saveResults(record)
       .then((r) => console.log(`[sala ${this.code}] resultados guardados (${r.where}${r.file ? `: ${r.file}` : ''})`))
       .catch((err) => console.error('[resultados] no se pudieron guardar:', err));
+  }
+
+  // Fin del modo jefe: gana todo el equipo o gana el profe. Puesto 1 para todos si ganan;
+  // el ranking va por daño al jefe y aciertos.
+  finishBoss({ victory, timeMs }) {
+    for (const p of this.players.values()) p.place = victory ? 1 : 2;
+    this.bossOutcome = { victory, timeMs };
+    this.finishMatch(null);
   }
 
   // Estadísticas de la clase en vivo: al host y a las vistas de proyector
@@ -246,6 +264,7 @@ export class Room {
       weatherChoice: this.weatherChoice,
       deployMode: this.deployMode,
       easy: this.easy,
+      mode: this.mode,
       windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),
     };

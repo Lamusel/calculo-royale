@@ -40,6 +40,7 @@ export const actions = {
   useItem: () => {},
   phrase: () => {},
   phraseMenu: () => {},
+  bossShield: () => {},
   requestAmmo: () => {},
   jump: () => {},
 };

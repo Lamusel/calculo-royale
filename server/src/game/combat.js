@@ -9,6 +9,8 @@ import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
+import { damageBoss } from './boss.js';
+import { BOSS, BOSS_TARGET_ID } from '@calculo-royale/shared/constants';
 
 // Margen extra del radio de impacto: hace los disparos un poco más indulgentes
 const HIT_LENIENCY = 0.15;
@@ -29,6 +31,12 @@ export function targetsAt(game, shooter, viewTick) {
   }
   if (game.room.phase === 'lobby') {
     game.dummies.forEach((d, i) => targets.push({ id: dummyTargetId(i), x: d.x, y: d.y, dummy: d }));
+  }
+  // Modo jefe: el jefe es el único blanco (sin fuego amigo); con escudo, las balas lo chocan
+  if (game.boss && game.room.phase === 'playing') {
+    const b = game.boss;
+    if (!b.finished) targets.push({ id: BOSS_TARGET_ID, x: b.x, y: b.y, boss: b, radius: b.shieldUp ? BOSS.shieldRadius : BOSS.radius });
+    return targets.filter((t) => !t.player);
   }
   // Jeeps (sin compensación de lag); el propio no cuenta: el pasajero dispara desde adentro
   if (game.room.phase === 'playing') {
@@ -103,6 +111,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
 }
 
 function damageTarget(game, target, amount, attackerId, weaponIndex) {
+  if (target.boss) return { dealt: damageBoss(game, amount, attackerId), killed: false };
   if (target.vehicle) {
     damageVehicle(game, target.vehicle, amount, attackerId);
     return { dealt: amount, killed: false };
@@ -206,6 +215,11 @@ function explode(game, g) {
     const { killed } = damageTarget(game, target, amount, g.ownerId, GRENADE_INDEX);
     if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, [target.id, amount, x, y, killed ? 1 : 0]);
   };
+  // En el modo jefe las granadas de los jugadores no dañan a los compañeros, sí al jefe (sin escudo)
+  if (game.boss && game.room.phase === 'playing') {
+    if (!game.boss.finished) hurt({ id: BOSS_TARGET_ID, boss: game.boss }, game.boss.x, game.boss.y);
+    return;
+  }
   for (const p of game.room.players.values()) {
     if (p.alive && !p.deploying) hurt({ id: p.id, player: p }, p.x, p.y);
   }

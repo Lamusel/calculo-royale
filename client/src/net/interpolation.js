@@ -20,7 +20,7 @@ export class SnapshotBuffer {
     this.lastEventTick = 0;
   }
 
-  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = [], vehicles = [], bus = []) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], bombing = [], vehicles = [], bus = [], boss = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -31,7 +31,7 @@ export class SnapshotBuffer {
     for (const p of players) byId.set(p[0], p);
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus });
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus, boss });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
@@ -105,6 +105,15 @@ export class SnapshotBuffer {
     // Bus de despliegue: [x, y, rumbo, ms para arrancar]
     frame.bus = b.bus.length
       ? { x: lerp(a.bus[0] ?? b.bus[0], b.bus[0], alpha), y: lerp(a.bus[1] ?? b.bus[1], b.bus[1], alpha), heading: b.bus[2], waitMs: b.bus[3] }
+      : null;
+    // Jefe del modo Profe Jefe Final: [x, y, mira, vida, vida máx., fase, escudo, aciertos, meta, ms restantes, ms para la onda]
+    const ba = a.boss ?? [];
+    const bb = b.boss ?? [];
+    frame.boss = bb.length
+      ? {
+          x: lerp(ba[0] ?? bb[0], bb[0], alpha), y: lerp(ba[1] ?? bb[1], bb[1], alpha), aim: lerpAngle(ba[2] ?? bb[2], bb[2], alpha),
+          hp: bb[3], maxHp: bb[4], phase: bb[5], shieldUp: bb[6] === 1, progress: bb[7], goal: bb[8], timeLeft: bb[9], waveIn: bb[10],
+        }
       : null;
     frame.dummies = b.dummies;
     frame.crates = b.crates;

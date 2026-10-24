@@ -45,6 +45,7 @@ export class Player {
     this.longestKill = 0;
     this.damageDealt = 0;
     this.phrases = []; // momentos de sus frases rápidas recientes (antispam)
+    this.bossDamage = 0; // daño hecho al jefe (modo jefe)
   }
 
   resetCombat() {
@@ -86,6 +87,10 @@ export class Player {
     this.healing = null; // { item, until } mientras se venda o usa un botiquín
     this.drinkUntil = 0; // la bebida cura de a poco y da velocidad hasta este momento
     this.speedFactor = 1;
+    // Modo jefe (fase 21)
+    this.bossQuestion = null; // pregunta de escudo o de volver pendiente
+    this.reviveAt = 0;
+    this.bossCooldownUntil = 0;
   }
 
   // Cayendo del bus: el movimiento compartido usa otra velocidad y no choca
@@ -231,6 +236,8 @@ export class Player {
       intel: this.intel && { cx: this.intel.cx, cy: this.intel.cy },
       vehicle: this.vehicleId !== null ? { id: this.vehicleId, seat: this.seat } : null,
       killedBy: this.killedBy,
+      reviveIn: !this.alive && this.reviveAt ? Math.max(0, this.reviveAt - now) : null,
+      bossCooldown: this.bossCooldownUntil > now,
       killedWith: this.killedWith,
     };
   }

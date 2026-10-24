@@ -193,7 +193,7 @@ export function encodeBombing(game) {
 }
 
 export function updateRadio(game) {
-  if (game.room.phase === 'playing') {
+  if (game.room.phase === 'playing' && !game.boss) {
     updateOperators(game);
     updateBombing(game);
     updateIntercept(game);

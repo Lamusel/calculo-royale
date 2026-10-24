@@ -352,3 +352,41 @@ export const QUICK_PHRASES = ['¡Aquí!', '¡Cuidado!', 'Necesito balas', '¡Bie
 export const PHRASE_LIMIT = { gapMs: 2_500, windowMs: 20_000, max: 4, showMs: 3_500 };
 // Director de cámara del proyector: cuánto se queda en cada toma (mín. y máx.)
 export const DIRECTOR = { minShotMs: 6_000, maxShotMs: 14_000, fightRadius: 18 };
+
+// --- Modo Profe Jefe Final (fase 21) ---
+// Un jefe gigante en el estadio contra todos (sin fuego amigo). Su escudo matemático solo baja
+// con aciertos del equipo ("Romper escudo"); 3 fases; los caídos vuelven a los 20 s si aciertan;
+// a los 8 minutos sin derrotarlo, gana el jefe.
+export const GAME_MODES = { royale: 'Battle royale', jefe: 'Profe Jefe Final' };
+export const BOSS = {
+  name: 'Profe Jefe Final',
+  arena: { x: 114, y: -8 }, // centro de la cancha del estadio
+  roam: 9, // se mueve dentro de este radio alrededor del centro
+  radius: 2.4, // cuerpo (lo que reciben las balas sin escudo)
+  shieldRadius: 3.8,
+  speed: 2.2,
+  range: 34,
+  phases: [
+    { hp: 700, shieldGoal: 3, fireMs: 1500, burst: 3, damage: 8, waveMs: 0 },
+    { hp: 800, shieldGoal: 4, fireMs: 1200, burst: 4, damage: 10, waveMs: 9_000 },
+    { hp: 900, shieldGoal: 5, fireMs: 900, burst: 5, damage: 12, waveMs: 6_500 },
+  ],
+  hpPerExtraPlayer: 0.2, // vida × (1 + 0,2 por cada jugador después del primero)
+  goalEveryPlayers: 6, // la meta del escudo sube 1 cada 6 jugadores
+  shieldDownMs: 15_000,
+  spread: 0.12,
+  waveRadius: 11,
+  waveDamage: 22,
+  waveWarnMs: 1_500,
+  limitMs: 480_000,
+  questionMs: 20_000,
+  failCooldownMs: 6_000,
+  reviveMs: 20_000,
+  reviveRetryMs: 10_000,
+  reviveHp: 75,
+  spawnRadius: 15,
+  loadout: { weapon: 'rifle', armor: 2, bandages: 3 },
+};
+// Id del jefe en disparos y killfeed (los jugadores empiezan en 1) y como blanco de las balas
+export const BOSS_ID = 0;
+export const BOSS_TARGET_ID = -999;

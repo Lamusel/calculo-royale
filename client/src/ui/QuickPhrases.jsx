@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { PHRASE_LIMIT, QUICK_PHRASES } from '@calculo-royale/shared/constants';
 import { actions } from '../input/inputState.js';
 import { TouchButton } from './CombatHUD.jsx';
+import { minimapSize } from './TacticalMap.jsx';
 
 // Frases rápidas (fase 20): botón 💬 (o T) que abre las 6 frases; con el menú abierto, 1–6 eligen.
 // El servidor aplica el antispam; aquí solo se evita repetir por error. Abajo, las últimas frases.
-export default function QuickPhrases({ client, roster }) {
+export default function QuickPhrases({ client, roster, isTouch }) {
   const [open, setOpen] = useState(false);
   const [, tick] = useState(0);
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function QuickPhrases({ client, roster }) {
   const nameOf = (id) => roster.find((p) => p.id === id);
   return (
     <>
-      <div className="pointer-events-none absolute left-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1">
+      <div className="pointer-events-none absolute bottom-[8.5rem] left-3 z-20 flex flex-col gap-1">
         {recent.map((p) => {
           const who = nameOf(p.id);
           return (
@@ -49,7 +50,7 @@ export default function QuickPhrases({ client, roster }) {
           );
         })}
       </div>
-      <div className="absolute right-3 top-[5.25rem] z-30 flex flex-col items-end gap-1">
+      <div className="absolute left-3 z-30 flex flex-col items-start gap-1" style={{ top: minimapSize(isTouch) + 52 }}>
         <TouchButton onPress={() => setOpen((o) => !o)} className="rounded bg-black/55 px-2.5 py-1 text-sm" title="Frases rápidas (T)">
           💬
         </TouchButton>
