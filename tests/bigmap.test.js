@@ -78,3 +78,30 @@ test('8 bots saltando al azar del bus no caen todos en la misma zona', () => {
   for (const a of players) for (const b of players) spread = Math.max(spread, Math.hypot(a.x - b.x, a.y - b.y));
   assert.ok(spread > 250, `separación máxima ${spread.toFixed(0)} m`);
 });
+
+test('puentes: el jeep cruza cada uno de ida y vuelta sin chocar, sin saltos de altura y sobre el tablero', async () => {
+  const { applyVehicleInput } = await import('@calculo-royale/shared/vehicle');
+  const { terrainHeight } = await import('@calculo-royale/shared/terrain');
+  for (const b of BRIDGES) {
+    for (const dir of [-1, 1]) {
+      const v = { x: b.x, y: b.y - dir * (b.h / 2 + 8), heading: dir * Math.PI / 2, speed: 12 };
+      let h = terrainHeight(v.x, v.y);
+      for (let i = 0; i < 400 && dir * (v.y - b.y) < b.h / 2 + 8; i++) {
+        applyVehicleInput(v, { mx: 0, my: dir }, 0.05);
+        assert.equal(v.crashed, false, `choque en el puente x = ${b.x}`);
+        const nh = terrainHeight(v.x, v.y);
+        assert.ok(Math.abs(nh - h) < 0.4, `salto de altura ${(nh - h).toFixed(2)} en x = ${b.x}`);
+        h = nh;
+        if (Math.abs(v.y - b.y) < b.h / 2) assert.ok(Math.abs(v.x - b.x) < b.w / 2, 'sobre el tablero');
+      }
+      assert.ok(dir * (v.y - b.y) >= b.h / 2 + 8, `cruzó el puente x = ${b.x}`);
+    }
+  }
+  // Rozar la baranda de costado no cuenta como choque
+  const b = BRIDGES[0];
+  const v = { x: b.x + b.w / 2 - 1, y: b.y, heading: 0.4, speed: 10 };
+  for (let i = 0; i < 20; i++) {
+    applyVehicleInput(v, { mx: Math.cos(0.4), my: Math.sin(0.4) }, 0.05);
+    assert.equal(v.crashed, false);
+  }
+});

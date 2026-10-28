@@ -209,7 +209,9 @@ export const GULAG = {
   suddenMs: 20_000, // el círculo se cierra hasta el centro
   suddenDps: 12,
   suddenStartRadius: 20,
-  returnAltitude: 24, // el ganador vuelve en paracaídas
+  returnAltitude: 30, // el ganador vuelve en paracaídas
+  returnPickMs: 6_000, // tiempo para tocar en el mapa dónde caer
+  returnBullets: 3, // si peleó a puños, vuelve con la pistola y estas balas
 };
 // Puntaje final: puestos superados, bajas y aciertos (también de espectador y Gulag)
 export const SCORE = { place: 10, kill: 15, correct: 5 };

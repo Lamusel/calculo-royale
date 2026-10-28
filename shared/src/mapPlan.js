@@ -13,7 +13,8 @@ export const DAM = { x: -425, y: Math.round(riverY(-425)), w: 12, h: 84 };
 export const RESERVOIR = { x: -478, y: DAM.y, rx: 50, ry: 62 };
 
 // Puentes (de norte a sur, por donde pasan las carreteras) y un vado poco profundo
-const bridge = (x) => ({ x, y: Math.round(riverY(x)), w: 8, h: 2 * (RIVER.halfWidth + RIVER.bank) + 2 });
+// w: ancho del tablero (carretera de 8,5 m); h: largo total con las dos rampas
+const bridge = (x) => ({ x, y: Math.round(riverY(x)), w: 10, h: 80 });
 export const BRIDGES = [bridge(-250), bridge(-40), bridge(110), bridge(330)];
 export const FORD = { x: -150, y: Math.round(riverY(-150)), w: 16, h: 2 * RIVER.halfWidth + 4 };
 
@@ -93,7 +94,7 @@ export const ROADS = [
   [[80, 0], [150, -12], [240, 12], [330, 0], [500, 18]],
   // Norte–sur por la ciudad y el puente central
   [[10, 500], [20, 430], [0, 300], [0, 75]],
-  [[0, -75], [-40, -70], B(1, span), B(1, -span), [-50, -200], [-60, -290], [-80, -500]],
+  [[0, -75], B(1, span), B(1, -span), [-50, -200], [-60, -290], [-80, -500]],
   // Oeste: aeródromo, puente oeste, estación y cañón
   [[-250, 70], [-250, 10], B(0, span), B(0, -span), [-220, -160], [-180, -228], [-280, -300]],
   [[-300, 265], [-290, 190], [-250, 150]],

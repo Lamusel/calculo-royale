@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEPLOY, MAP_HALF, MAP_SIZE } from '@calculo-royale/shared/constants';
 import { actions } from '../input/inputState.js';
 import { TouchButton } from './CombatHUD.jsx';
-import { sectorOf } from '@calculo-royale/shared/zone';
+import { insideZonePoint, sectorOf } from '@calculo-royale/shared/zone';
 import { draw } from './TacticalMap.jsx';
 
 // Interfaz del despliegue: en el bus (cuenta regresiva y ¡Saltar!), cayendo (altímetro) y,
@@ -40,13 +40,16 @@ function PickPoint({ client, frameRef }) {
     const rect = ref.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * MAP_SIZE - MAP_HALF;
     const y = MAP_HALF - ((e.clientY - rect.top) / rect.height) * MAP_SIZE;
-    client.chooseDeployPoint(Math.round(x), Math.round(y));
+    // Regreso del Gulag: solo dentro de la zona (el servidor aplica la misma regla)
+    const zone = frameRef.current.zone;
+    const p = info?.gulag && zone?.length ? insideZonePoint({ cx: zone[0], cy: zone[1], p: zone[2], q: zone[3] }, x, y) : { x, y };
+    client.chooseDeployPoint(Math.round(p.x), Math.round(p.y));
   };
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-2 bg-black/80 p-3 text-stone-100">
-      <p className="text-center text-lg font-black uppercase tracking-wider text-khaki">Toca dónde quieres caer · {left} s</p>
+      <p className="text-center text-lg font-black uppercase tracking-wider text-khaki">{info?.gulag ? '¡Ganaste el Gulag! Toca dónde caer dentro de la zona' : 'Toca dónde quieres caer'} · {left} s</p>
       <canvas ref={ref} onPointerUp={onPick} style={{ width: size, height: size }} className="cursor-crosshair rounded border border-khaki-dark" />
-      <p className="text-xs text-stone-400">{info?.myPick ? `Caerás en (${info.myPick.x}, ${info.myPick.y})` : 'Si no eliges, caes donde te tocó'}</p>
+      <p className="text-xs text-stone-400">{info?.myPick ? `Caerás en (${info.myPick.x}, ${info.myPick.y})` : info?.gulag ? 'Si no eliges, caes en un punto al azar de la zona' : 'Si no eliges, caes donde te tocó'}</p>
     </div>
   );
 }

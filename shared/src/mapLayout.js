@@ -285,7 +285,8 @@ const ranches = ['ranch1', 'ranch2', 'ranch3', 'ranch4', 'ranch5', 'ranch6'].fla
   return [fence(a.x, a.y - 8, 20, 0.3), barrel(a.x + 7, a.y + 2), crate(a.x - 7, a.y - 3)];
 });
 // Barandas de los puentes (los puentes mismos se pintan en el cliente)
-const bridges = BRIDGES.flatMap((b) => [fence(b.x - b.w / 2, b.y, 0.3, b.h - 4), fence(b.x + b.w / 2, b.y, 0.3, b.h - 4)]);
+// Barandas de concreto de los puentes (borde: los vehículos se deslizan, sin daño)
+const bridges = BRIDGES.flatMap((b) => [-1, 1].map((s) => ({ kind: 'rail', shape: 'rect', x: b.x + s * (b.w / 2 + 0.2), y: b.y, w: 0.4, h: b.h, height: 1 })));
 
 const NAMED = [
   ...houseObstacles, ...furnitureObstacles, ...suburb, ...base, ...trenches, ...containers, ...terminal, ...market, ...airfield, ...stadium, ...canyon,

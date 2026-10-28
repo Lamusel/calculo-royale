@@ -48,3 +48,12 @@ export function sectorBounds(name) {
 export const ALL_SECTORS = Array.from({ length: SECTORS * SECTORS }, (_, i) =>
   `${String.fromCharCode(65 + (i % SECTORS))}${Math.floor(i / SECTORS) + 1}`,
 );
+
+// Punto dentro de la zona: si está afuera, el más cercano adentro (un poco hacia el centro)
+export function insideZonePoint(zone, x, y) {
+  const dx = (x - zone.cx) / zone.p;
+  const dy = (y - zone.cy) / zone.q;
+  const d = Math.hypot(dx, dy);
+  if (d <= 0.95) return { x, y };
+  return { x: zone.cx + (dx / d) * 0.95 * zone.p, y: zone.cy + (dy / d) * 0.95 * zone.q };
+}

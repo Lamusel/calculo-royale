@@ -1,5 +1,6 @@
 import { JEEP, MAP_HALF } from './constants.js';
 import { resolveCircle } from './collision.js';
+import { onBridgeArea } from './terrain.js';
 
 // Física del jeep, compartida: el servidor manda y el conductor predice con la misma función.
 // v: { x, y, heading, speed } (se modifica en el lugar). input: { mx, my } del joystick.
@@ -41,7 +42,8 @@ export function applyVehicleInput(v, input, dt) {
   // Lo que un obstáculo o el borde le quitó al paso: de frente es un choque (pierde casi toda
   // la velocidad); de costado se desliza por la pared y solo frena un poco
   const pushed = Math.hypot(v.x - bx, v.y - by);
-  v.crashed = pushed > 0.01 && pushed > step * 0.6;
+  // En los puentes las barandas son borde: se desliza sin chocar
+  v.crashed = pushed > 0.01 && pushed > step * 0.6 && !onBridgeArea(v.x, v.y, 2);
   if (v.crashed) v.speed *= 0.3;
   else if (pushed > 0.01) v.speed *= 0.97;
 }

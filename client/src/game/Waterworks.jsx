@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MAP_HALF } from '@calculo-royale/shared/constants';
 import { BRIDGES, DAM, DOCKS, RAILWAY, RESERVOIR, RIVER, riverY } from '@calculo-royale/shared/mapLayout';
-import { terrainHeight, WATER_LEVEL } from '@calculo-royale/shared/terrain';
+import { BRIDGE_DECK, BRIDGE_SPAN, terrainHeight, WATER_LEVEL } from '@calculo-royale/shared/terrain';
 import { box, limb, merge, modelMaterial, piece } from './models/build.js';
 import { Chunked } from './chunks.js';
 
@@ -65,10 +65,23 @@ function reservoirGeometry() {
 function structuresGeometry() {
   const parts = [];
   for (const b of BRIDGES) {
-    parts.push(piece(box(b.w + 0.6, 0.6, b.h), '#9d9a90', { position: [b.x, 0.3 + 0.12, -b.y] }));
-    parts.push(piece(box(b.w - 1.2, 0.05, b.h - 0.4), '#3a3b38', { position: [b.x, 0.75, -b.y] }));
-    // Pilares en el agua
-    for (const k of [-1, 1]) parts.push(piece(box(b.w, 3, 1.2), '#8a877d', { position: [b.x, -1.2, -(riverY(b.x) + k * (RIVER.halfWidth - 3))] }));
+    // Losa bajo el tramo elevado (la carretera va encima: Roads.jsx sigue la misma altura)
+    parts.push(piece(box(b.w + 0.8, 0.7, BRIDGE_SPAN * 2), '#9d9a90', { position: [b.x, BRIDGE_DECK - 0.4, -b.y] }));
+    // Pilares hasta el fondo del cauce
+    for (const dy of [-(RIVER.halfWidth - 3), 0, RIVER.halfWidth - 3]) {
+      for (const dx of [-b.w / 2 + 1, b.w / 2 - 1]) parts.push(piece(box(1, 5, 1), '#8a877d', { position: [b.x + dx, BRIDGE_DECK - 3.2, -(b.y + dy)] }));
+    }
+    // Barandas de concreto por tramos de 2 m que siguen el perfil (tablero y rampas)
+    for (const s of [-1, 1]) {
+      const x = b.x + s * (b.w / 2 + 0.2);
+      for (let y = b.y - b.h / 2; y < b.y + b.h / 2; y += 2) {
+        const y1 = Math.min(y + 2, b.y + b.h / 2);
+        const h0 = terrainHeight(b.x, y);
+        const h1 = terrainHeight(b.x, y1);
+        parts.push(limb([x, h0 + 0.5, -y], [x, h1 + 0.5, -y1], 0.4, '#b5b2a8'));
+        parts.push(limb([x, h0 + 1.02, -y], [x, h1 + 1.02, -y1], 0.48, '#cfccc2'));
+      }
+    }
   }
   parts.push(piece(box(DAM.w - 4, 0.4, DAM.h), '#b4b1a7', { position: [DAM.x, 0.6, -DAM.y] }));
   // Cara del vertedero: cae hacia el río

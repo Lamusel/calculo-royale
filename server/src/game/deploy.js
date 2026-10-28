@@ -1,6 +1,7 @@
-import { DEPLOY, MAP_HALF, PLAYER_RADIUS } from '@calculo-royale/shared/constants';
+import { DEPLOY, GULAG, MAP_HALF, PLAYER_RADIUS } from '@calculo-royale/shared/constants';
 import { resolveCircle } from '@calculo-royale/shared/collision';
 import { EVENTS } from '@calculo-royale/shared/protocol';
+import { insideZonePoint } from '@calculo-royale/shared/zone';
 import { TIME_SCALE } from './match.js';
 
 // Despliegue al iniciar la partida (servidor autoritativo).
@@ -91,8 +92,24 @@ export function dropWithChute(player, x, y, z) {
   player.deploy = { phase: 'chute', z };
 }
 
+// Regreso del Gulag: GULAG.returnPickMs para tocar dónde caer (solo dentro de la zona); si no elige,
+// cae en `fallback`. Mientras elige no se dibuja (como en el bus) y no recibe daño.
+export function startReturnPick(game, player, fallback) {
+  player.teleport(clamp(fallback.x), clamp(fallback.y));
+  player.deploy = { phase: 'pick', z: GULAG.returnAltitude, gulagReturn: true, until: game.now + GULAG.returnPickMs / TIME_SCALE, pick: fallback };
+  game.room.emitTo(player, EVENTS.MATCH_DEPLOY, { mode: 'punto', pickMs: GULAG.returnPickMs / TIME_SCALE, gulag: true });
+}
+
 export function choosePoint(game, player, x, y) {
-  if (game.deploy?.mode !== 'punto' || player.deploy?.phase !== 'pick' || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  if (player.deploy?.phase !== 'pick' || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  if (player.deploy.gulagReturn) {
+    if (game.zone) {
+      const p = insideZonePoint(game.zone.current, x, y);
+      player.deploy.pick = { x: clamp(p.x), y: clamp(p.y) };
+    }
+    return;
+  }
+  if (game.deploy?.mode !== 'punto') return;
   game.deploy.picks.set(player.id, { x: clamp(x), y: clamp(y) });
 }
 
@@ -123,7 +140,9 @@ export function updateDeploy(game, dt) {
   for (const p of game.room.players.values()) {
     const s = p.deploy;
     if (!s) continue;
-    if (s.phase === 'bus') {
+    if (s.phase === 'pick' && s.gulagReturn) {
+      if (game.now >= s.until) dropWithChute(p, s.pick.x, s.pick.y, s.z);
+    } else if (s.phase === 'bus') {
       p.x = clamp(d.x);
       p.y = clamp(d.y);
       // Quien no saltó sale expulsado al final de la ruta

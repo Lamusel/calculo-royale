@@ -144,6 +144,11 @@ test('el ganador vuelve en paracaídas dentro de la zona; los perdedores quedan 
   advance(room, TICK_MS);
   assert.equal(a.alive, true);
   assert.equal(a.arena, null);
+  // Elige en el mapa: un punto fuera de la zona se ajusta adentro
+  assert.equal(a.deploy?.phase, 'pick');
+  assert.equal(last(room, a.id, EVENTS.MATCH_DEPLOY).gulag, true);
+  room.game.chooseDeployPoint(a, 9999, 9999);
+  advance(room, GULAG.returnPickMs + TICK_MS);
   assert.equal(a.deploy?.phase, 'chute');
   assert.ok(insideZone(room.game.zone.current, a.x, a.y));
   assert.equal(a.primary?.id, 'rifle', 'vuelve con su equipo (rifle por defecto)');
@@ -153,6 +158,22 @@ test('el ganador vuelve en paracaídas dentro de la zona; los perdedores quedan 
   kill(room, a);
   assert.equal(a.gulag, null);
   assert.ok(a.operator);
+});
+
+test('quien gana a puños vuelve con la pistola y unas pocas balas', () => {
+  const room = makeRoom();
+  const [a, b] = addPlayers(room, 5);
+  start(room);
+  kill(room, a);
+  kill(room, b);
+  advance(room, GULAG.pairWaitMs + TICK_MS);
+  for (let k = 0; k < 3; k++) for (const p of [a, b]) answer(room, p, false);
+  advance(room, GULAG.countdownMs + 2 * TICK_MS);
+  assert.equal(a.weaponId, 'fists');
+  kill(room, b);
+  advance(room, TICK_MS);
+  assert.equal(a.weaponId, 'pistol');
+  assert.equal(a.pistolMag, GULAG.returnBullets);
 });
 
 test('solo 45 s en cola: pelea contra un bot del Gulag; muerte súbita después de 60 s', () => {

@@ -2,7 +2,7 @@ import { GULAG, optionCount, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { GULAG_ARENAS, GULAG_SPAWNS } from '@calculo-royale/shared/mapLayout';
 import { damagePlayer } from './combat.js';
-import { dropWithChute } from './deploy.js';
+import { startReturnPick } from './deploy.js';
 import { airdropSpot, radio } from './match.js';
 import { Player } from './Player.js';
 import { makeSpectator, sendTransmission } from './radio.js';
@@ -123,8 +123,14 @@ function finish(game, fight) {
   if (fighters.some((p) => p.gulagBot)) game.room.broadcastInfo?.();
   if (winner && !winner.gulagBot) {
     winner.place = null;
-    const spot = airdropSpot(game.zone.current);
-    dropWithChute(winner, spot.x, spot.y, GULAG.returnAltitude);
+    // Nunca vuelve a puños: al menos la pistola con unas pocas balas (como al empezar)
+    if (winner.sidearm === 'fists') {
+      winner.sidearm = 'pistol';
+      winner.pistolMag = GULAG.returnBullets;
+      winner.pistolReserve = 0;
+    }
+    // Elige en el mapa dónde caer (6 s) y baja en paracaídas
+    startReturnPick(game, winner, airdropSpot(game.zone.current));
     radio(game, 'gulag', 'Gulag', `Aquí Mando. ${winner.name} ganó en el Gulag y vuelve al combate en paracaídas.`, 6000);
   } else if (winner) {
     radio(game, 'gulag', 'Gulag', 'Aquí Mando. El guardia del Gulag ganó: nadie regresa de esa arena.', 5000);

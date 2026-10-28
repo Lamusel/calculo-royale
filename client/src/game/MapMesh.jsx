@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MAP_HALF } from '@calculo-royale/shared/constants';
 import { AREAS, DAM, FIELDS, FORD, PATHS, PITCH, RAILWAY, RESERVOIR, RIVER, ROADS, RUNWAY, riverY } from '@calculo-royale/shared/mapLayout';
-import { terrainHeight } from '@calculo-royale/shared/terrain';
+import { groundMeshHeight } from '@calculo-royale/shared/terrain';
 import { distanceToPaths } from './paths.js';
 
 // Convención: el plano matemático (x, y) se dibuja en Three.js como (x, altura, −y).
@@ -149,7 +149,7 @@ function buildTile(ix, iy, cell) {
   geometry.rotateX(-Math.PI / 2);
   geometry.translate(cx, 0, -cy);
   const pos = geometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) pos.setY(i, terrainHeight(pos.getX(i), -pos.getZ(i)) - (cell === COARSE ? 0.12 : 0));
+  for (let i = 0; i < pos.count; i++) pos.setY(i, groundMeshHeight(pos.getX(i), -pos.getZ(i)) - (cell === COARSE ? 0.12 : 0));
   const half = TILE / 2 + 6;
   const near = {
     paths: linesNear(PATHS, cx - half, cy - half, cx + half, cy + half, 4),
