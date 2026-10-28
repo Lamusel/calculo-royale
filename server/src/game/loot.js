@@ -1,8 +1,8 @@
-import { HEALING, LOOT, LOOT_GROUND, LOOT_IDS, LOOT_ITEMS, MAP_HALF, MAX_HP, TICK_MS } from '@calculo-royale/shared/constants';
+import { HEALING, LOOT, LOOT_GROUND, LOOT_IDS, LOOT_ITEMS, MAP_HALF, MAX_HP, THROWABLES, TICK_MS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { AREAS, HOUSES, waterAt } from '@calculo-royale/shared/mapLayout';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
-import { counterOf, inventoryItems, take, wants } from '@calculo-royale/shared/inventory';
+import { bestTier, countOf, inventoryItems, take } from '@calculo-royale/shared/inventory';
 
 // Botín en el suelo (fase 18): objetos sueltos por partida, tomar y soltar, caja de botín al
 // caer y curación con tiempo. Todo lo decide el servidor; el cliente solo dibuja y pide.
@@ -56,8 +56,13 @@ export function groundSpots(rand) {
   return spots;
 }
 
-// [id, índice del objeto (−1 = caja de botín), x, y, cantidad]
-const encode = (e) => [e.id, e.box ? -1 : LOOT_IDS.indexOf(e.item), round2(e.x), round2(e.y), e.box ? e.box.length : 1];
+// [id, índice del objeto (−1 = caja de botín), x, y, cantidad, contenido de la caja, rareza, dueño temporal]
+// El contenido de una caja: [[índice, cantidad], …] (el cliente arma la lista para tomar objeto por objeto)
+const encode = (e) => [
+  e.id, e.box ? -1 : LOOT_IDS.indexOf(e.item), round2(e.x), round2(e.y), e.box ? e.box.length : countOf(e.item, e.state),
+  e.box ? e.box.map((c) => [LOOT_IDS.indexOf(c.item), countOf(c.item, c.state)]) : 0,
+  e.box ? bestTier(e.box) : (LOOT_ITEMS[e.item]?.tier ?? 0), e.owner && e.ownerUntil ? e.owner : 0,
+];
 
 function add(game, entry) {
   const e = { id: game.nextLootId++, ...entry };
@@ -84,11 +89,15 @@ export function syncLoot(game, player) {
   game.room.emitTo?.(player, EVENTS.LOOT_SYNC, encodeAll(game));
 }
 
+// ¿Lo puede tomar? (lo que no eligió otro de una caja es solo suyo por un rato)
+const mayTake = (game, player, e) => !e.owner || e.owner === player.id || game.now >= e.ownerUntil;
+
 // Objeto o caja más cercano al alcance (o null)
-export function nearestLoot(game, x, y) {
+export function nearestLoot(game, x, y, player = null) {
   let best = null;
   let bestDist = LOOT.pickupRadius;
   for (const e of game.loot?.values() ?? []) {
+    if (player && !mayTake(game, player, e)) continue;
     const d = Math.hypot(e.x - x, e.y - y);
     if (d <= bestDist) {
       best = e;
@@ -98,68 +107,118 @@ export function nearestLoot(game, x, y) {
   return best && { entry: best, dist: bestDist };
 }
 
-// Lo que sale del inventario queda alrededor del jugador, en un lugar libre
-export function dropAround(game, x, y, drops) {
+// Lugar válido para dejar algo: dentro del mapa, fuera del agua y sin obstáculos (el más cercano)
+function validSpot(x, y) {
+  const ok = (px, py) => Math.abs(px) < MAP_HALF - 1 && Math.abs(py) < MAP_HALF - 1 && !waterAt(px, py) && !overlapsObstacle(px, py, 0.4);
+  if (ok(x, y)) return { x, y };
+  for (let r = 1; r <= 40; r += 1) {
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      const px = Math.max(-MAP_HALF + 2, Math.min(MAP_HALF - 2, x + Math.cos(a) * r));
+      const py = Math.max(-MAP_HALF + 2, Math.min(MAP_HALF - 2, y + Math.sin(a) * r));
+      if (ok(px, py)) return { x: px, y: py };
+    }
+  }
+  return { x: Math.max(-MAP_HALF + 2, Math.min(MAP_HALF - 2, x)), y: Math.max(-MAP_HALF + 2, Math.min(MAP_HALF - 2, y)) };
+}
+
+// Lo que sale del inventario queda alrededor del punto, en un lugar libre. owner: solo para él un rato
+export function dropAround(game, x, y, drops, owner = null) {
   const added = drops.map(({ item, state }, i) => {
-    let at = { x, y };
-    for (let k = 0; k < 8; k++) {
+    let at = null;
+    for (let k = 0; k < 8 && !at; k++) {
       const a = ((i + k * 0.37) / Math.max(drops.length, 1)) * Math.PI * 2 + k;
       const p = { x: x + Math.cos(a) * LOOT.dropSpread, y: y + Math.sin(a) * LOOT.dropSpread };
-      if (Math.abs(p.x) < MAP_HALF - 1 && Math.abs(p.y) < MAP_HALF - 1 && !overlapsObstacle(p.x, p.y, 0.4)) {
-        at = p;
-        break;
-      }
+      if (Math.abs(p.x) < MAP_HALF - 1 && Math.abs(p.y) < MAP_HALF - 1 && !waterAt(p.x, p.y) && !overlapsObstacle(p.x, p.y, 0.4)) at = p;
     }
-    return add(game, { item, state: state ?? null, ...at });
+    at ??= validSpot(x, y);
+    return add(game, { item, state: state ?? null, ...at, ...(owner ? { owner, ownerUntil: game.now + LOOT.privateMs } : {}) });
   });
   if (added.length) game.room.broadcast?.(EVENTS.LOOT_ADD, added.map(encode));
   return added;
 }
 
-// En una caja de botín, un arma distinta a la propia no reemplaza la que ya tiene
-const takesFromBox = (player, { item }) => LOOT_ITEMS[item].kind !== 'weapon' || !player.primary || player.primary.id === item;
-
-// Tomar lo que hay en el suelo (E o "Tomar"). Devuelve los nombres de lo que tomó.
-export function pickUp(game, player, entry) {
-  const names = [];
-  const items = [];
-  const drops = [];
-  if (entry.box) {
-    entry.box = entry.box.filter((content) => {
-      if (!takesFromBox(player, content) || !wants(player, content.item)) return true;
-      drops.push(...take(player, content.item, content.state));
-      names.push(LOOT_ITEMS[content.item].name);
-      items.push(content.item);
-      return false;
-    });
-  } else if (wants(player, entry.item)) {
-    drops.push(...take(player, entry.item, entry.state));
-    names.push(LOOT_ITEMS[entry.item].name);
-    items.push(entry.item);
-  }
-  if (!names.length) {
-    game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, { full: true, name: entry.box ? 'Caja de botín' : LOOT_ITEMS[entry.item].name });
-    return names;
-  }
+// Reemplaza una entrada por otra con el mismo lugar (cambió su contenido o su cantidad)
+function replaceEntry(game, entry, changes) {
   game.loot.delete(entry.id);
   game.room.broadcast?.(EVENTS.LOOT_REMOVE, [entry.id]);
-  // La caja con cosas que no le sirvieron sigue ahí (con otro id, para que todos la actualicen)
-  if (entry.box?.length) {
-    const rest = add(game, { box: entry.box, x: entry.x, y: entry.y });
-    game.room.broadcast?.(EVENTS.LOOT_ADD, [encode(rest)]);
+  const keep = entry.box ? (changes.box ?? entry.box).length > 0 : countOf(entry.item, changes.state ?? entry.state) > 0;
+  if (!keep) return null;
+  const { id, ...rest } = entry;
+  const next = add(game, { ...rest, ...changes });
+  game.room.broadcast?.(EVENTS.LOOT_ADD, [encode(next)]);
+  return next;
+}
+
+// Toma un objeto (suelto o de una caja). Devuelve { name, need? }
+function takeOne(game, player, item, state, replace) {
+  const res = take(player, item, state, replace);
+  if (res.drops.length) dropAround(game, player.x, player.y, res.drops);
+  return res;
+}
+
+// Tomar lo que hay en el suelo ("Tomar" o E). opts: { index } un objeto de la caja de botín,
+// { all: true } todo lo que quepa, { replace } la ranura de arma que el jugador eligió reemplazar.
+// Si es un arma y no hay lugar, avisa con LOOT_TAKEN { need } para que elija.
+export function pickUp(game, player, entry, opts = {}) {
+  if (!mayTake(game, player, entry)) return [];
+  const names = [];
+  const items = [];
+  const tell = (data) => game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, data);
+  if (entry.box) {
+    // Sin índice ni "todo": solo abre la lista en el cliente
+    if (opts.index === undefined && !opts.all) {
+      tell({ box: entry.id });
+      return names;
+    }
+    const box = entry.box.map((c) => ({ ...c }));
+    const indices = opts.all ? box.map((_, i) => i) : [Number(opts.index)];
+    for (const i of indices) {
+      const c = box[i];
+      if (!c) continue;
+      // "Todo lo que quepa" no reemplaza armas: esas se toman de a una
+      const res = takeOne(game, player, c.item, c.state, opts.all ? null : opts.replace ?? null);
+      if (res.need) {
+        if (!opts.all) tell({ need: res.need, lootId: entry.id, index: i, item: c.item });
+        continue;
+      }
+      if (!res.taken) continue;
+      names.push(LOOT_ITEMS[c.item].name);
+      items.push(c.item);
+      if (res.left > 0) c.state = { ...(c.state ?? {}), n: res.left };
+      else c.done = true;
+    }
+    replaceEntry(game, entry, { box: box.filter((c) => !c.done).map(({ done, ...c }) => c) });
+  } else {
+    const res = takeOne(game, player, entry.item, entry.state, opts.replace ?? null);
+    if (res.need) {
+      tell({ need: res.need, lootId: entry.id, item: entry.item });
+      return names;
+    }
+    if (res.taken) {
+      names.push(LOOT_ITEMS[entry.item].name);
+      items.push(entry.item);
+      if (res.left > 0) replaceEntry(game, entry, { state: { ...(entry.state ?? {}), n: res.left } });
+      else replaceEntry(game, entry, { state: { ...(entry.state ?? {}), n: 0 } });
+    }
   }
-  dropAround(game, player.x, player.y, drops);
+  if (!names.length) {
+    if (!opts.silent) tell({ full: true, name: entry.box ? 'Caja de botín' : LOOT_ITEMS[entry.item].name });
+    return names;
+  }
   player.pickups = (player.pickups ?? 0) + names.length;
-  game.room.emitTo?.(player, EVENTS.LOOT_TAKEN, { names, items });
+  tell({ names, items });
   return names;
 }
 
-// Caja de botín con todo lo del caído (solo en partida)
+// Caja de botín con todo el inventario del caído (solo en partida). Si cayó al agua o fuera del mapa,
+// aparece en el punto válido más cercano.
 export function deathBox(game, player) {
   if (!LOOT.deathBox || !game.loot) return null;
   const contents = inventoryItems(player);
   if (!contents.length) return null;
-  const box = add(game, { box: contents, x: player.x, y: player.y });
+  const at = validSpot(player.x, player.y);
+  const box = add(game, { box: contents, ...at });
   game.room.broadcast?.(EVENTS.LOOT_ADD, [encode(box)]);
   return box;
 }
@@ -168,8 +227,7 @@ export function deathBox(game, player) {
 export function useItem(game, player, item) {
   const heal = HEALING[item];
   if (!heal || !player.alive || player.deploying || player.question || player.engineQuestion || player.healing) return false;
-  const counter = counterOf(item);
-  if (!counter || player[counter] <= 0) return false;
+  if ((player.heals?.[item] ?? 0) <= 0) return false;
   if (item === 'drink') {
     if (player.drinkUntil > game.now) return false;
   } else if (player.hp >= MAX_HP) {
@@ -196,15 +254,14 @@ export function updateHealing(game) {
     if (p.healing && game.now >= p.healing.until) {
       const { item } = p.healing;
       p.healing = null;
-      const counter = counterOf(item);
-      if (p[counter] > 0) {
-        p[counter] -= 1;
+      if (p.heals[item] > 0) {
+        p.heals[item] -= 1;
         if (item === 'drink') p.drinkUntil = game.now + HEALING.drink.durationMs;
         else p.hp = Math.min(MAX_HP, p.hp + HEALING[item].heal);
       }
     }
     if (p.drinkUntil > game.now) p.hp = Math.min(MAX_HP, p.hp + (HEALING.drink.heal / HEALING.drink.durationMs) * TICK_MS);
-    p.speedFactor = p.healing ? HEALING.moveFactor : p.drinkUntil > game.now ? HEALING.drink.speedBoost : 1;
+    p.speedFactor = (p.healing ? HEALING.moveFactor : p.drinkUntil > game.now ? HEALING.drink.speedBoost : 1) * (p.flashUntil > game.now ? THROWABLES.flash.slow : 1);
   }
 }
 

@@ -1,12 +1,24 @@
-import { useState } from 'react';
-import { ARMOR_ABSORB, BACKPACK, GRENADE, JEEP, MAX_HP, RESPAWN_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { useEffect, useState } from 'react';
+import {
+  AMMO_TYPES, ARMOR_ABSORB, BACKPACK, GRENADE, JEEP, MAX_HP, RESPAWN_MS, THROWABLE_IDS, THROWABLES, TIER_COLORS, WEAPON_IDS, WEAPONS,
+} from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
-import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
-import WeaponIcon from './WeaponIcon.jsx';
 import { GEAR_INFO } from '@calculo-royale/shared/gear';
 import { magazineOf } from '@calculo-royale/shared/inventory';
+import { actions, inputState, press, toggleGrenadeMode } from '../input/inputState.js';
+import WeaponIcon from './WeaponIcon.jsx';
+import Icon from './Icons.jsx';
+import { BoxPanel, InventoryScreen, OfferChooser, ReplacePrompt, WeaponCard } from './Inventory.jsx';
 
-const ammoText = (mag, reserve) => `${mag} / ${reserve ?? 0}`;
+// Interfaz de combate (fases 29 y 32). En el celular solo hay pocos botones fijos (joysticks, Recargar,
+// Obtener balas, mochila, lanzables y curación) y una única zona de acción contextual (Tomar, Abrir,
+// Subir, Saquear…) que aparece cuando sirve. Lanzables y curación son un solo botón que despliega sus
+// opciones. En vehículo, cayendo o en tirolina se ocultan los botones que no sirven.
+
+const HEAL_IDS = ['bandage', 'medkit', 'drink'];
+const HEAL_NAMES = { bandage: 'Venda', medkit: 'Botiquín', drink: 'Bebida' };
+const HEAL_LABEL = { bandage: 'Vendándote', medkit: 'Usando botiquín', drink: 'Bebiendo' };
+const SLOT_KEYS = ['1', '2', '3'];
 
 // Vida del jeep y asiento (mientras vas en uno)
 function JeepBar({ vehicle }) {
@@ -29,7 +41,7 @@ function HealthBar({ self }) {
     <div className="flex w-56 flex-col gap-1 sm:w-72">
       {self.armorLevel > 0 && (
         <div className="flex items-center gap-2">
-          <span className="w-10 text-right font-mono text-[10px] text-sky-300">Ch {self.armorLevel}</span>
+          <span className="w-10 text-right font-mono text-[10px] text-sky-300">Chaleco {self.armorLevel}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded bg-black/60">
             <div className="h-full bg-sky-400 transition-all" style={{ width: `${armor * 100}%` }} />
           </div>
@@ -38,10 +50,7 @@ function HealthBar({ self }) {
       <div className="flex items-center gap-2">
         <span className="w-10 text-right font-mono text-xs font-bold text-white">{self.hp}</span>
         <div className="h-3 flex-1 overflow-hidden rounded bg-black/60">
-          <div
-            className={`h-full transition-all ${hp > 0.5 ? 'bg-green-500' : hp > 0.25 ? 'bg-yellow-400' : 'bg-red-500'}`}
-            style={{ width: `${hp * 100}%` }}
-          />
+          <div className={`h-full transition-all ${hp > 0.5 ? 'bg-green-500' : hp > 0.25 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} />
         </div>
       </div>
     </div>
@@ -55,6 +64,7 @@ export function TouchButton({ onPress, className, style, title, children }) {
     <button
       onPointerDown={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         onPress();
       }}
       className={className}
@@ -66,67 +76,55 @@ export function TouchButton({ onPress, className, style, title, children }) {
   );
 }
 
-// Fondo casi sólido: los blancos de práctica y objetos del mundo no se ven a través de la barra
-function Slot({ active, alert, label, children, onPress }) {
-  const tone = alert
-    ? 'border-red-400 bg-red-950/95 text-red-100'
-    : active
-      ? 'border-khaki bg-stone-950/95 text-khaki-light'
-      : 'border-white/10 bg-stone-900/90 text-stone-400';
+// Botón redondo fijo del celular (o de la barra en PC): icono y una etiqueta corta en palabras
+function RoundButton({ icon, label, onPress, active = false, alert = false, badge = null, disabled = false }) {
   return (
     <TouchButton
-      onPress={onPress}
-      className={`flex min-w-[5.5rem] flex-col items-center rounded border px-2 py-1 text-[11px] leading-tight ${tone}`}
+      onPress={() => !disabled && onPress()}
+      title={label}
+      className={`relative flex h-12 w-12 flex-col items-center justify-center rounded-full border text-[8px] font-bold uppercase leading-none ${
+        alert ? 'animate-pulse border-red-300 bg-red-700/85 text-white' : active ? 'border-khaki bg-khaki/30 text-khaki-light' : disabled ? 'border-white/5 bg-black/35 text-stone-500' : 'border-white/15 bg-black/55 text-stone-100'
+      }`}
     >
-      <span className="self-start font-mono text-[9px] opacity-60">{label}</span>
-      {children}
+      <Icon name={icon} className="h-5 w-5" />
+      <span className="mt-0.5 max-w-[3rem] truncate">{label}</span>
+      {badge !== null && <span className="absolute -right-1 -top-1 rounded-full bg-stone-900 px-1 font-mono text-[9px] text-khaki-light">{badge}</span>}
     </TouchButton>
   );
 }
 
+// Armas: tres ranuras (1 y 2 principales, 3 secundaria). Tocar una la equipa.
 function WeaponBar({ self, reloadProgress, isTouch }) {
-  const primary = self.primary;
-  const [noGrenadesAt, setNoGrenadesAt] = useState(0);
-  const noGrenades = performance.now() - noGrenadesAt < 1500;
-
-  // Celular: entra o sale del modo granada. PC: G mantenida, o este botón y luego clic donde lanzar
-  const onGrenade = () => {
-    if (self.grenades === 0) setNoGrenadesAt(performance.now());
-    else if (isTouch) toggleGrenadeMode(true);
-    else inputState.grenadeAiming = !inputState.grenadeAiming;
-  };
   return (
     <div className="relative flex items-end gap-1.5">
-      <Slot active={self.slot === 1} label="1" onPress={() => actions.switchWeapon(1)}>
-        <WeaponIcon weapon="pistol" className="h-4 w-10" />
-        <span className="font-mono">{ammoText(self.pistolMag, self.pistolReserve)}</span>
-      </Slot>
-      <Slot active={self.slot === 2} label="2" onPress={() => actions.switchWeapon(2)}>
-        {primary ? (
-          <>
-            <WeaponIcon weapon={primary.id} className="h-4 w-12" />
-            <span className="font-mono">{ammoText(primary.mag, primary.reserve)}</span>
-            {self.attachments?.mag && <span className="text-[0.6rem] text-amber-300">📦 cargador {magazineOf(primary.id, self.attachments)}</span>}
-          </>
-        ) : (
-          <span className="py-1.5 text-stone-500">vacío</span>
-        )}
-      </Slot>
-      <Slot active={inputState.grenadeMode || inputState.grenadeAiming || inputState.grenadeHeld} alert={noGrenades} label={isTouch ? '' : 'G'} onPress={onGrenade}>
-        <WeaponIcon weapon="grenade" className="h-4 w-8" />
-        <span className="font-mono">
-          {self.grenades}/{BACKPACK[self.backpackLevel ?? 0]?.grenade ?? GRENADE.max}
-        </span>
-      </Slot>
-      {(inputState.grenadeMode || inputState.grenadeAiming || noGrenades) && (
-        <p className="absolute -top-6 right-0 whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-[10px] uppercase tracking-wider text-khaki-light">
-          {noGrenades
-            ? 'Sin granadas'
-            : inputState.grenadeAiming
-              ? 'Clic donde lanzar · clic derecho o Esc para cancelar'
-              : 'Arrastra a la derecha y suelta · toca otra vez para salir'}
-        </p>
-      )}
+      {[0, 1, 2].map((slot) => {
+        const w = self.weapons?.[slot];
+        const def = w && WEAPONS[w.id];
+        const active = self.active === slot;
+        return (
+          <TouchButton
+            key={slot}
+            onPress={() => w && actions.switchWeapon(slot + 1)}
+            className={`flex min-w-[5.2rem] flex-col items-center rounded border px-2 py-1 text-[11px] leading-tight ${
+              active ? 'bg-stone-950/95 text-khaki-light' : 'bg-stone-900/90 text-stone-400'
+            }`}
+            style={{ borderColor: def ? (active ? TIER_COLORS[def.rarity] : 'rgba(255,255,255,0.1)') : 'rgba(255,255,255,0.05)' }}
+          >
+            {!isTouch && <span className="self-start font-mono text-[9px] opacity-60">{SLOT_KEYS[slot]}</span>}
+            {w ? (
+              <>
+                <WeaponIcon weapon={w.id} className="h-4 w-12" />
+                <span className="max-w-[5.5rem] truncate text-[10px]">{def.name}</span>
+                <span className="font-mono">
+                  {w.id === 'fists' ? '—' : `${w.mag}/${magazineOf(w.id, w.att)} · ${self.ammo?.[def.ammo] ?? 0}`}
+                </span>
+              </>
+            ) : (
+              <span className="py-2 text-stone-500">{slot === 2 ? 'secundaria' : 'vacía'}</span>
+            )}
+          </TouchButton>
+        );
+      })}
       {reloadProgress !== null && (
         <div className="absolute -top-5 left-1/2 w-40 -translate-x-1/2">
           <p className="text-center text-[10px] uppercase tracking-widest text-khaki-light">Recargando</p>
@@ -139,174 +137,215 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
   );
 }
 
-// Curaciones (tocar o 4, 5, 6), equipo y accesorios (fase 18)
-const HEALS = [
-  ['bandage', 'bandages', 'Venda', '4', '🩹'],
-  ['medkit', 'medkits', 'Botiquín', '5', '✚'],
-  ['drink', 'drinks', 'Bebida', '6', '⚡'],
-];
-
-// Lo que lleva puesto el jugador como ids de objeto (chaleco, casco, mochila y accesorios)
-function equipped(self) {
-  const ids = [];
-  if (self.armorLevel > 0) ids.push(`armor${self.armorLevel}`);
-  if (self.helmetLevel > 0) ids.push(`helmet${self.helmetLevel}`);
-  if (self.backpackLevel > 0) ids.push(`backpack${self.backpackLevel}`);
-  for (const a of Object.values(self.attachments ?? {})) if (a) ids.push(a);
-  return ids;
-}
-
-// Panel al tocar el equipo: qué tienes y qué efecto da cada cosa (fase 25)
-function GearPanel({ self, onClose }) {
-  const ids = equipped(self);
+// Despliegue en fila (lanzables o curaciones): iconos grandes con su cantidad, solo lo que tienes
+function Fan({ items, onPick, onClose, selected = null }) {
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-[min(80vw,19rem)] rounded-lg border border-white/15 bg-black/85 p-2 text-[0.7rem] text-stone-100 shadow-xl">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="font-mono uppercase tracking-[0.2em] text-khaki-light">Tu equipo</span>
-        <TouchButton onPress={onClose} className="rounded bg-white/10 px-1.5 text-xs">
-          ✕
+    <div className="absolute right-full top-1/2 mr-2 flex -translate-y-1/2 gap-1.5 rounded-full bg-black/70 p-1.5">
+      {items.map(({ id, icon, label, count }) => (
+        <TouchButton
+          key={id}
+          onPress={() => onPick(id)}
+          title={label}
+          className={`relative flex h-12 w-12 flex-col items-center justify-center rounded-full border text-[8px] font-bold uppercase ${selected === id ? 'border-khaki bg-khaki/30 text-khaki-light' : 'border-white/15 bg-stone-900/90 text-stone-100'}`}
+        >
+          <Icon name={icon} className="h-5 w-5" />
+          <span className="max-w-[3rem] truncate">{label}</span>
+          <span className="absolute -right-1 -top-1 rounded-full bg-stone-900 px-1 font-mono text-[9px] text-khaki-light">{count}</span>
         </TouchButton>
-      </div>
-      {ids.length === 0 && <p className="text-stone-400">Nada todavía: abre cajas (con su pregunta) para conseguir chaleco, casco, mochila y accesorios.</p>}
-      {ids.map((id) => (
-        <p key={id} className="flex gap-1.5 py-0.5">
-          <span className="w-5 text-center text-sm leading-tight">{GEAR_INFO[id].icon}</span>
-          <span>
-            <b>{GEAR_INFO[id].short}</b> · {GEAR_INFO[id].effect}
-          </span>
-        </p>
       ))}
+      <TouchButton onPress={onClose} className="flex h-12 w-8 items-center justify-center rounded-full text-stone-400">
+        <Icon name="close" className="h-4 w-4" />
+      </TouchButton>
     </div>
   );
 }
 
-function Inventory({ self, isTouch, drinkLeft }) {
-  const cap = BACKPACK[self.backpackLevel ?? 0];
-  const [panel, setPanel] = useState(false);
-  const slots = [
-    ['🦺', 'Chaleco', self.armorLevel],
-    ['⛑️', 'Casco', self.helmetLevel ?? 0],
-    ['🎒', 'Mochila', self.backpackLevel ?? 0],
-  ];
-  const attachments = Object.values(self.attachments ?? {}).filter(Boolean);
+const throwItems = (self) =>
+  THROWABLE_IDS.filter((id) => self.throwables?.[id] > 0).map((id) => ({ id, icon: id, label: THROWABLES[id].name.split(' ')[0], count: self.throwables[id] }));
+const healItems = (self) => HEAL_IDS.filter((id) => self.heals?.[id] > 0).map((id) => ({ id, icon: id, label: HEAL_NAMES[id], count: self.heals[id] }));
+
+// Lanzables: un botón que despliega los que tienes. Elegir uno lo apunta con el joystick derecho
+// (como la granada); el UAV no se apunta: se activa al tocarlo.
+function ThrowableButton({ self, client, open, setOpen, isTouch }) {
+  const items = throwItems(self);
+  const sel = self.throwSel;
+  const count = self.throwables?.[sel] ?? 0;
+  const pick = (id) => {
+    client.selectThrowable(id);
+    setOpen(null);
+    if (THROWABLES[id].instant) press(BUTTONS.GRENADE);
+    else if (isTouch) toggleGrenadeMode(true);
+    else inputState.grenadeAiming = true;
+  };
   return (
-    <div className="relative flex flex-col items-start gap-1">
-      {panel && <GearPanel self={self} onClose={() => setPanel(false)} />}
-      <div className="flex flex-wrap gap-1">
-        {slots.map(([icon, name, level]) => (
-          <TouchButton
-            key={name}
-            onPress={() => setPanel((p) => !p)}
-            title={`${name} ${level || 'sin'} · toca para ver el efecto`}
-            className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[0.7rem] ${level > 0 ? 'bg-black/65 text-sky-100' : 'bg-black/35 text-stone-500 grayscale'}`}
-          >
-            <span className="text-sm leading-none">{icon}</span>
-            <span className="font-mono">{level || '–'}</span>
-          </TouchButton>
-        ))}
-        {attachments.map((a) => (
-          <TouchButton key={a} onPress={() => setPanel((p) => !p)} title={GEAR_INFO[a].short} className="rounded bg-black/65 px-1.5 py-0.5 text-sm leading-none">
-            {GEAR_INFO[a].icon}
-          </TouchButton>
-        ))}
-        {drinkLeft > 0 && <span className="rounded bg-emerald-800/80 px-1.5 py-0.5 text-[0.65rem] text-emerald-100">⚡ {drinkLeft} s</span>}
-      </div>
-      <div className="flex gap-1">
-        {HEALS.map(([item, counter, name, key, icon]) => {
-          const n = self[counter] ?? 0;
-          return (
-            <TouchButton
-              key={item}
-              onPress={() => n > 0 && actions.useItem(item)}
-              className={`flex h-[2.6rem] w-[3.3rem] flex-col items-center justify-center rounded border text-[0.65rem] leading-tight ${
-                n > 0 ? 'border-white/20 bg-stone-950/90 text-stone-100' : 'border-white/5 bg-stone-900/85 text-stone-500'
-              }`}
-            >
-              <span className="text-sm leading-none">{icon}</span>
-              <span className="font-mono">
-                {n}/{cap[item]}
-              </span>
-              {!isTouch && <span className="sr-only">{name} ({key})</span>}
-            </TouchButton>
-          );
-        })}
-      </div>
-      {!isTouch && <p className="text-[0.6rem] text-stone-400">4 venda · 5 botiquín · 6 bebida</p>}
+    <div className="relative">
+      {open && items.length > 0 && <Fan items={items} selected={sel} onPick={pick} onClose={() => setOpen(null)} />}
+      <RoundButton
+        icon={count > 0 ? sel : 'frag'}
+        label={count > 0 ? THROWABLES[sel].name.split(' ')[0] : 'Lanzables'}
+        badge={items.length ? count : null}
+        active={inputState.grenadeMode || inputState.grenadeAiming}
+        disabled={items.length === 0}
+        onPress={() => (inputState.grenadeMode ? toggleGrenadeMode(false) : setOpen(open ? null : 'throw'))}
+      />
     </div>
   );
 }
 
-const HEAL_LABEL = { bandage: 'Vendándote', medkit: 'Usando botiquín', drink: 'Bebiendo' };
-
-// Munición del arma en mano
-function handAmmo(self) {
-  const pistol = self.slot !== 2 || !self.primary;
-  return pistol ? { mag: self.pistolMag, reserve: self.pistolReserve } : { mag: self.primary.mag, reserve: self.primary.reserve };
+function HealButton({ self, open, setOpen }) {
+  const items = healItems(self);
+  const total = items.reduce((t, i) => t + i.count, 0);
+  return (
+    <div className="relative">
+      {open && items.length > 0 && (
+        <Fan
+          items={items}
+          onPick={(id) => {
+            actions.useItem(id);
+            setOpen(null);
+          }}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      <RoundButton icon="heal" label="Curar" badge={total || null} disabled={total === 0} onPress={() => setOpen(open ? null : 'heal')} />
+    </div>
+  );
 }
 
 // "Obtener balas": botón (celular) o B (PC); con espera tras fallar
 function AmmoButton({ self, client, isTouch }) {
-  const { mag, reserve } = handAmmo(self);
+  const hand = self.weapons?.[self.active];
+  const def = hand && WEAPONS[hand.id];
+  const reserve = def?.ammo ? self.ammo?.[def.ammo] ?? 0 : 0;
   const cooldown = Math.ceil(Math.max(0, (client.ammoCooldownEndsAt ?? 0) - performance.now()) / 1000);
-  const empty = mag + reserve === 0;
-  const low = reserve === 0;
+  const empty = (hand?.mag ?? 0) + reserve === 0 && hand?.id !== 'fists';
   const busy = Boolean(client.ammoQuestion);
-  const label = busy ? 'Respondiendo…' : cooldown > 0 ? `Balas en ${cooldown} s` : 'Obtener balas';
-  const tone = empty ? 'bg-red-700/85 text-white animate-pulse' : low ? 'bg-amber-700/80 text-amber-50' : 'bg-black/55 text-amber-200';
-  if (isTouch) {
+  const label = busy ? 'Respondiendo' : cooldown > 0 ? `${cooldown} s` : 'Balas';
+  if (isTouch) return <RoundButton icon="ammo" label={label} alert={empty && cooldown <= 0 && !busy} disabled={cooldown > 0 || busy} onPress={() => client.requestAmmo()} />;
+  return (
+    <p className={`rounded px-2 py-0.5 text-[11px] ${empty ? 'animate-pulse bg-red-700/85 text-white' : reserve === 0 ? 'bg-amber-700/80 text-amber-50' : 'bg-black/55 text-amber-200'}`}>
+      {cooldown <= 0 && !busy && <kbd className="mr-1 rounded bg-amber-300 px-1 font-bold text-black">B</kbd>}
+      {empty ? 'Sin balas · ' : ''}
+      {busy ? 'Respondiendo…' : cooldown > 0 ? `Balas en ${cooldown} s` : `Obtener balas${def?.ammo ? ` (${AMMO_TYPES[def.ammo].name})` : ''}`}
+    </p>
+  );
+}
+
+// Zona de acción: una sola, siempre en el mismo lugar. La más cercana; con varias, una flechita cambia.
+function ActionZone({ list, isTouch, inVehicle }) {
+  const [index, setIndex] = useState(0);
+  const key = list.map((a) => a.kind).join(',');
+  useEffect(() => setIndex(0), [key]);
+  const items = inVehicle ? [list[0], { kind: 'seat', icon: 'seat', label: 'Cambiar asiento', enabled: true, color: '#fb923c' }].filter(Boolean) : list;
+  const current = items.length ? items[Math.min(index, items.length - 1)] : null;
+  inputState.actionKind = current?.kind ?? null;
+  useEffect(() => {
+    actions.cycleAction = () => setIndex((i) => i + 1);
+  }, []);
+  if (!current) return null;
+  const use = (a) => a.enabled && actions.interact(a.kind);
+  if (!isTouch) {
     return (
-      <TouchButton
-        onPress={() => cooldown <= 0 && client.requestAmmo()}
-        className={`h-12 w-24 rounded-2xl px-1 text-[10px] font-bold uppercase leading-tight ${tone} ${cooldown > 0 || busy ? 'opacity-60' : ''}`}
-      >
-        {label}
-      </TouchButton>
+      <p className={`rounded border-l-4 bg-black/65 px-3 py-1.5 text-sm ${current.enabled ? 'text-khaki-light' : 'text-stone-400'}`} style={{ borderColor: current.color ?? 'transparent' }}>
+        {current.enabled && <kbd className="mr-1 rounded bg-khaki px-1.5 font-bold text-olive-950">E</kbd>}
+        {current.label}
+        {items.length > 1 && <span className="ml-2 text-xs text-stone-400">(F: {items[(index + 1) % items.length].label})</span>}
+      </p>
+    );
+  }
+  // En vehículo: Bajar y Cambiar asiento lado a lado
+  if (inVehicle) {
+    return (
+      <div className="flex gap-2">
+        {items.map((a) => (
+          <TouchButton key={a.kind} onPress={() => use(a)} className="flex items-center gap-1 rounded-full border-2 border-orange-300 bg-orange-500/85 px-4 py-2 text-sm font-bold text-white">
+            <Icon name={a.icon} className="h-4 w-4" />
+            {a.label}
+          </TouchButton>
+        ))}
+      </div>
     );
   }
   return (
-    <p className={`rounded px-2 py-0.5 text-[11px] ${tone}`}>
-      {cooldown <= 0 && !busy && <kbd className="mr-1 rounded bg-amber-300 px-1 font-bold text-black">B</kbd>}
-      {empty ? 'Sin balas · ' : ''}
-      {label}
-    </p>
+    <div className="flex items-center gap-1">
+      <TouchButton
+        onPress={() => use(current)}
+        className={`flex max-w-[16rem] items-center gap-1.5 rounded-full border-2 px-4 py-2 text-sm font-bold ${current.enabled ? 'bg-khaki text-olive-950' : 'bg-black/60 text-stone-400'}`}
+        style={{ borderColor: current.color ?? 'transparent' }}
+      >
+        <Icon name={current.icon ?? 'take'} className="h-4 w-4 shrink-0" />
+        <span className="truncate">{current.label}</span>
+      </TouchButton>
+      {items.length > 1 && (
+        <TouchButton onPress={() => setIndex((i) => (i + 1) % items.length)} title="Siguiente" className="flex h-10 w-8 items-center justify-center rounded-full bg-black/60 text-stone-100">
+          <Icon name="next" className="h-4 w-4" />
+        </TouchButton>
+      )}
+    </div>
+  );
+}
+
+// Equipo puesto (solo información): chaleco, casco y mochila
+function GearChips({ self, drinkLeft }) {
+  const chips = [
+    ['Chaleco', self.armorLevel],
+    ['Casco', self.helmetLevel ?? 0],
+    ['Mochila', self.backpackLevel ?? 0],
+  ];
+  return (
+    <div className="pointer-events-none flex flex-wrap gap-1">
+      {chips.map(([name, level]) => (
+        <span key={name} className={`rounded px-1.5 py-0.5 text-[0.65rem] ${level > 0 ? 'bg-black/65 text-sky-100' : 'bg-black/35 text-stone-500'}`}>
+          {name} {level || '—'}
+        </span>
+      ))}
+      {drinkLeft > 0 && <span className="rounded bg-emerald-800/80 px-1.5 py-0.5 text-[0.65rem] text-emerald-100">Bebida {drinkLeft} s</span>}
+    </div>
   );
 }
 
 function DeathScreen({ self, phase, deathAt, roster, myId }) {
   const killer = roster.find((p) => p.id === self.killedBy);
   const weapon = WEAPON_IDS[self.killedWith];
-  const weaponName = weapon === 'grenade' ? GRENADE.name : WEAPONS[weapon]?.name;
+  const weaponName = weapon === 'frag' ? GRENADE.name : WEAPONS[weapon]?.name ?? THROWABLES[weapon]?.name;
   const respawnIn = Math.max(0, Math.ceil((RESPAWN_MS - (performance.now() - deathAt)) / 1000));
   let cause = weaponName ?? '';
   if (weapon === 'zone') cause = 'La zona te alcanzó';
-  else if (weapon === 'bomb') cause = 'Bombardeo de los operadores de radio';
   else if (weapon === 'jeep') cause = killer && self.killedBy !== myId ? `Atropellado por ${killer.name}` : 'Un jeep te pasó por encima';
-  else if (self.killedBy === myId) cause = 'por tu propia granada';
+  else if (self.killedBy === myId) cause = 'por tu propio explosivo';
   else if (killer) cause = `por ${killer.name}${weaponName ? ` · ${weaponName}` : ''}`;
   return (
     <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/40 text-center">
       <p className="text-4xl font-black uppercase tracking-[0.2em] text-red-500 drop-shadow">Eliminado</p>
       <p className="text-stone-200">{cause}</p>
-      <p className="text-sm text-stone-400">
-        {phase === 'lobby' ? `Reapareces en ${respawnIn}…` : 'Espera el final de la partida'}
-      </p>
+      <p className="text-sm text-stone-400">{phase === 'lobby' ? `Reapareces en ${respawnIn}…` : 'Espera el final de la partida'}</p>
     </div>
   );
 }
 
-// Interfaz de combate: vida, armas, botones táctiles, aviso para tomar armas y pantalla de muerte
+// Interfaz de combate: vida, armas, botones, zona de acción, inventario y pantalla de muerte
 export default function CombatHUD({ view, phase, roster, myId, isTouch, client }) {
-  const { self, reloadProgress, interact, damageFlashAt, deathAt, vehicle, healing, drinkLeft, lootToast, gearCard } = view;
+  const { self, me, reloadProgress, actions: nearby = [], damageFlashAt, deathAt, vehicle, healing, drinkLeft, lootToast, gearCard } = view;
+  const [fan, setFan] = useState(null); // 'throw' | 'heal' | null
+  const [inventory, setInventory] = useState(false);
+  // Tab o I abren el inventario; F cambia de acción (KeyboardMouse llama a estas)
+  useEffect(() => {
+    actions.toggleInventory = () => setInventory((v) => !v);
+    return () => {
+      actions.toggleInventory = () => {};
+    };
+  }, []);
   if (!self) return null;
+  const air = Boolean(client?.deploying);
+  const mode = !self.alive || air ? 'none' : vehicle ? (vehicle.seat === 'driver' ? 'driver' : 'passenger') : client?.onZipline ? 'zipline' : 'foot';
 
   return (
     <>
       {damageFlashAt > 0 && (
-        <div
-          key={damageFlashAt}
-          className="pointer-events-none absolute inset-0 z-20 animate-[damage_400ms_ease-out_forwards] shadow-[inset_0_0_80px_rgba(220,38,38,0.65)]"
-        />
+        <div key={damageFlashAt} className="pointer-events-none absolute inset-0 z-20 animate-[damage_400ms_ease-out_forwards] shadow-[inset_0_0_80px_rgba(220,38,38,0.65)]" />
       )}
+      {/* Aturdidora: pantalla blanca que se va apagando */}
+      {self.flashLeft && <div className="pointer-events-none absolute inset-0 z-40 animate-[flash_2500ms_ease-out_forwards] bg-white" />}
 
       {self.alive && (
         <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1.5">
@@ -320,86 +359,93 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
               </div>
             </div>
           )}
-          <WeaponBar self={self} reloadProgress={reloadProgress} isTouch={isTouch} />
+          {(mode === 'foot' || mode === 'passenger') && <WeaponBar self={self} reloadProgress={reloadProgress} isTouch={isTouch} />}
         </div>
       )}
 
-      {/* También en el campo de entrenamiento: se ve el chaleco del armero */}
       {self.alive && (
-        <div className="absolute bottom-3 left-3 z-20">
-          <Inventory self={self} isTouch={isTouch} drinkLeft={drinkLeft} />
+        <div className="absolute bottom-3 left-3 z-20 flex flex-col items-start gap-1">
+          <GearChips self={self} drinkLeft={drinkLeft} />
+          {!isTouch && <p className="pointer-events-none text-[0.6rem] text-stone-400">Tab inventario · G lanzar · 4–9 o rueda: lanzable · H venda · J botiquín · K bebida</p>}
         </div>
       )}
 
       {gearCard && (
         <div className="pointer-events-none absolute left-1/2 top-[30%] z-30 flex w-[min(90vw,22rem)] -translate-x-1/2 flex-col gap-1">
-          {gearCard.items.map((id) => (
-            <div key={id} className="flex items-center gap-2 rounded-lg border border-amber-400/60 bg-black/85 px-3 py-2 text-stone-100 shadow-lg">
-              <span className="text-2xl leading-none">{GEAR_INFO[id].icon}</span>
-              <span className="text-[0.8rem] leading-snug">
-                <b className="text-amber-200">{GEAR_INFO[id].short}</b>
-                <br />
-                {GEAR_INFO[id].effect}
-              </span>
-            </div>
-          ))}
+          {gearCard.items.map((id) =>
+            WEAPONS[id] ? (
+              <WeaponCard key={id} id={id} />
+            ) : (
+              <div key={id} className="flex items-center gap-2 rounded-lg border border-amber-400/60 bg-black/85 px-3 py-2 text-stone-100 shadow-lg">
+                <span className="text-2xl leading-none">{GEAR_INFO[id].icon}</span>
+                <span className="text-[0.8rem] leading-snug">
+                  <b className="text-amber-200">{GEAR_INFO[id].short}</b>
+                  <br />
+                  {GEAR_INFO[id].effect}
+                </span>
+              </div>
+            ),
+          )}
         </div>
       )}
 
       {lootToast && (
         <p className="pointer-events-none absolute bottom-[9.5rem] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-xs text-stone-100">
-          {lootToast.full ? `No te sirve o no te cabe: ${lootToast.name}` : `+ ${lootToast.names.join(', ')}`}
+          {lootToast.full ? `No te sirve o no te cabe: ${lootToast.name}` : `+ ${(lootToast.names ?? []).join(', ')}`}
         </p>
       )}
 
-      {interact && (
-        <div className="absolute bottom-28 left-1/2 z-20 -translate-x-1/2">
-          {interact.enabled && isTouch ? (
-            <TouchButton
-              onPress={actions.interact}
-              className="rounded border-2 bg-khaki px-4 py-2 font-bold text-olive-950"
-              style={{ borderColor: interact.color ?? 'transparent' }}
-            >
-              {interact.label}
-            </TouchButton>
-          ) : (
-            <p
-              className={`rounded border-l-4 bg-black/65 px-3 py-1.5 text-sm ${interact.enabled ? 'text-khaki-light' : 'text-stone-400'}`}
-              style={{ borderColor: interact.color ?? 'transparent' }}
-            >
-              {interact.enabled && <kbd className="mr-1 rounded bg-khaki px-1.5 font-bold text-olive-950">E</kbd>}
-              {interact.label}
-            </p>
-          )}
+      {/* Zona de acción: una sola, sobre la barra de armas (no tapa los joysticks) */}
+      {mode !== 'none' && (
+        <div className="absolute bottom-[8.5rem] left-1/2 z-20 -translate-x-1/2">
+          <ActionZone list={nearby} isTouch={isTouch} inVehicle={Boolean(vehicle)} />
         </div>
       )}
 
-      {self.alive && self.streak > 0 && (
-        <p className="pointer-events-none absolute bottom-[7.5rem] right-3 z-20 rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-sky-200 sm:bottom-24">
+      {self.alive && self.streak > 0 && mode === 'foot' && (
+        <p className="pointer-events-none absolute right-3 top-14 z-20 rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-sky-200">
           Racha {self.streak % 3 === 0 ? 3 : self.streak % 3}/3
         </p>
       )}
 
-      {!isTouch && self.alive && client && (
+      {!isTouch && self.alive && client && mode !== 'none' && (
         <div className="absolute bottom-3 right-3 z-20">
           <AmmoButton self={self} client={client} isTouch={false} />
         </div>
       )}
 
-      {isTouch && self.alive && (
-        <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-3">
-          {client && <AmmoButton self={self} client={client} isTouch />}
-          <TouchButton
-            onPress={() => press(BUTTONS.RELOAD)}
-            className="h-12 w-12 rounded-full bg-black/55 text-[10px] font-bold uppercase text-khaki-light"
-          >
-            Rec.
-          </TouchButton>
+      {/* Celular: botones fijos en una columna al borde derecho; en vehículo solo lo que sirve */}
+      {isTouch && client && (mode === 'foot' || mode === 'passenger') && (
+        <div className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-2">
+          <RoundButton icon="reload" label="Recargar" onPress={() => press(BUTTONS.RELOAD)} />
+          <AmmoButton self={self} client={client} isTouch />
+          {mode === 'foot' && (
+            <>
+              <RoundButton icon="backpack" label="Mochila" onPress={() => setInventory(true)} />
+              <ThrowableButton self={self} client={client} open={fan === 'throw'} setOpen={setFan} isTouch />
+              <HealButton self={self} open={fan === 'heal'} setOpen={setFan} />
+            </>
+          )}
+        </div>
+      )}
+      {!isTouch && self.alive && mode === 'foot' && client && (
+        <div className="absolute bottom-16 right-3 z-20 flex gap-2">
+          <ThrowableButton self={self} client={client} open={fan === 'throw'} setOpen={setFan} isTouch={false} />
+          <HealButton self={self} open={fan === 'heal'} setOpen={setFan} />
+          <RoundButton icon="backpack" label="Mochila" onPress={() => setInventory(true)} />
         </div>
       )}
 
-      {/* En partida, el caído pasa a operador de radio (otro panel); aquí solo el lobby y los resultados */}
+      {client && self.alive && <OfferChooser client={client} />}
+      {client && self.alive && <ReplacePrompt client={client} self={self} />}
+      {client && self.alive && <BoxPanel client={client} me={me} />}
+      {client && inventory && self.alive && <InventoryScreen client={client} self={self} onClose={() => setInventory(false)} />}
+
+      {/* En partida, el caído pasa a espectador o al Gulag (otros paneles); aquí solo el lobby y los resultados */}
       {!self.alive && phase !== 'playing' && <DeathScreen self={self} phase={phase} deathAt={deathAt} roster={roster} myId={myId} />}
     </>
   );
 }
+
+// Para la prueba de capacidad (BACKPACK) desde la interfaz
+export const bagOf = (self) => BACKPACK[self?.backpackLevel ?? 0];

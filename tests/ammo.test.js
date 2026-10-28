@@ -37,21 +37,19 @@ const advance = (room, ms) => {
   for (let i = 0; i < Math.ceil(ms / TICK_MS); i++) room.game.update();
 };
 
-test('ninguna arma tiene munición infinita; la pistola empieza con 3 cargadores de reserva', () => {
-  for (const w of Object.values(WEAPONS)) assert.ok(Number.isFinite(w.reserve), w.name);
+test('arranque tenso: la M1911 con 3 balas y sin reserva; vacía no recarga', () => {
   const { room, p } = makeRoom();
-  assert.equal(p.pistolMag, 12);
-  assert.equal(p.pistolReserve, 36);
-  // Se vacía todo: 12 + 36 balas y después no dispara ni recarga
-  for (let i = 0; i < 400 && (p.pistolMag > 0 || p.pistolReserve > 0); i++) {
+  assert.equal(p.weaponId, 'm1911');
+  assert.equal(p.mag, 3);
+  assert.equal(p.reserve, 0);
+  for (let i = 0; i < 20 && p.mag > 0; i++) {
     input(p, BUTTONS.FIRE);
     advance(room, 350);
   }
-  assert.equal(p.pistolMag, 0);
-  assert.equal(p.pistolReserve, 0);
+  assert.equal(p.mag, 0);
   input(p, BUTTONS.RELOAD);
   advance(room, 2000);
-  assert.equal(p.pistolMag, 0, 'sin reserva no hay recarga');
+  assert.equal(p.mag, 0, 'sin reserva no hay recarga');
 });
 
 test('Obtener balas: pregunta de 2 opciones sin la respuesta; se mueve pero no dispara', () => {
@@ -62,25 +60,30 @@ test('Obtener balas: pregunta de 2 opciones sin la respuesta; se mueve pero no d
   assert.equal(q.opciones.length, 2);
   assert.equal(q.timeLimitMs, AMMO.questionMs);
   assert.ok(!JSON.stringify(q).match(/correcta|explicacion|valor/));
-  const mag = p.pistolMag;
+  const mag = p.mag;
   const x = p.x;
   input(p, BUTTONS.FIRE, 1);
   advance(room, TICK_MS * 2);
-  assert.equal(p.pistolMag, mag, 'no dispara mientras responde');
+  assert.equal(p.mag, mag, 'no dispara mientras responde');
   assert.ok(p.x > x, 'sí se mueve');
 });
 
-test('acierto: un cargador para el arma en mano (pistola o principal)', () => {
+test('acierto: un cargador de munición del arma en mano (nunca cohetes)', () => {
   const { room, p } = makeRoom();
   room.game.requestAmmo(p);
   room.game.answerAmmo(p, p.ammoQuestion.id, p.ammoQuestion.q.correcta);
-  assert.equal(p.pistolReserve, 36 + WEAPONS.pistol.magazine);
+  assert.equal(p.ammo['9mm'], WEAPONS.m1911.magazine);
   assert.equal(last(room, EVENTS.AMMO_RESULT).correct, true);
-  p.giveItem('rifle');
+  p.giveItem('m4a1');
+  const before = p.ammo['556'];
   advance(room, AMMO.okCooldownMs + TICK_MS);
   room.game.requestAmmo(p);
   room.game.answerAmmo(p, p.ammoQuestion.id, p.ammoQuestion.q.correcta);
-  assert.equal(p.primary.reserve, WEAPONS.rifle.reserve + WEAPONS.rifle.magazine);
+  assert.equal(p.ammo['556'], before + WEAPONS.m4a1.magazine);
+  p.giveItem('rpg');
+  const rockets = p.ammo.rocket ?? 0;
+  p.addMagazine();
+  assert.equal(p.ammo.rocket ?? 0, rockets, 'los cohetes no salen de Obtener balas');
   assert.equal(p.stats.correct, 2, 'cuenta para el ranking');
 });
 
@@ -88,7 +91,7 @@ test('fallo o tiempo agotado: 10 s de espera antes de volver a pedir; morir canc
   const { room, p } = makeRoom();
   room.game.requestAmmo(p);
   room.game.answerAmmo(p, p.ammoQuestion.id, (p.ammoQuestion.q.correcta + 1) % 2);
-  assert.equal(p.pistolReserve, 36);
+  assert.equal(p.reserve, 0);
   assert.equal(last(room, EVENTS.AMMO_RESULT).cooldownMs, AMMO.failCooldownMs);
   room.game.requestAmmo(p);
   assert.equal(p.ammoQuestion, null, 'en espera');
@@ -106,13 +109,12 @@ test('fallo o tiempo agotado: 10 s de espera antes de volver a pedir; morir canc
   assert.equal(last(room, EVENTS.AMMO_RESULT).cancelled, true);
 });
 
-test('la munición de las cajas va al arma en mano, también a la pistola', () => {
+test('la munición de las cajas va a la mochila según su tipo', () => {
   const p = new Player({ id: 2, name: 'Luis', color: '#fff', token: 'u' });
-  applyLoot(p, 'ammo');
-  assert.equal(p.pistolReserve, 36 + 12);
-  p.giveItem('shotgun');
-  applyLoot(p, 'ammo');
-  assert.equal(p.primary.reserve, WEAPONS.shotgun.reserve + WEAPONS.shotgun.magazine);
+  applyLoot(p, 'ammo_9mm');
+  assert.equal(p.ammo['9mm'], 24);
+  applyLoot(p, 'ammo_12g');
+  assert.equal(p.ammo['12g'], 8);
 });
 
 test('preguntas rápidas: correctas verificadas y 2 opciones distintas', () => {

@@ -11,6 +11,7 @@ import { exposureFor, onSettings, settings } from '../settings.js';
 import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
 import GulagArenas from './GulagArenas.jsx';
+import TacticalEffects from './TacticalEffects.jsx';
 import Buildings from './Buildings.jsx';
 import Bus from './Bus.jsx';
 import MapProps from './MapProps.jsx';
@@ -313,6 +314,7 @@ export default function Scene({
       <Weather weather={active} windAngle={windAngle} client={client} frameRef={frameRef} quality={quality} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} night={active === 'noche'} />
       <Grenades frameRef={frameRef} />
+      <TacticalEffects frameRef={frameRef} />
       <AimPreview frameRef={frameRef} />
       <Effects client={client} quality={quality} />
     </Canvas>

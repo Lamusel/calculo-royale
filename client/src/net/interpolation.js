@@ -20,7 +20,7 @@ export class SnapshotBuffer {
     this.lastEventTick = 0;
   }
 
-  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], gulag = [], vehicles = [], bus = []) {
+  push(tick, players, grenades = [], dummies = [], shots = [], explosions = [], crates = [], alarms = [], zone = [], airdrop = [], gulag = [], vehicles = [], bus = [], effects = []) {
     const t = tick * TICK_MS;
     const offset = performance.now() - t;
     // El paquete más rápido fija el reloj; si la red se vuelve lenta, se ajusta despacio
@@ -31,7 +31,7 @@ export class SnapshotBuffer {
     for (const p of players) byId.set(p[0], p);
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus });
+    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus, effects });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
@@ -85,7 +85,7 @@ export class SnapshotBuffer {
     }
     for (const [id, gb] of b.grenades) {
       const ga = a.grenades.get(id) ?? gb;
-      frame.grenades.set(id, { x: lerp(ga[1], gb[1], alpha), y: lerp(ga[2], gb[2], alpha) });
+      frame.grenades.set(id, { x: lerp(ga[1], gb[1], alpha), y: lerp(ga[2], gb[2], alpha), kind: gb[3] });
     }
     // Jeeps: [id, x, y, heading, speed, hp, driver, passenger, state]
     frame.vehicles.clear();
@@ -112,6 +112,7 @@ export class SnapshotBuffer {
     frame.alarms = b.alarms;
     frame.airdrop = b.airdrop;
     frame.gulag = b.gulag;
+    frame.effects = b.effects;
     // La zona se interpola para que el muro se cierre suave
     if (b.zone.length && a.zone.length) {
       frame.zone = b.zone.map((v, i) => (i < 4 ? lerp(a.zone[i], v, alpha) : v));

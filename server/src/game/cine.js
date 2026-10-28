@@ -1,4 +1,4 @@
-import { DUEL, REPLAY, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { DUEL, REPLAY, TICK_MS, WEAPON_IDS, isSniper } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { zoneInequality } from '@calculo-royale/shared/zone';
 import { aliveCount, inMatch } from './combat.js';
@@ -62,7 +62,7 @@ export function scoreKill(game, target) {
 
   const options = [{ kind: 'kill', score: 10, title: `${attacker.name} elimina a ${target.name}` }];
   if (weapon === 'jeep') options.push({ kind: 'runover', score: 70, title: `Atropello de ${attacker.name} a ${target.name}` });
-  if (weapon === 'sniper' && dist >= REPLAY.sniperDistance) {
+  if (isSniper(weapon) && dist >= REPLAY.sniperDistance) {
     options.push({ kind: 'sniper', score: 50 + dist, title: `Francotirador: ${attacker.name} a ${Math.round(dist)} m` });
   }
   if (times.length >= 2) {

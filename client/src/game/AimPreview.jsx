@@ -124,7 +124,7 @@ export default function AimPreview({ frameRef }) {
     }
 
     if (mode === 'sniper') {
-      const dist = raycastObstacles(me.x, me.y, dx, dy, WEAPONS.sniper.range);
+      const dist = raycastObstacles(me.x, me.y, dx, dy, (WEAPONS[inputState.weapon]?.range ?? 55));
       const ex = me.x + dx * dist;
       const ey = me.y + dy * dist;
       tmp.from.set(me.x, h + CHEST, -me.y);

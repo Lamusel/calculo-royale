@@ -1,5 +1,9 @@
 import { BUTTONS } from '@calculo-royale/shared/protocol';
+import { THROWABLE_IDS } from '@calculo-royale/shared/constants';
 import { actions, grenadeDistance, inputState, press } from './inputState.js';
+
+// Lanzables con las teclas 4 a 9 (en el orden de THROWABLE_IDS) o la rueda del mouse
+const THROW_KEYS = ['Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'];
 
 const MOVE_KEYS = {
   KeyW: [0, 1],
@@ -57,18 +61,31 @@ export function attachKeyboardMouse() {
       return;
     }
     if (e.repeat) return;
+    // Tab o I: inventario (Tab no cambia el foco dentro del juego)
+    if (e.code === 'Tab' || isKey(e, 'I')) {
+      e.preventDefault();
+      actions.toggleInventory();
+      return;
+    }
+    const throwIndex = THROW_KEYS.indexOf(e.code);
+    if (throwIndex >= 0) {
+      actions.selectThrowable(THROWABLE_IDS[throwIndex]);
+      return;
+    }
     if (e.code === 'Space') {
       e.preventDefault();
       actions.jump();
     } else if (isKey(e, 'R')) press(BUTTONS.RELOAD);
     else if (isKey(e, 'B')) actions.requestAmmo();
-    else if (isKey(e, 'E')) actions.interact();
+    else if (isKey(e, 'E')) actions.interact(inputState.actionKind ?? null);
+    else if (isKey(e, 'F')) actions.cycleAction();
     else if (isKey(e, 'T')) actions.phraseMenu();
     else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);
     else if (e.code === 'Digit2' || e.key === '2') actions.switchWeapon(2);
-    else if (e.code === 'Digit4' || e.key === '4') actions.useItem('bandage');
-    else if (e.code === 'Digit5' || e.key === '5') actions.useItem('medkit');
-    else if (e.code === 'Digit6' || e.key === '6') actions.useItem('drink');
+    else if (e.code === 'Digit3' || e.key === '3') actions.switchWeapon(3);
+    else if (isKey(e, 'H')) actions.useItem('bandage');
+    else if (isKey(e, 'J')) actions.useItem('medkit');
+    else if (isKey(e, 'K')) actions.useItem('drink');
     else if (e.code === 'Escape') inputState.grenadeAiming = false;
   };
   const onKeyUp = (e) => {
@@ -111,6 +128,11 @@ export function attachKeyboardMouse() {
     if (e.button === 0) inputState.fireHeld = false;
     if (e.button === 2) inputState.adsHeld = false;
   };
+  // Rueda del mouse: siguiente o anterior lanzable
+  const onWheel = (e) => {
+    if (e.target instanceof Element && e.target.closest('.overflow-y-auto')) return;
+    actions.cycleThrowable(e.deltaY > 0 ? 1 : -1);
+  };
   // El clic derecho es la mira: sin menú contextual dentro del juego
   const onContextMenu = (e) => e.preventDefault();
 
@@ -121,7 +143,9 @@ export function attachKeyboardMouse() {
   addEventListener('mousedown', onMouseDown);
   addEventListener('mouseup', onMouseUp);
   addEventListener('contextmenu', onContextMenu);
+  addEventListener('wheel', onWheel, { passive: true });
   return () => {
+    removeEventListener('wheel', onWheel);
     removeEventListener('keydown', onKeyDown);
     removeEventListener('keyup', onKeyUp);
     removeEventListener('blur', onBlur);

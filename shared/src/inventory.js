@@ -1,149 +1,337 @@
-import { ARMOR_ABSORB, ATTACHMENTS, BACKPACK, LOOT_ITEMS, WEAPONS } from './constants.js';
+import {
+  ARMOR_ABSORB, ATTACHMENTS, BACKPACK, LOOT_ITEMS, START_BULLETS, START_WEAPON, THROWABLE_IDS, THROWABLES, WEAPON_CATEGORIES, WEAPONS,
+} from './constants.js';
 
-// Reglas del inventario (fase 18). Funciones puras sobre el jugador del servidor; el cliente
-// las usa solo para mostrar (cargador, tope, "Tomar …"). El servidor decide siempre.
+// Inventario de battle royale (fase 29). Funciones puras sobre el jugador del servidor; el cliente
+// las usa solo para mostrar. El servidor decide siempre.
+//   weapons: [principal 1, principal 2, secundaria] — cada una { id, mag, att } o null
+//   active: índice del arma en mano · ammo: { tipo: n } · heals: { venda, botiquín, bebida }
+//   throwables: { frag, smoke, … } · throwSel: lanzable elegido · loose: accesorios sueltos
+// Nada se cambia sin que el jugador lo decida: si no hay lugar para un arma, take() lo pregunta.
 
 const SCOPE_TIER = { reddot: 0, scope2x: 1, scope4x: 2 };
+export const SECONDARY = 2;
 
-// Accesorios vacíos
 export const noAttachments = () => ({ scope: null, mag: null, stock: null, muzzle: null });
+export const newWeapon = (id, mag = null, att = null) => ({ id, mag: mag ?? WEAPONS[id].magazine, att: att ? { ...att } : noAttachments() });
 
-// Cargador del arma con los accesorios del jugador
-export function magazineOf(weaponId, attachments) {
+// Inventario vacío y el de arranque: la M1911 con solo 3 balas
+export function emptyInventory(p) {
+  p.weapons = [null, null, null];
+  p.active = SECONDARY;
+  p.ammo = {};
+  p.heals = { bandage: 0, medkit: 0, drink: 0 };
+  p.throwables = Object.fromEntries(THROWABLE_IDS.map((id) => [id, 0]));
+  p.throwSel = 'frag';
+  p.loose = [];
+}
+export function startingKit(p) {
+  emptyInventory(p);
+  p.weapons[SECONDARY] = newWeapon(START_WEAPON, START_BULLETS);
+}
+
+// Cargador del arma con sus accesorios
+export function magazineOf(weaponId, att) {
   const base = WEAPONS[weaponId].magazine;
-  return attachments?.mag === 'extmag' ? Math.round(base * ATTACHMENTS.extmag) : base;
+  return att?.mag === 'extmag' ? Math.round(base * ATTACHMENTS.extmag) : base;
 }
 
 // Arma con la dispersión ajustada por culata, punto rojo y retroceso acumulado (el resto igual).
 // recoil: 0 en el primer disparo; disparando seguido sube (ver RECOIL y combat.js).
-export function weaponWith(weaponId, attachments, recoil = 0) {
+export function weaponWith(weaponId, att, recoil = 0) {
   const w = WEAPONS[weaponId];
   let spread = w.spread;
-  if (attachments?.stock === 'stock') spread *= ATTACHMENTS.stock;
-  if (attachments?.scope === 'reddot') spread *= ATTACHMENTS.reddot;
+  if (att?.stock === 'stock') spread *= ATTACHMENTS.stock;
+  if (att?.scope === 'reddot') spread *= ATTACHMENTS.reddot;
   // La escopeta abre su abanico fijo: el retroceso no lo ensancha
   if (w.pellets === 1) spread *= 1 + recoil;
   return spread === w.spread ? w : { ...w, spread };
 }
 
-// Tope de munición de reserva según la mochila
-export const reserveCap = (weaponId, backpackLevel = 0) => Math.round(WEAPONS[weaponId].reserve * BACKPACK[backpackLevel].reserve);
+// ¿Este accesorio va en esta arma? (pistolas: solo punto rojo; francotiradores: solo 2x y 4x)
+export function attachmentFits(weaponId, attId) {
+  const def = LOOT_ITEMS[attId];
+  const w = WEAPONS[weaponId];
+  if (!def || !w || !WEAPON_CATEGORIES[w.category].slots.includes(def.slot)) return false;
+  if (def.slot === 'scope' && w.category === 'pistol') return attId === 'reddot';
+  if (def.slot === 'scope' && w.category === 'sniper') return attId !== 'reddot';
+  return true;
+}
 
-// Cuántos de un consumible caben (venda, botiquín, bebida, granada)
-export const capacityOf = (item, backpackLevel = 0) => BACKPACK[backpackLevel][item];
+export const ammoCap = (p, type) => BACKPACK[p.backpackLevel ?? 0].ammo[type] ?? 0;
+export const healCap = (p, item) => BACKPACK[p.backpackLevel ?? 0][item];
+const throwTotal = (p) => THROWABLE_IDS.reduce((n, id) => n + (p.throwables[id] ?? 0), 0);
+export const throwableRoom = (p, id) => Math.max(0, Math.min(THROWABLES[id].max - (p.throwables[id] ?? 0), BACKPACK[p.backpackLevel ?? 0].throwables - throwTotal(p)));
+export const looseCap = (p) => BACKPACK[p.backpackLevel ?? 0].loose;
 
-const COUNTERS = { bandage: 'bandages', medkit: 'medkits', drink: 'drinks', grenade: 'grenades' };
-export const counterOf = (item) => COUNTERS[item];
+const isSecondary = (id) => Boolean(WEAPON_CATEGORIES[WEAPONS[id].category].secondary);
 
-// ¿Le sirve este objeto al jugador? (para tomarlo del suelo o de una caja de botín)
-// state: estado guardado del objeto (munición de un arma soltada, puntos de un chaleco)
-export function wants(player, item) {
+// Ranuras donde puede ir un arma: secundarias (pistolas) a la 3; principales a la 1 o la 2
+export const slotsFor = (id) => (isSecondary(id) ? [SECONDARY] : [0, 1]);
+// Ranura libre para el arma (los puños cuentan como libre), o -1 si hay que elegir cuál reemplazar
+export function freeSlot(p, id) {
+  return slotsFor(id).find((i) => !p.weapons[i] || p.weapons[i].id === 'fists') ?? -1;
+}
+
+// ¿Cuántos caben? (munición en balas; el resto en unidades). 0 = no le sirve o no le cabe
+export function roomFor(p, item) {
   const def = LOOT_ITEMS[item];
-  if (!def) return false;
+  if (!def) return 0;
   switch (def.kind) {
     case 'weapon':
-      return true; // la misma suma munición; otra la reemplaza (la vieja queda en el suelo)
+      return 1;
     case 'ammo':
-      return reserveRoom(player) > 0;
+      return Math.max(0, ammoCap(p, def.ammo) - (p.ammo[def.ammo] ?? 0));
     case 'heal':
-    case 'grenade':
-      return player[COUNTERS[item]] < capacityOf(item, player.backpackLevel);
+      return Math.max(0, healCap(p, item) - (p.heals[item] ?? 0));
+    case 'throwable':
+      return throwableRoom(p, item);
     case 'armor':
-      return def.level > player.armorLevel || (def.level === player.armorLevel && player.armor < ARMOR_ABSORB[def.level]);
+      return def.level > p.armorLevel || (def.level === p.armorLevel && p.armor < ARMOR_ABSORB[def.level]) ? 1 : 0;
     case 'helmet':
-      return def.level > player.helmetLevel;
+      return def.level > p.helmetLevel ? 1 : 0;
     case 'backpack':
-      return def.level > player.backpackLevel;
-    case 'attachment': {
-      const current = player.attachments[def.slot];
-      if (!current) return true;
-      if (def.slot !== 'scope') return false; // ya tiene uno igual
-      return SCOPE_TIER[item] > SCOPE_TIER[current];
-    }
+      return def.level > p.backpackLevel ? 1 : 0;
+    case 'attachment':
+      return attachTarget(p, item) !== null || p.loose.length < looseCap(p) ? 1 : 0;
     default:
-      return false;
+      return 0;
   }
 }
 
-// Espacio libre de munición (en el arma en mano o, si está llena, en la otra)
-function reserveRoom(player) {
-  const pistol = reserveCap('pistol', player.backpackLevel) - player.pistolReserve;
-  const primary = player.primary ? reserveCap(player.primary.id, player.backpackLevel) - player.primary.reserve : 0;
-  return Math.max(pistol, primary);
+// Arma equipada donde se coloca solo el accesorio (la de la mano primero), o null
+function attachTarget(p, attId) {
+  const slot = LOOT_ITEMS[attId].slot;
+  const order = [p.active, 0, 1, SECONDARY].filter((v, i, a) => a.indexOf(v) === i);
+  for (const i of order) {
+    const w = p.weapons[i];
+    if (!w || !attachmentFits(w.id, attId)) continue;
+    const current = w.att[slot];
+    if (!current || (slot === 'scope' && SCOPE_TIER[attId] > SCOPE_TIER[current])) return i;
+  }
+  return null;
 }
 
-// Aplica un objeto al jugador. Devuelve lo que sale de su inventario y queda en el suelo:
-// [{ item, state }] (arma reemplazada con su munición, chaleco, casco o mochila viejos, mira peor).
-// Supone que wants() dio true.
-export function take(player, item, state = null) {
+// Cantidad que trae una entrada del suelo o de una caja
+export const countOf = (item, state) => state?.n ?? (LOOT_ITEMS[item]?.kind === 'ammo' ? LOOT_ITEMS[item].amount : 1);
+
+// Toma un objeto. Devuelve { taken (cantidad tomada), left (lo que no cupo), drops: [{ item, state }]
+// (lo que sale del inventario), need: [ranuras] si es un arma y hay que elegir cuál reemplazar }.
+// replace: ranura que el jugador eligió reemplazar.
+export function take(p, item, state = null, replace = null) {
   const def = LOOT_ITEMS[item];
-  const drops = [];
+  const n = countOf(item, state);
+  const out = { taken: 0, left: n, drops: [] };
+  if (!def) return out;
   switch (def.kind) {
     case 'weapon': {
-      const w = WEAPONS[item];
-      if (player.primary?.id === item) {
-        // La misma arma: su munición pasa a la reserva
-        const extra = state ? state.mag + state.reserve : w.magazine;
-        player.primary.reserve = Math.min(reserveCap(item, player.backpackLevel), player.primary.reserve + extra);
-        break;
+      let slot = freeSlot(p, item);
+      if (slot < 0) {
+        if (replace === null || !slotsFor(item).includes(replace)) return { ...out, need: slotsFor(item) };
+        slot = replace;
       }
-      if (player.primary) drops.push({ item: player.primary.id, state: { mag: player.primary.mag, reserve: player.primary.reserve } });
-      player.primary = {
-        id: item,
-        mag: Math.min(state?.mag ?? magazineOf(item, player.attachments), magazineOf(item, player.attachments)),
-        reserve: Math.min(state?.reserve ?? w.reserve, reserveCap(item, player.backpackLevel)),
-      };
-      player.slot = 2;
-      player.reloadUntil = 0;
-      break;
+      const old = p.weapons[slot];
+      if (old && old.id !== 'fists') out.drops.push({ item: old.id, state: { mag: old.mag, att: old.att } });
+      p.weapons[slot] = newWeapon(item, state?.mag ?? WEAPONS[item].magazine, state?.att);
+      // Si no hay accesorios propios, se ponen los sueltos que le sirvan
+      p.active = slot;
+      p.reloadUntil = 0;
+      for (const a of [...p.loose]) {
+        if (attachTarget(p, a) === slot) {
+          p.loose.splice(p.loose.indexOf(a), 1);
+          placeAttachment(p, slot, a, out.drops);
+        }
+      }
+      return { ...out, taken: 1, left: 0 };
     }
     case 'ammo': {
-      // Un cargador para cada arma que lleva, hasta el tope de la mochila
-      player.pistolReserve = Math.min(reserveCap('pistol', player.backpackLevel), player.pistolReserve + WEAPONS.pistol.magazine);
-      if (player.primary) {
-        const id = player.primary.id;
-        player.primary.reserve = Math.min(reserveCap(id, player.backpackLevel), player.primary.reserve + WEAPONS[id].magazine);
-      }
-      break;
+      const k = Math.min(n, roomFor(p, item));
+      p.ammo[def.ammo] = (p.ammo[def.ammo] ?? 0) + k;
+      return { ...out, taken: k, left: n - k };
     }
     case 'heal':
-    case 'grenade':
-      player[COUNTERS[item]] += 1;
-      break;
+    case 'throwable': {
+      const bag = def.kind === 'heal' ? p.heals : p.throwables;
+      const k = Math.min(n, roomFor(p, item));
+      bag[item] = (bag[item] ?? 0) + k;
+      return { ...out, taken: k, left: n - k };
+    }
     case 'armor':
-      if (player.armorLevel > 0) drops.push({ item: `armor${player.armorLevel}`, state: { armor: player.armor } });
-      player.armorLevel = def.level;
-      player.armor = state?.armor ?? ARMOR_ABSORB[def.level];
-      break;
+      if (!roomFor(p, item)) return out;
+      if (p.armorLevel > 0) out.drops.push({ item: `armor${p.armorLevel}`, state: { armor: p.armor } });
+      p.armorLevel = def.level;
+      p.armor = state?.armor ?? ARMOR_ABSORB[def.level];
+      return { ...out, taken: 1, left: 0 };
     case 'helmet':
-      if (player.helmetLevel > 0) drops.push({ item: `helmet${player.helmetLevel}` });
-      player.helmetLevel = def.level;
-      break;
+      if (!roomFor(p, item)) return out;
+      if (p.helmetLevel > 0) out.drops.push({ item: `helmet${p.helmetLevel}` });
+      p.helmetLevel = def.level;
+      return { ...out, taken: 1, left: 0 };
     case 'backpack':
-      if (player.backpackLevel > 0) drops.push({ item: `backpack${player.backpackLevel}` });
-      player.backpackLevel = def.level;
-      break;
+      if (!roomFor(p, item)) return out;
+      if (p.backpackLevel > 0) out.drops.push({ item: `backpack${p.backpackLevel}` });
+      p.backpackLevel = def.level;
+      return { ...out, taken: 1, left: 0 };
     case 'attachment': {
-      const old = player.attachments[def.slot];
-      if (old) drops.push({ item: old });
-      player.attachments[def.slot] = item;
-      break;
+      const target = attachTarget(p, item);
+      if (target !== null) placeAttachment(p, target, item, out.drops);
+      else if (p.loose.length < looseCap(p)) p.loose.push(item);
+      else return out;
+      return { ...out, taken: 1, left: 0 };
     }
     default:
-      break;
+      return out;
   }
+}
+
+// Pone un accesorio en un arma; el que estaba pasa a la mochila (o al suelo si no cabe)
+function placeAttachment(p, slot, attId, drops) {
+  const w = p.weapons[slot];
+  const s = LOOT_ITEMS[attId].slot;
+  const old = w.att[s];
+  w.att[s] = attId;
+  if (s === 'mag') w.mag = Math.min(w.mag, magazineOf(w.id, w.att));
+  if (old) {
+    if (p.loose.length < looseCap(p)) p.loose.push(old);
+    else drops.push({ item: old });
+  }
+}
+
+// Desde la mochila: poner un accesorio suelto en el arma de la ranura (si es compatible)
+export function attachLoose(p, looseIndex, slot) {
+  const a = p.loose[looseIndex];
+  const w = p.weapons[slot];
+  if (!a || !w || !attachmentFits(w.id, a)) return [];
+  p.loose.splice(looseIndex, 1);
+  const drops = [];
+  placeAttachment(p, slot, a, drops);
   return drops;
 }
 
-// Todo lo que lleva un jugador, para su caja de botín al caer: [{ item, state }]
-export function inventoryItems(player) {
+// Quitar un accesorio de un arma: a la mochila (o al suelo si no cabe)
+export function detach(p, slot, attSlot) {
+  const w = p.weapons[slot];
+  const a = w?.att[attSlot];
+  if (!a) return [];
+  w.att[attSlot] = null;
+  if (attSlot === 'mag') w.mag = Math.min(w.mag, magazineOf(w.id, w.att));
+  if (p.loose.length < looseCap(p)) {
+    p.loose.push(a);
+    return [];
+  }
+  return [{ item: a }];
+}
+
+// Soltar algo del inventario. what: { kind: 'weapon', slot } | { kind: 'ammo', type, n } |
+// { kind: 'heal'|'throwable', item, n } | { kind: 'loose', index } | { kind: 'gear', item: 'armor'|'helmet'|'backpack' }.
+// Devuelve lo que queda en el suelo: [{ item, state }]
+export function dropFromInventory(p, what) {
+  switch (what?.kind) {
+    case 'weapon': {
+      const w = p.weapons[what.slot];
+      if (!w || w.id === 'fists') return [];
+      p.weapons[what.slot] = null;
+      if (p.active === what.slot) p.active = [SECONDARY, 0, 1].find((i) => p.weapons[i]) ?? SECONDARY;
+      p.reloadUntil = 0;
+      return [{ item: w.id, state: { mag: w.mag, att: w.att } }];
+    }
+    case 'ammo': {
+      const have = p.ammo[what.type] ?? 0;
+      const k = Math.max(0, Math.min(have, Math.floor(Number(what.n) || have)));
+      if (!k) return [];
+      p.ammo[what.type] = have - k;
+      return [{ item: `ammo_${what.type}`, state: { n: k } }];
+    }
+    case 'heal':
+    case 'throwable': {
+      const bag = what.kind === 'heal' ? p.heals : p.throwables;
+      const have = bag[what.item] ?? 0;
+      const k = Math.max(0, Math.min(have, Math.floor(Number(what.n) || have)));
+      if (!k || !LOOT_ITEMS[what.item]) return [];
+      bag[what.item] = have - k;
+      return [{ item: what.item, state: { n: k } }];
+    }
+    case 'loose': {
+      const a = p.loose[what.index];
+      if (!a) return [];
+      p.loose.splice(what.index, 1);
+      return [{ item: a }];
+    }
+    case 'gear': {
+      if (what.item === 'armor' && p.armorLevel > 0) {
+        const out = [{ item: `armor${p.armorLevel}`, state: { armor: p.armor } }];
+        p.armorLevel = 0;
+        p.armor = 0;
+        return out;
+      }
+      if (what.item === 'helmet' && p.helmetLevel > 0) {
+        const out = [{ item: `helmet${p.helmetLevel}` }];
+        p.helmetLevel = 0;
+        return out;
+      }
+      if (what.item === 'backpack' && p.backpackLevel > 0) {
+        const out = [{ item: `backpack${p.backpackLevel}` }];
+        p.backpackLevel = 0;
+        // Lo que ya no cabe sin mochila también cae
+        return [...out, ...overflow(p)];
+      }
+      return [];
+    }
+    default:
+      return [];
+  }
+}
+
+// Lo que sobra al bajar de mochila
+function overflow(p) {
   const out = [];
-  if (player.primary) out.push({ item: player.primary.id, state: { mag: player.primary.mag, reserve: player.primary.reserve } });
-  if (player.armorLevel > 0) out.push({ item: `armor${player.armorLevel}`, state: { armor: player.armor } });
-  if (player.helmetLevel > 0) out.push({ item: `helmet${player.helmetLevel}` });
-  if (player.backpackLevel > 0) out.push({ item: `backpack${player.backpackLevel}` });
-  for (const a of Object.values(player.attachments ?? {})) if (a) out.push({ item: a });
-  for (const [item, counter] of Object.entries(COUNTERS)) for (let i = 0; i < (player[counter] ?? 0); i++) out.push({ item });
-  if (player.pistolReserve > 0 || player.primary?.reserve > 0) out.push({ item: 'ammo' });
+  for (const [type, n] of Object.entries(p.ammo)) {
+    const extra = n - ammoCap(p, type);
+    if (extra > 0) {
+      p.ammo[type] = n - extra;
+      out.push({ item: `ammo_${type}`, state: { n: extra } });
+    }
+  }
+  for (const item of Object.keys(p.heals)) {
+    const extra = p.heals[item] - healCap(p, item);
+    if (extra > 0) {
+      p.heals[item] -= extra;
+      out.push({ item, state: { n: extra } });
+    }
+  }
+  while (throwTotal(p) > BACKPACK[p.backpackLevel].throwables) {
+    const id = THROWABLE_IDS.find((t) => p.throwables[t] > 0);
+    p.throwables[id] -= 1;
+    out.push({ item: id, state: { n: 1 } });
+  }
+  while (p.loose.length > looseCap(p)) out.push({ item: p.loose.pop() });
   return out;
+}
+
+// Todo lo que lleva un jugador, para su caja de botín al caer: [{ item, state }]
+export function inventoryItems(p) {
+  const out = [];
+  for (const w of p.weapons ?? []) if (w && w.id !== 'fists') out.push({ item: w.id, state: { mag: w.mag, att: w.att } });
+  for (const [type, n] of Object.entries(p.ammo ?? {})) if (n > 0) out.push({ item: `ammo_${type}`, state: { n } });
+  if (p.armorLevel > 0) out.push({ item: `armor${p.armorLevel}`, state: { armor: p.armor } });
+  if (p.helmetLevel > 0) out.push({ item: `helmet${p.helmetLevel}` });
+  if (p.backpackLevel > 0) out.push({ item: `backpack${p.backpackLevel}` });
+  for (const [item, n] of Object.entries(p.heals ?? {})) if (n > 0) out.push({ item, state: { n } });
+  for (const [item, n] of Object.entries(p.throwables ?? {})) if (n > 0) out.push({ item, state: { n } });
+  for (const a of p.loose ?? []) out.push({ item: a });
+  return out;
+}
+
+// Mejor rareza de una lista de objetos (para el brillo de la caja de botín)
+export const bestTier = (items) => Math.max(0, ...items.map(({ item }) => LOOT_ITEMS[item]?.tier ?? 0));
+
+// Barras de un arma (0 a 1) para comparar: daño por disparo, cadencia, alcance y control
+export function weaponBars(id) {
+  const w = WEAPONS[id];
+  return {
+    damage: Math.min(1, (w.damage * w.pellets) / 110),
+    rate: Math.min(1, 1000 / w.intervalMs / 16),
+    range: Math.min(1, w.range / 62),
+    control: Math.max(0.05, 1 - Math.min(1, w.spread / 0.12) * 0.7 - (WEAPON_CATEGORIES[w.category].recoil / 0.6) * 0.3),
+  };
 }

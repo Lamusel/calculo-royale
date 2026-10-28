@@ -1,7 +1,7 @@
-import { ARMOR_ABSORB, GRENADE, MAX_HP, MAX_INPUT_BURST, WEAPONS } from '@calculo-royale/shared/constants';
+import { ARMOR_ABSORB, AMMO_TYPES, MAX_HP, MAX_INPUT_BURST, THROWABLES, WEAPONS } from '@calculo-royale/shared/constants';
 import { applyInput } from '@calculo-royale/shared/movement';
 import { DEFAULT_SKIN } from '@calculo-royale/shared/skins';
-import { magazineOf, noAttachments } from '@calculo-royale/shared/inventory';
+import { freeSlot, magazineOf, newWeapon, noAttachments, slotsFor, startingKit } from '@calculo-royale/shared/inventory';
 
 // Ticks de historia de posiciones para la compensación de lag
 const HISTORY_TICKS = 10;
@@ -52,12 +52,10 @@ export class Player {
     this.hp = MAX_HP;
     this.armorLevel = 0;
     this.armor = 0; // puntos que le quedan al chaleco
-    this.pistolMag = WEAPONS.pistol.magazine;
-    this.pistolReserve = WEAPONS.pistol.reserve;
-    this.primary = null; // { id, mag, reserve }
-    this.sidearm = 'pistol'; // arma del puesto 1: 'pistol' o 'fists' (Gulag sin aciertos)
-    this.slot = 1;
-    this.grenades = 0;
+    // Inventario (fase 29): armas, munición por tipo, curaciones, lanzables y accesorios sueltos
+    this.helmetLevel = 0;
+    this.backpackLevel = 0;
+    startingKit(this);
     this.nextFireAt = 0;
     this.nextGrenadeAt = 0;
     this.reloadUntil = 0;
@@ -77,13 +75,9 @@ export class Player {
     this.ammoQuestion = null; // "Obtener balas" pendiente
     this.deploy = null; // { phase: 'bus' | 'pick' | 'fall' | 'chute', z } durante el despliegue
     this.ammoCooldownUntil = 0;
-    // Botín de battle royale (fase 18)
-    this.helmetLevel = 0;
-    this.backpackLevel = 0;
-    this.bandages = 0;
-    this.medkits = 0;
-    this.drinks = 0;
-    this.attachments = noAttachments();
+    this.offer = null; // premio de una caja por elegir: { crateId, options, x, y, until }
+    this.flashUntil = 0; // aturdido (pantalla blanca, más lento)
+    this.marks = null; // { ids, until, kind } enemigos marcados por un UAV o un sensor
     this.healing = null; // { item, until } mientras se venda o usa un botiquín
     this.drinkUntil = 0; // la bebida cura de a poco y da velocidad hasta este momento
     this.speedFactor = 1;
@@ -102,48 +96,70 @@ export class Player {
     return this.deploy !== null;
   }
 
+  // Arma en mano (sin ninguna: puños)
+  get hand() {
+    return this.weapons[this.active] ?? null;
+  }
+
   get weaponId() {
-    return this.slot === 2 && this.primary ? this.primary.id : this.sidearm;
+    return this.hand?.id ?? 'fists';
+  }
+
+  get attachments() {
+    return this.hand?.att ?? noAttachments();
   }
 
   get mag() {
-    return this.slot === 2 && this.primary ? this.primary.mag : this.pistolMag;
+    return this.hand ? this.hand.mag : 999;
   }
 
   set mag(value) {
-    if (this.slot === 2 && this.primary) this.primary.mag = value;
-    else this.pistolMag = value;
+    if (this.hand) this.hand.mag = value;
   }
 
+  // Reserva: la munición del tipo del arma en mano que hay en la mochila
   get reserve() {
-    return this.slot === 2 && this.primary ? this.primary.reserve : this.pistolReserve;
+    const type = WEAPONS[this.weaponId].ammo;
+    return type ? (this.ammo[type] ?? 0) : 0;
   }
 
   set reserve(value) {
-    if (this.slot === 2 && this.primary) this.primary.reserve = value;
-    else this.pistolReserve = value;
+    const type = WEAPONS[this.weaponId].ammo;
+    if (type) this.ammo[type] = Math.max(0, value);
   }
 
-  // Un cargador de reserva para el arma en mano (cajas y "Obtener balas"); devuelve su id
+  // Un cargador de munición para el arma en mano ("Obtener balas" y bots); nunca cohetes. Devuelve su id
   addMagazine() {
     const id = this.weaponId;
-    this.reserve += WEAPONS[id].magazine;
+    const type = WEAPONS[id].ammo;
+    if (!type || type === 'rocket') return id;
+    this.ammo[type] = (this.ammo[type] ?? 0) + magazineOf(id, this.attachments);
     return id;
   }
 
+  // Armeros del campo de entrenamiento y equipo del Gulag: un arma con cargador lleno y algo de
+  // munición (reemplaza la de su ranura), lanzables al máximo o el siguiente chaleco
   giveItem(item) {
     if (WEAPONS[item]) {
-      const w = WEAPONS[item];
-      this.primary = { id: item, mag: magazineOf(item, this.attachments), reserve: w.reserve };
-      this.slot = 2;
+      const free = freeSlot(this, item);
+      const slot = free >= 0 ? free : slotsFor(item)[0];
+      this.weapons[slot] = newWeapon(item);
+      const type = WEAPONS[item].ammo;
+      if (type) this.ammo[type] = Math.max(this.ammo[type] ?? 0, Math.min(AMMO_TYPES[type].pack * 2, 60));
+      this.active = slot;
       this.reloadUntil = 0;
+    } else if (THROWABLES[item]) {
+      this.throwables[item] = THROWABLES[item].max;
+      this.throwSel = item;
     } else if (item === 'grenade') {
-      this.grenades = GRENADE.max;
+      this.throwables.frag = THROWABLES.frag.max;
+      this.throwSel = 'frag';
     } else if (item === 'armor') {
       this.armorLevel = (this.armorLevel % 3) + 1;
       this.armor = ARMOR_ABSORB[this.armorLevel];
     }
   }
+
 
   queueInput(input) {
     if (input.seq <= this.lastQueuedSeq) return;
@@ -210,19 +226,19 @@ export class Player {
       hp: Math.ceil(this.hp),
       armorLevel: this.armorLevel,
       armor: Math.ceil(this.armor),
-      slot: this.slot,
-      sidearm: this.sidearm,
-      pistolMag: this.pistolMag,
-      pistolReserve: this.pistolReserve,
+      weapons: this.weapons.map((w) => w && { id: w.id, mag: w.mag, att: { ...w.att } }),
+      active: this.active,
+      ammo: { ...this.ammo },
+      heals: { ...this.heals },
+      throwables: { ...this.throwables },
+      throwSel: this.throwSel,
+      loose: [...this.loose],
       ammoCooldownLeft: Math.max(0, this.ammoCooldownUntil - now),
-      primary: this.primary && { ...this.primary },
-      grenades: this.grenades,
       helmetLevel: this.helmetLevel,
       backpackLevel: this.backpackLevel,
-      bandages: this.bandages,
-      medkits: this.medkits,
-      drinks: this.drinks,
-      attachments: { ...this.attachments },
+      offer: this.offer && { crateId: this.offer.crateId, options: this.offer.options },
+      flashLeft: Math.max(0, this.flashUntil - now) > 0,
+      marks: this.marks && this.marks.until > now ? { ids: this.marks.ids, kind: this.marks.kind } : null,
       healing: this.healing && { item: this.healing.item, ms: this.healing.until - this.healing.startedAt, left: Math.max(0, this.healing.until - now) },
       drinkLeft: Math.max(0, this.drinkUntil - now),
       speedFactor: this.speedFactor,

@@ -29,6 +29,16 @@ html {
   pointer-events: auto;
 }
 
+/* Aturdidora: pantalla blanca que se apaga (fase 29) */
+@keyframes flash {
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 /* Destello rojo al recibir daño */
 @keyframes damage {
   from {

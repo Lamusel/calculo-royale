@@ -1,4 +1,5 @@
 import { box, cylinder, merge, piece } from './build.js';
+import { weaponMounts } from './weapons.js';
 
 // Accesorios y equipo visibles (fase 25), construidos por código. Los del arma usan el mismo
 // origen que weapons.js (empuñadura, cañón hacia +x, y arriba); casco y mochila van en los
@@ -9,13 +10,8 @@ const STEEL = '#2a2c2f';
 const LENS = '#7dd3fc';
 const RED = '#ef4444';
 
-// Dónde termina el cañón, dónde va la mira y hasta dónde llega la culata de cada arma
-export const WEAPON_MOUNTS = {
-  pistol: { muzzle: 0.3, rail: [0.12, 0.12], stockEnd: null, mag: [0, -0.12] },
-  rifle: { muzzle: 0.89, rail: [0.2, 0.13], stockEnd: -0.35, mag: [0.22, -0.13] },
-  shotgun: { muzzle: 0.9, rail: [0.12, 0.12], stockEnd: -0.41, mag: [0.1, -0.06] },
-  sniper: { muzzle: 1.18, rail: [0.16, 0.23], stockEnd: -0.45, mag: [0.1, -0.06] },
-};
+// Dónde termina el cañón, dónde va la mira y hasta dónde llega la culata de cada arma (de su especificación)
+const mountsOf = (id) => weaponMounts(id);
 
 const BUILDERS = {
   reddot: (m) => [
@@ -49,7 +45,7 @@ const cache = new Map();
 
 // Geometría de un accesorio para un arma (null si no hay)
 export function attachmentGeometry(kind, weaponId) {
-  const m = WEAPON_MOUNTS[weaponId];
+  const m = mountsOf(weaponId);
   if (!m || !BUILDERS[kind]) return null;
   const key = `${kind}|${weaponId}`;
   if (!cache.has(key)) cache.set(key, merge(BUILDERS[kind](m)));

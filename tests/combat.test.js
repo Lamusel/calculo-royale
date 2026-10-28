@@ -109,13 +109,13 @@ test('la pistola hace daño y el chaleco lo absorbe primero', () => {
 
   act(room, shooter, { aim: 0, buttons: BUTTONS.FIRE });
   tick(room);
-  tick(room, WEAPONS.pistol.intervalMs / TICK_MS);
+  tick(room, WEAPONS.m1911.intervalMs / TICK_MS);
   act(room, shooter, { aim: 0, buttons: BUTTONS.FIRE });
   tick(room);
 
   // 2 disparos de 18 = 36: 25 al chaleco (se rompe) y 11 a la vida
   assert.equal(target.armorLevel, 0);
-  assert.equal(target.hp, MAX_HP - (2 * WEAPONS.pistol.damage - ARMOR_ABSORB[1]));
+  assert.equal(target.hp, MAX_HP - (2 * WEAPONS.m1911.damage - ARMOR_ABSORB[1]));
   const hits = room.emitted.filter((e) => e.event === EVENTS.COMBAT_HIT);
   assert.equal(hits.length, 2);
   assert.equal(hits[0].to, 1);
@@ -129,21 +129,22 @@ test('la cadencia limita los disparos', () => {
     tick(room);
   }
   // 10 ticks = 500 ms con pistola cada 300 ms: dispara en el tick 1 y en el 7
-  assert.equal(shooter.pistolMag, WEAPONS.pistol.magazine - 2);
+  assert.equal(shooter.mag, 1); // arranca con 3 balas
 });
 
 test('al vaciar el cargador recarga sola', () => {
   const room = makeRoom();
   const shooter = addPlayer(room, 1, 0, 0);
-  shooter.giveItem('sniper');
-  shooter.primary.mag = 1;
+  shooter.giveItem('kar98k');
+  shooter.hand.mag = 1;
   act(room, shooter, { aim: 0, buttons: BUTTONS.FIRE });
   tick(room);
-  assert.equal(shooter.primary.mag, 0);
+  assert.equal(shooter.hand.mag, 0);
   assert.ok(shooter.reloadUntil > 0);
-  tick(room, WEAPONS.sniper.reloadMs / TICK_MS + 1);
-  assert.equal(shooter.primary.mag, WEAPONS.sniper.magazine);
-  assert.equal(shooter.primary.reserve, WEAPONS.sniper.reserve - WEAPONS.sniper.magazine);
+  const reserve = shooter.reserve;
+  tick(room, WEAPONS.kar98k.reloadMs / TICK_MS + 1);
+  assert.equal(shooter.hand.mag, WEAPONS.kar98k.magazine);
+  assert.equal(shooter.reserve, reserve - WEAPONS.kar98k.magazine);
 });
 
 test('las paredes bloquean las balas', () => {
@@ -187,14 +188,13 @@ test('máximo 2 granadas y cada una explota con daño en área', () => {
   const thrower = addPlayer(room, 1, 0, 0);
   const victim = addPlayer(room, 2, 6, 0);
   thrower.giveItem('grenade');
-  thrower.giveItem('grenade');
-  assert.equal(thrower.grenades, GRENADE.max);
+  thrower.throwables.frag = 2;
 
   for (let i = 0; i < 3; i++) {
     act(room, thrower, { aim: 0, buttons: BUTTONS.GRENADE, aimDist: 6 });
     tick(room, GRENADE.intervalMs / TICK_MS);
   }
-  assert.equal(thrower.grenades, 0);
+  assert.equal(thrower.throwables.frag, 0);
   tick(room, GRENADE.fuseMs / TICK_MS + 1);
   assert.equal(room.game.grenades.length, 0);
   assert.ok(victim.hp < MAX_HP, `vida ${victim.hp}`);
@@ -208,7 +208,7 @@ test('el toque rápido apunta solo al enemigo visible más cercano', () => {
   const target = addPlayer(room, 2, 0, 8); // al norte; el tirador mira al este
   act(room, shooter, { aim: 0, buttons: BUTTONS.FIRE | BUTTONS.AUTO });
   tick(room);
-  assert.equal(target.hp, MAX_HP - WEAPONS.pistol.damage);
+  assert.equal(target.hp, MAX_HP - WEAPONS.m1911.damage);
 });
 
 test('el auto apuntado ignora a quien está detrás de una pared', () => {
@@ -243,5 +243,5 @@ test('el armero que se toma es el más cercano', () => {
   const room = makeRoom('lobby');
   const p = addPlayer(room, 1, -6.5, 9); // entre la escopeta (-8, 10) y el rifle (-4, 10)
   room.game.interact(p);
-  assert.equal(p.primary.id, 'shotgun');
+  assert.equal(p.weapons[0].id, 'm870');
 });

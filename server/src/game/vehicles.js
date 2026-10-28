@@ -79,6 +79,17 @@ function board(game, player, v, seat) {
   placeOccupants(game, v);
 }
 
+// Cambiar de asiento (fase 32): al otro, si está libre. Pasar a conductor con el motor apagado no lo enciende.
+export function switchSeat(game, player) {
+  const v = game.vehicles[player.vehicleId];
+  if (!v) return;
+  const other = player.seat === 'driver' ? 'passenger' : 'driver';
+  if ((other === 'driver' ? v.driverId : v.passengerId) !== null) return;
+  if (player.seat === 'driver') v.driverId = null;
+  else v.passengerId = null;
+  board(game, player, v, other);
+}
+
 export function exitVehicle(game, player) {
   const v = game.vehicles[player.vehicleId];
   if (!v) return;

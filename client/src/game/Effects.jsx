@@ -17,7 +17,8 @@ const MAX_FLASHES = 24;
 const MAX_EXPLOSIONS = 6;
 const MAX_NUMBERS = 24;
 const MAX_MARKERS = 8;
-const SHOTGUN = WEAPON_IDS.indexOf('shotgun');
+// Escopetas: trazos cortos y cartuchos rojos
+const isShotgun = (index) => WEAPONS[WEAPON_IDS[index]]?.category === 'shotgun';
 
 const basic = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false });
 const lambert = (color) => new THREE.MeshLambertMaterial({ color });
@@ -113,7 +114,7 @@ export default function Effects({ client, quality }) {
         const to = point(ex, ey);
         const length = from.distanceTo(to);
         const dir = to.clone().sub(from).normalize();
-        state.tracers.push({ from, dir, length, at: now, streak: e.weapon === SHOTGUN ? 1.2 : 2.6 });
+        state.tracers.push({ from, dir, length, at: now, streak: isShotgun(e.weapon) ? 1.2 : 2.6 });
 
         // Impacto: chispas si pegó en una pared, sangre si pegó en alguien
         const range = WEAPONS[WEAPON_IDS[e.weapon]]?.range ?? 30;
@@ -134,7 +135,7 @@ export default function Effects({ client, quality }) {
         // Casquillo expulsado hacia la derecha del soldado
         if (quality.particles >= 0.5 && e.weapon !== undefined) {
           const right = new THREE.Vector3(Math.sin(e.angle), 0, Math.cos(e.angle));
-          spawn(e.weapon === SHOTGUN ? 'shell' : 'casing', 1, () => ({
+          spawn(isShotgun(e.weapon) ? 'shell' : 'casing', 1, () => ({
             pos: point(e.x + Math.cos(e.angle) * 0.4, e.y + Math.sin(e.angle) * 0.4, 1.35),
             v: right.clone().multiplyScalar(rand(2, 3)).add(new THREE.Vector3(0, rand(2, 3), 0)),
             gravity: -14,

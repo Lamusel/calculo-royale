@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { GRENADE } from '@calculo-royale/shared/constants';
+import { GRENADE, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { modelMaterial } from './models/build.js';
 import { weaponGeometry } from './models/weapons.js';
@@ -26,7 +26,14 @@ export default function Grenades({ frameRef }) {
       if (!firstSeen.current.has(id)) firstSeen.current.set(id, now);
       const t = Math.min((now - firstSeen.current.get(id)) / GRENADE.flightMs, 1);
       mesh.visible = true;
-      mesh.position.set(g.x, terrainHeight(g.x, g.y) + 0.2 + 4 * ARC_HEIGHT * t * (1 - t), -g.y);
+      // Modelo según el lanzable (el cohete vuela recto, sin arco)
+      const kind = WEAPON_IDS[g.kind] === 'rpg' ? 'rocket' : WEAPON_IDS[g.kind] === 'gl' ? 'lob' : WEAPON_IDS[g.kind] ?? 'frag';
+      if (mesh.userData.kind !== kind) {
+        mesh.geometry = weaponGeometry(kind);
+        mesh.userData.kind = kind;
+      }
+      const arc = kind === 'rocket' ? 0.8 : 0.2 + 4 * ARC_HEIGHT * t * (1 - t);
+      mesh.position.set(g.x, terrainHeight(g.x, g.y) + arc, -g.y);
       mesh.rotation.set(now * 0.01, 0, now * 0.007);
     }
     for (; i < MAX_GRENADES; i++) if (meshes.current[i]) meshes.current[i].visible = false;

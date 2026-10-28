@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { armGeometry, legGeometry, torsoGeometry } from '../models/soldier.js';
 import { weaponGeometry } from '../models/weapons.js';
 import { restWorldPosition } from './rig.js';
@@ -8,7 +8,8 @@ import { restWorldPosition } from './rig.js';
 // coordenadas del personaje (o del pivote de los hombros) y están en caché por skin, color y
 // chaleco: aquí solo se cuelgan de su hueso con el desplazamiento que corresponde.
 
-const GUNS = WEAPON_IDS.slice(0, 4); // pistola, escopeta, rifle, francotirador
+// Todas las armas (van primero en WEAPON_IDS: el índice del snapshot es el de esta lista)
+const GUNS = WEAPON_IDS.filter((id) => WEAPONS[id]);
 const SHOULDERS_Y = restWorldPosition('shoulderR')[1];
 
 // Desplazamiento de la pieza dentro de su hueso: (pivote de la geometría) − (hueso en reposo)

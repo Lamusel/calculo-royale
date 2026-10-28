@@ -27,8 +27,10 @@ test('volumen maestro con curva perceptual y recortado', () => {
 });
 
 test('cada arma de fuego tiene su timbre; el francotirador es el más fuerte', () => {
-  assert.equal(SHOT_VOICES.length, WEAPON_IDS.indexOf('grenade'));
-  assert.equal(Math.max(...SHOT_VOICES.map((v) => v.level)), SHOT_VOICES[WEAPON_IDS.indexOf('sniper')].level);
+  const voices = SHOT_VOICES.filter(Boolean);
+  assert.ok(voices.length >= 20, 'una por arma');
+  assert.equal(new Set(voices.map((v) => `${Math.round(v.filter)}-${v.decay.toFixed(3)}`)).size, voices.length, 'cada una suena distinto');
+  assert.equal(Math.max(...voices.map((v) => v.level)), SHOT_VOICES[WEAPON_IDS.indexOf('awm')].level);
 });
 
 test('sin Web Audio (o antes del primer toque) los sonidos no hacen nada ni fallan', () => {

@@ -52,7 +52,7 @@ const start = (room) => {
 const advance = (room, ms) => {
   for (let i = 0; i < Math.ceil(ms / TICK_MS); i++) room.game.update();
 };
-const kill = (room, target, by, weapon = 'pistol') => damagePlayer(room.game, target, 1e10, by?.id ?? null, WEAPON_IDS.indexOf(weapon));
+const kill = (room, target, by, weapon = 'm1911') => damagePlayer(room.game, target, 1e10, by?.id ?? null, WEAPON_IDS.indexOf(weapon));
 let seq = 0;
 const walk = (p) => p.queueInput({ seq: ++seq, mx: 1, my: 0, aim: 0, buttons: 0, viewTick: 0, aimDist: 0 });
 
@@ -134,7 +134,7 @@ test('doble baja y francotirador de larga distancia puntúan más que una baja n
   // Francotirador a más de 30 m
   a.teleport(-40, -40);
   e.teleport(20, 20);
-  kill(room, e, a, 'sniper');
+  kill(room, e, a, 'kar98k');
   advance(room, 2000);
   replay = room.game.recorder.take();
   assert.equal(replay.kind, 'sniper');

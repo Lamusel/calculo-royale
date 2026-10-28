@@ -117,11 +117,11 @@ test('Gulag de 3: arena aparte, 3 preguntas (dificultad 1, 2 y 3) congelados y e
   }
   room.game.chooseGulagWeapon(a, 'shotgun');
   advance(room, TICK_MS);
-  assert.equal(a.primary?.id, 'shotgun');
+  assert.equal(a.weapons[0]?.id, 'm870');
   assert.equal(a.helmetLevel, 1);
-  assert.equal(b.weaponId, 'pistol');
-  assert.equal(b.pistolMag, WEAPONS.pistol.magazine);
-  assert.equal(b.pistolReserve, 0);
+  assert.equal(b.weaponId, 'm1911');
+  assert.equal(b.mag, WEAPONS.m1911.magazine);
+  assert.equal(b.reserve, 0);
   assert.equal(c.weaponId, 'fists');
   // Cuenta regresiva y combate: ya no están congelados
   advance(room, GULAG.countdownMs + TICK_MS);
@@ -151,7 +151,7 @@ test('el ganador vuelve en paracaídas dentro de la zona; los perdedores quedan 
   advance(room, GULAG.returnPickMs + TICK_MS);
   assert.equal(a.deploy?.phase, 'chute');
   assert.ok(insideZone(room.game.zone.current, a.x, a.y));
-  assert.equal(a.primary?.id, 'rifle', 'vuelve con su equipo (rifle por defecto)');
+  assert.equal(a.weapons[0]?.id, 'm4a1', 'vuelve con su equipo (M4A1 por defecto)');
   assert.ok(b.operator, 'el perdedor es espectador');
   assert.ok(room.broadcasts.some((m) => m.event === EVENTS.RADIO_MESSAGE && m.data.text.includes('ganó en el Gulag')));
   // Una oportunidad por partida
@@ -172,8 +172,8 @@ test('quien gana a puños vuelve con la pistola y unas pocas balas', () => {
   assert.equal(a.weaponId, 'fists');
   kill(room, b);
   advance(room, TICK_MS);
-  assert.equal(a.weaponId, 'pistol');
-  assert.equal(a.pistolMag, GULAG.returnBullets);
+  assert.equal(a.weaponId, 'm1911');
+  assert.equal(a.mag, GULAG.returnBullets);
 });
 
 test('solo 45 s en cola: pelea contra un bot del Gulag; muerte súbita después de 60 s', () => {

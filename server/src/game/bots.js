@@ -56,7 +56,7 @@ export function botInput(game, bot, rand = Math.random) {
   // Botín al alcance: lo toma (solo lo que le sirve)
   if (game.room.phase === 'playing' && rand() < 0.1) {
     const loot = nearestLoot(game, bot.x, bot.y);
-    if (loot) pickUp(game, bot, loot.entry);
+    if (loot) pickUp(game, bot, loot.entry, { all: true, silent: true });
   }
 
   // Enemigo visible cerca: apunta (con error) y a veces dispara

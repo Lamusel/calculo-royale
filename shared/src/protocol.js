@@ -31,7 +31,9 @@ export const EVENTS = {
   STATE: 'state', // S → C: snapshot, ver codec.js
 
   // Combate
-  WEAPON_SWITCH: 'weapon:switch', // C → S: ranura 1 (pistola) o 2 (principal)
+  WEAPON_SWITCH: 'weapon:switch', // C → S: ranura 1 o 2 (principales) o 3 (secundaria)
+  // Inventario (fase 29). C → S: { op: 'drop'|'attach'|'detach'|'take'|'select', … } (lo valida el servidor)
+  INVENTORY: 'inventory:op',
   INTERACT: 'interact', // C → S: tomar lo que haya cerca (armeros; en la fase 4, cajas)
   // S → C (solo al dueño): vida, chaleco, munición; solo cuando cambia.
   // C → S: el cliente lo pide al arrancar (puede haberse perdido el primero)
@@ -58,6 +60,8 @@ export const EVENTS = {
   LOOT_TAKEN: 'loot:taken', // S → C (solo a quien tomó): { names: [...] } o { full: true } si no le cabía
   // S → C: { crateId, outcome: 'correct'|'wrong'|'timeout'|'cancelled', loot: [nombres], explicacion?, reason? }
   CRATE_RESULT: 'crate:result',
+  CRATE_CHOOSE: 'crate:choose', // C → S: índice del premio elegido
+  CRATE_CHOSEN: 'crate:chosen', // S → C: { loot: [nombres], items }
 
   // Transmisiones del centro de mando: { kind: 'zone'|'closing'|'airdrop'|..., title, text (LaTeX entre $), durationMs }
   RADIO_MESSAGE: 'radio:message',

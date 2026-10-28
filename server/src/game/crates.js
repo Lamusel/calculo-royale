@@ -1,8 +1,8 @@
 import {
   AIRDROP, ALARM_MS, CRATE_LOCK_MS, CRATE_SPAWN, INTERACT_RADIUS, LOOT_ITEMS, PRACTICE_CRATE_RESET_MS, RADAR_MS, RARITIES,
-  STREAK_FOR_RADAR, TOPICS,
+  STREAK_FOR_RADAR, TOPICS, WEAPONS,
 } from '@calculo-royale/shared/constants';
-import { take, wants } from '@calculo-royale/shared/inventory';
+import { take } from '@calculo-royale/shared/inventory';
 import { dropAround } from './loot.js';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
@@ -11,35 +11,64 @@ import { drawQuestion } from '../questions/QuestionBank.js';
 // Cajas de suministro con candado de código: la pregunta ABCD es el código.
 // La pregunta (con su respuesta correcta) vive solo aquí, en player.question.
 
-// Combinaciones posibles por rareza (se elige una al azar). Legendario = dos tiradas épicas.
-// La común solo la usa la caja de práctica del lobby: en partida las cajas son de raro en adelante
-// (lo común está en el suelo).
+// Premios por rareza (fase 29): al acertar, el jugador ELIGE uno entre 2 (común y raro) o 3 (épico y
+// legendario). Cada premio es un paquete: un arma viene con munición de su tipo. Lo que no elige
+// queda junto a la caja, solo para él por LOOT.privateMs. Nada se cambia sin que él lo decida.
+const withAmmo = (id) => [id, `ammo_${WEAPONS[id].ammo}`];
+const weaponsOf = (rarity) => Object.keys(WEAPONS).filter((id) => WEAPONS[id].rarity === rarity && id !== 'fists' && !(rarity === 0 && id === 'm1911'));
 export const LOOT_TABLES = [
-  [['ammo', 'bandage'], ['ammo', 'grenade'], ['bandage', 'drink'], ['ammo', 'ammo']],
+  [['ammo_9mm', 'bandage'], ['frag', 'ammo_9mm'], ['bandage', 'drink'], ['smoke', 'ammo_9mm']],
   [
-    ['shotgun', 'ammo'], ['rifle', 'ammo'], ['armor1', 'grenade'], ['armor2', 'helmet1'], ['backpack1', 'drink'], ['backpack2', 'bandage'],
-    ['reddot', 'grenade'], ['scope2x', 'extmag'], ['medkit', 'stock'], ['silencer', 'drink'],
+    ...[...weaponsOf(0), ...weaponsOf(1)].map(withAmmo),
+    ['armor2', 'helmet1'], ['backpack1', 'drink'], ['backpack2', 'bandage'], ['reddot', 'frag'], ['scope2x', 'extmag'], ['medkit', 'stock'],
+    ['silencer', 'smoke'], ['wall', 'flash'], ['molotov', 'bandage'], ['armor1', 'frag'],
   ],
-  [['sniper', 'scope4x'], ['armor3', 'helmet2'], ['medkit', 'grenade', 'silencer'], ['rifle', 'extmag', 'reddot'], ['backpack3', 'medkit'], ['helmet3', 'drink']],
+  [
+    ...weaponsOf(2).map(withAmmo),
+    ['armor3', 'helmet2'], ['helmet3', 'drink'], ['backpack3', 'medkit'], ['scope4x', 'extmag'], ['sensor', 'wall'], ['uav', 'medkit'], ['molotov', 'frag', 'medkit'],
+  ],
+  // Doradas y lanzamientos aéreos: las especiales y lo mejor (munición escasa)
+  [...weaponsOf(3).map(withAmmo), ['armor3', 'helmet3', 'medkit'], ['backpack3', 'uav', 'wall']],
 ];
 
-export function rollLoot(rarity, rand = Math.random) {
-  const roll = (table) => table[Math.floor(rand() * table.length)];
-  if (rarity >= 3) return [...roll(LOOT_TABLES[2]), ...roll(LOOT_TABLES[2])];
-  return roll(LOOT_TABLES[rarity]);
-}
+// Opciones para elegir: distintas entre sí
+const OFFER_MS = 20_000; // tiempo para elegir el premio
 
-// Aplica un objeto al jugador; devuelve su nombre. Lo que reemplaza (o lo que no le cabe en la
-// mochila) queda en el suelo a su alrededor si hay partida (game); sin game se descarta.
-export function applyLoot(player, item, game = null) {
+export function rollOffers(rarity, rand = Math.random) {
+  const table = [...LOOT_TABLES[Math.min(rarity, 3)]];
+  const n = rarity >= 2 ? 3 : 2;
+  const out = [];
+  while (out.length < n && table.length) out.push(table.splice(Math.floor(rand() * table.length), 1)[0]);
+  return out;
+}
+// Compatibilidad: un paquete al azar (bots y pruebas)
+export const rollLoot = (rarity, rand = Math.random) => rollOffers(rarity, rand)[0];
+
+// Aplica un objeto al jugador; devuelve su nombre. Lo que reemplaza o no le cabe queda en el suelo a su
+// alrededor si hay partida (game). Las armas nunca reemplazan sin preguntar: si no hay lugar, al suelo.
+export function applyLoot(player, item, game = null, owner = null) {
   const name = LOOT_ITEMS[item].name;
-  if (!wants(player, item)) {
-    if (game?.loot) dropAround(game, player.x, player.y, [{ item }]);
+  const res = take(player, item);
+  if (res.need || !res.taken) {
+    if (game?.loot) dropAround(game, player.x, player.y, [{ item }], owner);
     return `${name} (quedó en el suelo)`;
   }
-  const drops = take(player, item);
-  if (game?.loot && drops.length) dropAround(game, player.x, player.y, drops);
+  if (game?.loot && res.drops.length) dropAround(game, player.x, player.y, res.drops);
+  if (res.left > 0 && game?.loot) dropAround(game, player.x, player.y, [{ item, state: { n: res.left } }], owner);
   return name;
+}
+
+// El jugador eligió un premio (o se le acabó el tiempo: index null, todo queda en el suelo para él)
+export function chooseOffer(game, player, index) {
+  const offer = player.offer;
+  if (!offer) return;
+  player.offer = null;
+  const crate = game.crates[offer.crateId];
+  const chosen = Number.isInteger(index) ? offer.options[index] : null;
+  const loot = chosen ? chosen.map((item) => applyLoot(player, item, game, player.id)) : [];
+  const rest = offer.options.filter((o) => o !== chosen).flat().map((item) => ({ item }));
+  if (rest.length && game.loot) dropAround(game, crate?.x ?? player.x, crate?.y ?? player.y, rest, player.id);
+  game.room.emitTo(player, EVENTS.CRATE_CHOSEN, { loot, items: chosen ?? [] });
 }
 
 // Orden fijo (el snapshot manda un estado por caja): las del mapa, la de práctica y al
@@ -145,14 +174,15 @@ function finish(game, player, outcome, chosen = null) {
   if (!crate.practice) recordStats(player, q, correct, chosen);
 
   if (correct) {
-    const items = rollLoot(crate.rarity);
-    const loot = items.map((item) => applyLoot(player, item, game));
+    // Elige su premio entre las opciones (tiene OFFER_MS; si no, todo queda junto a la caja para él)
+    const options = rollOffers(crate.rarity);
+    player.offer = { crateId, options, until: game.now + OFFER_MS };
     crate.state = CRATE_STATE.OPEN;
     if (crate.practice) crate.reopenAt = game.now + PRACTICE_CRATE_RESET_MS;
     player.streak++;
     const radar = player.streak % STREAK_FOR_RADAR === 0;
     if (radar) player.radarUntil = game.now + RADAR_MS;
-    game.room.emitTo(player, EVENTS.CRATE_RESULT, { crateId, outcome, loot, items, explicacion: q.explicacion, radar });
+    game.room.emitTo(player, EVENTS.CRATE_RESULT, { crateId, outcome, loot: [], options, explicacion: q.explicacion, radar });
     return;
   }
 
@@ -192,6 +222,8 @@ export function updateCrates(game) {
     if (c.state === CRATE_STATE.OPEN && c.practice && game.now >= c.reopenAt) c.state = CRATE_STATE.CLOSED;
   }
   for (const p of game.room.players.values()) {
+    // Premio sin elegir: al caer o al vencerse el tiempo queda todo junto a la caja
+    if (p.offer && (!p.alive || game.now > p.offer.until)) chooseOffer(game, p, null);
     if (!p.question) continue;
     if (!p.alive) cancelQuestion(game, p, 'Caíste en combate');
     else if (game.now > p.question.expiresAt) finish(game, p, 'timeout');

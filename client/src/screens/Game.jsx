@@ -124,6 +124,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         frameRef={frameRef}
         myId={myId}
         radar={view.radarLeft > 0}
+        marks={view.self?.marks}
         radio={client.radio}
         isTouch={isTouch}
         night={room.phase === 'playing' && room.weather === 'noche'}

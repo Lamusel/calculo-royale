@@ -1,6 +1,7 @@
 import { GULAG, optionCount, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { GULAG_ARENAS, GULAG_SPAWNS } from '@calculo-royale/shared/mapLayout';
+import { emptyInventory, newWeapon, SECONDARY } from '@calculo-royale/shared/inventory';
 import { damagePlayer } from './combat.js';
 import { startReturnPick } from './deploy.js';
 import { airdropSpot, radio } from './match.js';
@@ -60,8 +61,7 @@ function startFight(game, group, arena) {
     p.arena = arena.index;
     p.gulag = { state: 'fight', since: game.now, fightId: fight.id };
     p.frozen = true;
-    p.pistolMag = 0;
-    p.pistolReserve = 0;
+    emptyInventory(p);
     p.teleport(arena.x + GULAG_SPAWNS[i][0], arena.y + GULAG_SPAWNS[i][1]);
     p.aim = Math.atan2(-GULAG_SPAWNS[i][1], -GULAG_SPAWNS[i][0]); // mirando al centro
     fight.correct[p.id] = 0;
@@ -76,18 +76,21 @@ function startFight(game, group, arena) {
   return fight;
 }
 
-// Equipo según aciertos: 0 puños; 1 pistola (un cargador); 2 + casco y una venda; 3 + rifle o escopeta
+// Equipo según aciertos: 0 puños; 1 M1911 (un cargador); 2 + casco y una venda; 3 + M4A1 o M870 a elección
 export function equip(p, correct, choice) {
-  p.primary = null;
-  p.slot = 1;
-  p.sidearm = correct === 0 ? 'fists' : 'pistol';
-  p.pistolMag = WEAPONS[p.sidearm].magazine;
-  p.pistolReserve = 0;
+  emptyInventory(p);
+  p.weapons[SECONDARY] = newWeapon(correct === 0 ? 'fists' : 'm1911');
+  p.active = SECONDARY;
   if (correct >= 2) {
     p.helmetLevel = Math.max(p.helmetLevel ?? 0, 1);
-    p.bandages = (p.bandages ?? 0) + 1;
+    p.heals.bandage = 1;
   }
-  if (correct >= 3) p.giveItem(choice === 'shotgun' ? 'shotgun' : 'rifle');
+  if (correct >= 3) {
+    const id = choice === 'shotgun' ? 'm870' : 'm4a1';
+    p.weapons[0] = newWeapon(id);
+    p.ammo[WEAPONS[id].ammo] = WEAPONS[id].magazine;
+    p.active = 0;
+  }
 }
 
 const fightOf = (game, player) => game.gulag?.fights.find((f) => f.id === player.gulag?.fightId) ?? null;
@@ -124,10 +127,9 @@ function finish(game, fight) {
   if (winner && !winner.gulagBot) {
     winner.place = null;
     // Nunca vuelve a puños: al menos la pistola con unas pocas balas (como al empezar)
-    if (winner.sidearm === 'fists') {
-      winner.sidearm = 'pistol';
-      winner.pistolMag = GULAG.returnBullets;
-      winner.pistolReserve = 0;
+    if (winner.weapons.every((w) => !w || w.id === 'fists')) {
+      winner.weapons[SECONDARY] = newWeapon('m1911', GULAG.returnBullets);
+      winner.active = SECONDARY;
     }
     // Elige en el mapa dónde caer (6 s) y baja en paracaídas
     startReturnPick(game, winner, airdropSpot(game.zone.current));

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ATTACHMENTS, BACKPACK, HELMET, HELMET_SNIPER, LOOT_ITEMS, RECOIL, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { decodeGear, encodeGear, GEAR_INFO, helmetFactor } from '@calculo-royale/shared/gear';
-import { capacityOf, magazineOf, reserveCap, weaponWith } from '@calculo-royale/shared/inventory';
+import { ammoCap, healCap, magazineOf, weaponWith } from '@calculo-royale/shared/inventory';
 import { BUTTONS, EVENTS } from '@calculo-royale/shared/protocol';
 import { currentRecoil, damagePlayer, fire } from '../server/src/game/combat.js';
 import { Game } from '../server/src/game/Game.js';
@@ -37,11 +37,11 @@ test('equipo visible: viaja en el snapshot y vuelve igual', () => {
 
 test('en el modelo: mira, cargador, culata y silenciador en el arma; casco y mochila en el cuerpo', () => {
   const ch = new Character({ skin: 'soldado', color: '#f00' });
-  ch.setWeapon(WEAPON_IDS.indexOf('rifle'));
+  ch.setWeapon(WEAPON_IDS.indexOf('m4a1'));
   ch.setGear({ helmet: 2, backpack: 3, scope: 'scope2x', mag: true, stock: true, muzzle: true });
   assert.equal(ch.gearMeshes.length, 6);
-  const weapon = ch.weapons[WEAPON_IDS.indexOf('rifle')];
-  assert.equal(weapon.children.length, 4, 'cuatro accesorios montados en el rifle');
+  const weapon = ch.weapons[WEAPON_IDS.indexOf('m4a1')];
+  assert.equal(weapon.children.length, 4, 'cuatro accesorios montados en la M4A1');
   assert.equal(ch.rig.sockets.HeadTopSocket.children.length >= 1, true);
   // Mochila más grande con más nivel
   const size = (level) => {
@@ -56,20 +56,20 @@ test('en el modelo: mira, cargador, culata y silenciador en el arma; casco y moc
 });
 
 test('dispersión: punto rojo y culata la cierran; disparar seguido la abre (retroceso)', () => {
-  const base = WEAPONS.rifle.spread;
-  assert.ok(Math.abs(weaponWith('rifle', { scope: 'reddot' }).spread - base * ATTACHMENTS.reddot) < 1e-12);
-  assert.ok(Math.abs(weaponWith('rifle', { stock: 'stock' }).spread - base * ATTACHMENTS.stock) < 1e-12);
-  assert.ok(weaponWith('rifle', {}, 1).spread > base, 'con retroceso, más dispersión');
-  assert.equal(weaponWith('shotgun', {}, 2).spread, WEAPONS.shotgun.spread, 'el abanico de la escopeta no cambia');
+  const base = WEAPONS.m4a1.spread;
+  assert.ok(Math.abs(weaponWith('m4a1', { scope: 'reddot' }).spread - base * ATTACHMENTS.reddot) < 1e-12);
+  assert.ok(Math.abs(weaponWith('m4a1', { stock: 'stock' }).spread - base * ATTACHMENTS.stock) < 1e-12);
+  assert.ok(weaponWith('m4a1', {}, 1).spread > base, 'con retroceso, más dispersión');
+  assert.equal(weaponWith('m870', {}, 2).spread, WEAPONS.m870.spread, 'el abanico de la escopeta no cambia');
 });
 
 test('retroceso: sube con cada disparo, se recupera y la culata lo reduce a la mitad', () => {
   const room = makeRoom();
   const shoot = (stock) => {
     const p = addPlayer(room, stock ? 2 : 1, 10, 30);
-    p.giveItem('rifle');
+    p.giveItem('m4a1');
     if (stock) p.attachments.stock = 'stock';
-    p.primary.mag = 30;
+    p.hand.mag = 30;
     for (let i = 0; i < 5; i++) {
       p.nextFireAt = 0;
       fire(room.game, p, { aim: 0, buttons: BUTTONS.FIRE, viewTick: room.game.tick });
@@ -86,33 +86,33 @@ test('retroceso: sube con cada disparo, se recupera y la culata lo reduce a la m
 });
 
 test('capacidad: cargador ampliado y mochila cambian los límites', () => {
-  assert.equal(magazineOf('rifle', { mag: 'extmag' }), Math.round(WEAPONS.rifle.magazine * ATTACHMENTS.extmag));
-  assert.equal(magazineOf('rifle', {}), WEAPONS.rifle.magazine);
+  assert.equal(magazineOf('m4a1', { mag: 'extmag' }), Math.round(WEAPONS.m4a1.magazine * ATTACHMENTS.extmag));
+  assert.equal(magazineOf('m4a1', {}), WEAPONS.m4a1.magazine);
   for (let l = 1; l <= 3; l++) {
-    assert.ok(capacityOf('bandage', l) > capacityOf('bandage', l - 1));
-    assert.ok(reserveCap('rifle', l) > reserveCap('rifle', l - 1));
+    assert.ok(healCap({ backpackLevel: l }, 'bandage') > healCap({ backpackLevel: l - 1 }, 'bandage'));
+    assert.ok(ammoCap({ backpackLevel: l }, '556') > ammoCap({ backpackLevel: l - 1 }, '556'));
+    assert.ok(BACKPACK[l].throwables > BACKPACK[l - 1].throwables);
   }
-  assert.equal(capacityOf('grenade', 3), BACKPACK[3].grenade);
 });
 
 test('casco: reduce el daño y más el del francotirador; el número de daño lo refleja', () => {
   const room = makeRoom();
   const target = addPlayer(room, 2, 10, 30);
   target.helmetLevel = 3;
-  damagePlayer(room.game, target, 40, 1, WEAPON_IDS.indexOf('rifle'));
+  damagePlayer(room.game, target, 40, 1, WEAPON_IDS.indexOf('m4a1'));
   assert.ok(Math.abs(target.hp - (100 - 40 * (1 - HELMET[3]))) < 1e-9);
   const hp = target.hp;
-  const { dealt } = damagePlayer(room.game, target, 40, 1, WEAPON_IDS.indexOf('sniper'));
+  const { dealt } = damagePlayer(room.game, target, 40, 1, WEAPON_IDS.indexOf('kar98k'));
   assert.ok(Math.abs(dealt - 40 * (1 - HELMET_SNIPER[3])) < 1e-9);
   assert.ok(Math.abs(target.hp - (hp - dealt)) < 1e-9);
   assert.ok(helmetFactor(3, true) < helmetFactor(3, false));
   // El que dispara ve el daño ya reducido
   const shooter = addPlayer(room, 1, 4, 30);
-  shooter.giveItem('sniper');
+  shooter.giveItem('kar98k');
   room.emitted.length = 0;
   fire(room.game, shooter, { aim: 0, buttons: BUTTONS.FIRE, viewTick: room.game.tick });
   const hit = room.emitted.find((e) => e.event === EVENTS.COMBAT_HIT);
-  assert.equal(hit.data[1], Math.round(WEAPONS.sniper.damage * (1 - HELMET_SNIPER[3])));
+  assert.equal(hit.data[1], Math.round(WEAPONS.kar98k.damage * (1 - HELMET_SNIPER[3])));
 });
 
 test('cada objeto de equipo tiene icono, nombre corto y efecto explicado', () => {

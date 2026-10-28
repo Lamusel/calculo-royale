@@ -7,13 +7,16 @@ import { LOOT_IDS } from '@calculo-royale/shared/constants';
 // tomado seguía dibujado.)
 export class LootStore {
   constructor() {
-    this.items = new Map(); // id → { id, item (null si es caja de botín), x, y, count }
+    this.items = new Map(); // id → { id, item (null si es caja de botín), x, y, count, contents, tier, owner }
     this.version = 0;
   }
 
-  // [id, índice en LOOT_IDS (−1 = caja de botín), x, y, cantidad]
-  put([id, index, x, y, count]) {
-    this.items.set(id, { id, item: index >= 0 ? LOOT_IDS[index] : null, x, y, count });
+  // [id, índice en LOOT_IDS (−1 = caja de botín), x, y, cantidad, contenido [[índice, cantidad]], rareza, dueño]
+  put([id, index, x, y, count, contents, tier = 0, owner = 0]) {
+    this.items.set(id, {
+      id, item: index >= 0 ? LOOT_IDS[index] : null, x, y, count, tier, owner,
+      contents: Array.isArray(contents) ? contents.map(([i, n]) => ({ item: LOOT_IDS[i], n })) : null,
+    });
   }
 
   sync(list) {

@@ -1,7 +1,7 @@
 // Cajas de suministro (npm test): flujo completo en el Game real con una sala falsa.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALARM_MS, CRATE_LOCK_MS, MAX_HP, optionCount, RADAR_MS, RARITIES, TICK_MS, TOPICS } from '@calculo-royale/shared/constants';
+import { ALARM_MS, CRATE_LOCK_MS, MAX_HP, optionCount, RADAR_MS, RARITIES, TICK_MS, TOPICS, WEAPONS } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { applyLoot, LOOT_TABLES, rollLoot } from '../server/src/game/crates.js';
@@ -83,7 +83,7 @@ test('acierto: botín de la rareza, caja abierta y explicación', () => {
   room.game.answerCrate(p, rare, correct);
   const result = last(room, EVENTS.CRATE_RESULT);
   assert.equal(result.outcome, 'correct');
-  assert.ok(result.loot.length >= 1);
+  assert.equal(result.options.length, 2, 'raro: elige entre 2 premios');
   assert.ok(result.explicacion.length > 0);
   assert.equal(room.game.crates[rare].state, CRATE_STATE.OPEN);
   assert.equal(p.stats.correct, 1);
@@ -157,7 +157,7 @@ test('racha de 3 aciertos = radar 10 s', () => {
   assert.ok(p.radarUntil - room.game.now === RADAR_MS);
 });
 
-test('Todo o nada: la dorada da botín doble o quita el chaleco', () => {
+test('Todo o nada: la dorada da a elegir entre 3 premios legendarios o quita el chaleco', () => {
   const gold = SUPPLY_CRATES.findIndex((c) => c.rarity === 3);
   const c = SUPPLY_CRATES[gold];
 
@@ -165,8 +165,7 @@ test('Todo o nada: la dorada da botín doble o quita el chaleco', () => {
   const p = addPlayer(win, 1, c.x + 1, c.y);
   const { correct } = open(win, p);
   win.game.answerCrate(p, gold, correct);
-  // Dos tiradas épicas: al menos 2 objetos (si las dos salen "Chaleco 3", son justo 2)
-  assert.equal(last(win, EVENTS.CRATE_RESULT).loot.length >= 2, true, 'dos tiradas épicas');
+  assert.equal(last(win, EVENTS.CRATE_RESULT).options.length, 3);
 
   const lose = makeRoom();
   const q = addPlayer(lose, 1, c.x + 1, c.y);
@@ -211,14 +210,14 @@ test('botín de cajas: curaciones al inventario, munición, armas y lo que no ca
   applyLoot(p, 'bandage');
   applyLoot(p, 'medkit');
   assert.equal(p.hp, 50, 'curar ahora toma tiempo: van al inventario');
-  assert.equal(p.bandages, 1);
-  assert.equal(p.medkits, 1);
+  assert.equal(p.heals.bandage, 1);
+  assert.equal(p.heals.medkit, 1);
   applyLoot(p, 'medkit');
   assert.match(applyLoot(p, 'medkit'), /quedó en el suelo/, 'sin mochila caben 1 botiquín');
-  applyLoot(p, 'rifle');
-  const reserve = p.primary.reserve;
-  applyLoot(p, 'ammo');
-  assert.ok(p.primary.reserve > reserve);
+  applyLoot(p, 'm4a1');
+  const reserve = p.reserve;
+  applyLoot(p, 'ammo_556');
+  assert.ok(p.reserve > reserve);
   applyLoot(p, 'armor3');
   applyLoot(p, 'armor1');
   assert.equal(p.armorLevel, 3, 'no baja de nivel');
@@ -226,4 +225,6 @@ test('botín de cajas: curaciones al inventario, munición, armas y lo que no ca
   assert.equal(p.helmetLevel, 3);
   assert.equal(p.backpackLevel, 3);
   assert.equal(rollLoot(3).length >= 2, true);
+  // Los paquetes con arma traen munición de su tipo
+  for (const combo of LOOT_TABLES[3]) if (WEAPONS[combo[0]]) assert.equal(combo[1], `ammo_${WEAPONS[combo[0]].ammo}`);
 });

@@ -1,3 +1,4 @@
+import { WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 // Reglas de mezcla (sin Web Audio, para poder probarlas): volumen y paneo según dónde suena
 // algo respecto al jugador.
 
@@ -17,12 +18,27 @@ export function spatial(dx, dy) {
 export const masterLevel = (volume) => Math.max(0, Math.min(1, volume)) ** 2;
 
 // Timbre de cada arma (índice en WEAPON_IDS): filtro, duración, cuerpo grave y volumen
-export const SHOT_VOICES = [
-  { filter: 2600, decay: 0.12, thump: 140, level: 0.55 }, // pistola
-  { filter: 1300, decay: 0.32, thump: 90, level: 0.9 }, // escopeta
-  { filter: 2000, decay: 0.09, thump: 120, level: 0.5 }, // rifle (ráfagas)
-  { filter: 3600, decay: 0.45, thump: 70, level: 1 }, // francotirador
-];
+// Timbre de cada arma (fase 29): el de su categoría con una variación propia, para reconocerla de oído
+const CATEGORY_VOICE = {
+  pistol: { filter: 2600, decay: 0.12, thump: 140, level: 0.55 },
+  smg: { filter: 2300, decay: 0.08, thump: 110, level: 0.45 },
+  ar: { filter: 2000, decay: 0.09, thump: 120, level: 0.5 },
+  shotgun: { filter: 1300, decay: 0.32, thump: 90, level: 0.9 },
+  dmr: { filter: 3000, decay: 0.25, thump: 95, level: 0.75 },
+  sniper: { filter: 3600, decay: 0.45, thump: 70, level: 1 },
+  lmg: { filter: 1800, decay: 0.1, thump: 130, level: 0.6 },
+  special: { filter: 900, decay: 0.5, thump: 60, level: 0.95 },
+  melee: { filter: 600, decay: 0.05, thump: 200, level: 0.3 },
+};
+const OVERRIDES = { crossbow: { filter: 500, decay: 0.06, thump: 30, level: 0.15 } };
+const hash = (id) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 1000, 7);
+export const SHOT_VOICES = WEAPON_IDS.map((id) => {
+  const w = WEAPONS[id];
+  if (!w) return null;
+  const base = OVERRIDES[id] ?? CATEGORY_VOICE[w.category];
+  const k = hash(id);
+  return { ...base, filter: base.filter * (0.86 + (k % 29) / 100), decay: base.decay * (0.9 + (k % 23) / 100) };
+});
 
 // --- Fase 19: canales, prioridad de voces, ducking y momento musical ---
 

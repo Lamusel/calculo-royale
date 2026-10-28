@@ -1,4 +1,6 @@
-import { GRENADE, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { setDynamicObstacles } from '@calculo-royale/shared/collision';
+import { wallPieces } from '@calculo-royale/shared/throwables';
+import { GRENADE, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, THROWABLE_IDS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { weaponWith } from '@calculo-royale/shared/inventory';
 import { RECOIL } from '@calculo-royale/shared/constants';
 import { GEAR_INFO } from '@calculo-royale/shared/gear';
@@ -64,8 +66,12 @@ export class EffectViews {
   }
 }
 
-export const selfWeaponId = (self) => (self?.slot === 2 && self.primary ? self.primary.id : self?.sidearm ?? 'pistol');
-const selfMag = (self) => (self.slot === 2 && self.primary ? self.primary.mag : self.pistolMag);
+// Arma en mano y su cargador según el estado privado (fase 29: tres ranuras)
+export const selfHand = (self) => self?.weapons?.[self.active] ?? null;
+export const selfWeaponId = (self) => selfHand(self)?.id ?? 'fists';
+const selfMag = (self) => selfHand(self)?.mag ?? 0;
+// Munición de reserva del arma en mano (en la mochila, por tipo)
+export const selfReserve = (self) => self?.ammo?.[WEAPONS[selfWeaponId(self)]?.ammo] ?? 0;
 
 // Conecta la red con la escena: envía inputs a 20 Hz, guarda snapshots, predice al
 // jugador propio (movimiento y disparos) y deja efectos en cola para la escena.
@@ -122,10 +128,12 @@ export class GameClient {
     this.effectViews = new EffectViews();
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles = [], bus = []]) => {
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles = [], bus = [], effects = []]) => {
         // Cajas: llegan solo cuando cambian ('' = igual que antes)
         if (crates) this.lastCrates = crates;
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, this.lastCrates ?? '', alarms, zone, airdrop, gulag, vehicles, bus);
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, this.lastCrates ?? '', alarms, zone, airdrop, gulag, vehicles, bus, effects);
+        // Muros de las granadas muro: obstáculos para predecir el movimiento igual que el servidor
+        setDynamicObstacles(effects.filter((e) => e[0] === 3).flatMap((e) => wallPieces(e[2], e[3], e[4])));
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
         const riding = vehicles.find((v) => v[7] === this.myId);
@@ -173,6 +181,8 @@ export class GameClient {
       },
       [EVENTS.CRATE_RESULT]: (result) => {
         this.question = null;
+        // Premio a elegir (fase 29): se abre la tarjeta con las opciones
+        this.offer = result.options ? { crateId: result.crateId, options: result.options, at: performance.now() } : null;
         if (result.outcome === 'correct') sound.lockOpen();
         else if (result.outcome !== 'cancelled') sound.lockFail();
         this.crateResult = { ...result, at: performance.now() };
@@ -260,7 +270,23 @@ export class GameClient {
       [EVENTS.LOOT_SYNC]: (list) => this.lootStore.sync(list),
       [EVENTS.LOOT_ADD]: (list) => this.lootStore.add(list),
       [EVENTS.LOOT_REMOVE]: (ids) => this.lootStore.remove(ids),
+      [EVENTS.CRATE_CHOSEN]: (result) => {
+        this.offer = null;
+        this.lootToast = { names: result.loot, items: result.items, at: performance.now() };
+        this.showGear(result.items);
+      },
       [EVENTS.LOOT_TAKEN]: (result) => {
+        // Caja de botín: abre su lista. Arma sin lugar: pregunta cuál reemplazar
+        if (result.box) {
+          this.openBox = result.box;
+          const e = this.lootStore.items.get(result.box);
+          this.openBoxAt = e ? { x: e.x, y: e.y } : null;
+          return;
+        }
+        if (result.need) {
+          this.replacePrompt = { ...result, at: performance.now() };
+          return;
+        }
         this.lootToast = { ...result, at: performance.now() };
         this.showGear(result.items);
         if (!result.full) sound.pickup();
@@ -274,7 +300,15 @@ export class GameClient {
     for (const [event, handler] of Object.entries(this.handlers)) socket.on(event, handler);
 
     actions.switchWeapon = (slot) => socket.emit(EVENTS.WEAPON_SWITCH, slot);
-    actions.interact = () => socket.emit(EVENTS.INTERACT);
+    // Con varias cosas cerca, la zona de acción elige cuál (kind); si no, la más cercana
+    actions.interact = (kind = null) => socket.emit(EVENTS.INTERACT, kind);
+    actions.selectThrowable = (item) => this.self?.throwables?.[item] > 0 && this.selectThrowable(item);
+    actions.cycleThrowable = (step) => {
+      const have = THROWABLE_IDS.filter((id) => this.self?.throwables?.[id] > 0);
+      if (!have.length) return;
+      const i = have.indexOf(this.self.throwSel);
+      this.selectThrowable(have[(i + step + have.length) % have.length]);
+    };
     actions.requestAmmo = () => this.requestAmmo();
     actions.useItem = (item) => this.useItem(item);
     actions.phrase = (index) => this.socket.emit(EVENTS.QUICK_PHRASE, index);
@@ -310,10 +344,10 @@ export class GameClient {
     }
     if (self.healing && !prev?.healing) sound.healStart();
     if (!self.healing && prev?.healing && self.alive) {
-      const counter = { bandage: 'bandages', medkit: 'medkits', drink: 'drinks' }[prev.healing.item];
-      if (self[counter] < prev[counter]) sound.healEnd();
+      const item = prev.healing.item;
+      if ((self.heals?.[item] ?? 0) < (prev.heals?.[item] ?? 0)) sound.healEnd();
     }
-    if (prev && self.slot !== prev.slot) sound.weaponSwitch();
+    if (prev && (self.active !== prev.active || selfWeaponId(self) !== selfWeaponId(prev))) sound.weaponSwitch();
     if (!self.radar) this.radarEndsAt = 0;
     if (self.reloadLeft && !(prev?.reloadLeft > 0)) sound.reload();
     this.self = self;
@@ -324,8 +358,9 @@ export class GameClient {
     this.healingEndsAt = self.healing ? now + self.healing.left : 0;
     this.drinkEndsAt = self.drinkLeft ? now + self.drinkLeft : 0;
     inputState.weapon = selfWeaponId(self);
-    inputState.scope = self.attachments?.scope ?? null;
-    if (self.grenades === 0) inputState.grenadeMode = false;
+    inputState.scope = selfHand(self)?.att?.scope ?? null;
+    inputState.throwSel = self.throwSel;
+    if (!(self.throwables?.[self.throwSel] > 0)) inputState.grenadeMode = false;
   }
 
   get alive() {
@@ -398,7 +433,7 @@ export class GameClient {
     const packet = encodeInput({ ...input, seq: ++seq, viewTick: this.buffer.renderTick(now) });
     // Se predice con los mismos valores redondeados que recibe el servidor
     const sent = decodeInput(packet);
-    if (sent.buttons & BUTTONS.GRENADE && this.self?.grenades > 0) sound.grenadeThrow();
+    if (sent.buttons & BUTTONS.GRENADE && this.self?.throwables?.[this.self.throwSel] > 0) sound.grenadeThrow();
     this.predictor.step(sent, now);
     this.predictFire(sent, now);
     this.lastSentAim = input.aim;
@@ -419,8 +454,9 @@ export class GameClient {
     const id = selfWeaponId(this.self);
     // Retroceso previsto (el mismo cálculo que el servidor): abre la dispersión y la cámara salta
     this.localRecoil = Math.max(0, (this.localRecoil ?? 0) - ((now - (this.localRecoilAt ?? now)) / 1000) * RECOIL.recoverPerSec);
-    const w = weaponWith(id, this.self.attachments, this.localRecoil);
-    const step = (RECOIL.perShot[id] ?? 0.3) * (this.self.attachments?.stock ? RECOIL.stock : 1);
+    const att = selfHand(this.self)?.att;
+    const w = weaponWith(id, att, this.localRecoil);
+    const step = (RECOIL.perShot[id] ?? 0.3) * (att?.stock ? RECOIL.stock : 1);
     this.localRecoil = Math.min(RECOIL.max, this.localRecoil + step);
     this.localRecoilAt = now;
     this.kick = Math.min(1, (this.kick ?? 0) + step);
@@ -582,8 +618,31 @@ export class GameClient {
 
   // Tarjeta breve con el equipo recién recibido: icono, nombre y efecto (fase 25)
   showGear(items = []) {
-    const gear = items.filter((id) => GEAR_INFO[id]);
+    const gear = items.filter((id) => GEAR_INFO[id] || WEAPONS[id]);
     if (gear.length) this.gearCard = { items: gear, at: performance.now() };
+  }
+
+  // Inventario (fase 29): todo lo pide al servidor, que lo valida
+  inventory(op) {
+    this.socket.emit(EVENTS.INVENTORY, op);
+  }
+
+  switchWeaponSlot(slot) {
+    this.socket.emit(EVENTS.WEAPON_SWITCH, slot);
+  }
+
+  takeLoot(lootId, extra = {}) {
+    this.replacePrompt = null;
+    this.socket.emit(EVENTS.INVENTORY, { op: 'take', lootId, ...extra });
+  }
+
+  chooseOffer(index) {
+    this.socket.emit(EVENTS.CRATE_CHOOSE, index);
+  }
+
+  selectThrowable(item) {
+    inputState.throwSel = item;
+    this.socket.emit(EVENTS.INVENTORY, { op: 'select', item });
   }
 
   // Botín en el suelo (lo leen la escena y el aviso "Tomar …")

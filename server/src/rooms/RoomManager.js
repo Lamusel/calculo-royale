@@ -113,9 +113,9 @@ export class RoomManager {
     if (player) this.roomOf(socket).game.switchWeapon(player, Number(slot));
   }
 
-  interact(socket) {
+  interact(socket, kind) {
     const player = this.playerOf(socket);
-    if (player) this.roomOf(socket).game.interact(player);
+    if (player) this.roomOf(socket).game.interact(player, typeof kind === 'string' ? kind : null);
   }
 
   // El host elige los temas en el lobby (al menos uno)
@@ -197,6 +197,17 @@ export class RoomManager {
   }
 
   // Curarse: venda, botiquín o bebida (el servidor valida que tenga y pueda)
+  // Inventario (fase 29) y premio elegido de una caja
+  inventory(socket, data) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.inventoryOp(player, data);
+  }
+
+  crateChoose(socket, index) {
+    const player = this.playerOf(socket);
+    if (player) this.roomOf(socket).game.chooseOffer(player, Number(index));
+  }
+
   useItem(socket, item) {
     const player = this.playerOf(socket);
     if (player && typeof item === 'string') this.roomOf(socket).game.useItem(player, item);

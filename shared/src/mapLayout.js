@@ -464,10 +464,10 @@ export const TRAINING = {
   // Caja de práctica: va al final de la lista de cajas del snapshot
   crate: { x: 11, y: 3, rarity: 0 },
   racks: [
-    { item: 'shotgun', x: -8, y: 10 },
-    { item: 'rifle', x: -4, y: 10 },
-    { item: 'sniper', x: 0, y: 10 },
-    { item: 'grenade', x: 4, y: 10 },
+    { item: 'm870', x: -8, y: 10 },
+    { item: 'ak47', x: -4, y: 10 },
+    { item: 'kar98k', x: 0, y: 10 },
+    { item: 'frag', x: 4, y: 10 },
     { item: 'armor', x: 8, y: 10 },
   ],
   dummies: [

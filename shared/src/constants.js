@@ -59,38 +59,85 @@ export const PLAYER_COLORS = [
 ];
 
 // --- Armas ---
-// Índice de cada arma en snapshots y killfeed (el orden no debe cambiar).
-// 'zone', 'bomb' y 'jeep' solo aparecen en el killfeed (zona, bombardeo y atropello o explosión).
-// No cambiar el orden (va en la red): solo agregar al final. 'bomb' quedó del bombardeo retirado.
-export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'zone', 'bomb', 'jeep', 'fists'];
-
-// intervalMs: tiempo entre disparos · spread: desviación máxima (rad) por bala
-// o apertura total del abanico en la escopeta · range: alcance en unidades
-// Munición: cargador y reserva limitada (también la pistola). Se consigue en cajas o con
-// "Obtener balas" (pregunta rápida).
-export const WEAPONS = {
-  pistol: {
-    name: 'Pistola', damage: 18, intervalMs: 300, magazine: 12, reserve: 36,
-    reloadMs: 1200, spread: 0.03, pellets: 1, range: 24, auto: false,
-  },
-  shotgun: {
-    name: 'Escopeta', damage: 11, intervalMs: 850, magazine: 5, reserve: 10,
-    reloadMs: 2200, spread: 0.35, pellets: 8, range: 13, auto: false,
-  },
-  rifle: {
-    name: 'Rifle de asalto', damage: 14, intervalMs: 100, magazine: 30, reserve: 60,
-    reloadMs: 1800, spread: 0.06, pellets: 1, range: 30, auto: true,
-  },
-  sniper: {
-    name: 'Francotirador', damage: 80, intervalMs: 1400, magazine: 5, reserve: 10,
-    reloadMs: 2600, spread: 0, pellets: 1, range: 55, auto: false, releaseToFire: true,
-  },
-  // Gulag sin aciertos: golpe cuerpo a cuerpo (alcance corto, sin munición)
-  fists: {
-    name: 'Puños', damage: 24, intervalMs: 450, magazine: 999, reserve: 0,
-    reloadMs: 0, spread: 0.2, pellets: 1, range: 2.2, auto: false,
-  },
+// --- Arsenal (fase 29) ---
+// Categorías: munición por defecto, ranuras de accesorios compatibles y retroceso por disparo
+const ALL_SLOTS = ['scope', 'mag', 'stock', 'muzzle'];
+export const WEAPON_CATEGORIES = {
+  pistol: { name: 'Pistola', ammo: '9mm', slots: ['scope', 'mag', 'muzzle'], recoil: 0.35, secondary: true },
+  smg: { name: 'Subfusil', ammo: '9mm', slots: ALL_SLOTS, recoil: 0.18 },
+  ar: { name: 'Rifle de asalto', ammo: '556', slots: ALL_SLOTS, recoil: 0.22 },
+  shotgun: { name: 'Escopeta', ammo: '12g', slots: ['mag', 'stock'], recoil: 0.25 },
+  dmr: { name: 'Rifle de tirador', ammo: '762', slots: ALL_SLOTS, recoil: 0.35 },
+  sniper: { name: 'Francotirador', ammo: '300', slots: ['scope', 'muzzle'], recoil: 0.6 },
+  lmg: { name: 'Ametralladora ligera', ammo: '556', slots: ['scope', 'stock'], recoil: 0.2 },
+  special: { name: 'Especial', ammo: 'rocket', slots: [], recoil: 0.5 },
+  melee: { name: 'Cuerpo a cuerpo', ammo: null, slots: [], recoil: 0, secondary: true },
 };
+
+// [id, nombre, categoría, rareza (0 gris, 1 azul, 2 morado, 3 dorado), daño, ms entre disparos, cargador,
+//  ms de recarga, dispersión (rad; en escopetas, apertura del abanico), perdigones, alcance, automática, extra]
+const ARSENAL = [
+  ['m1911', 'M1911', 'pistol', 0, 18, 300, 7, 1200, 0.03, 1, 24, false],
+  ['glock17', 'Glock 17', 'pistol', 0, 13, 170, 17, 1300, 0.045, 1, 22, false],
+  ['deagle', 'Desert Eagle dorada', 'pistol', 3, 42, 560, 7, 1500, 0.02, 1, 30, false],
+  ['mp5', 'MP5', 'smg', 0, 12, 80, 30, 1700, 0.07, 1, 20, true],
+  ['ump45', 'UMP-45', 'smg', 0, 15, 110, 25, 1800, 0.065, 1, 22, true],
+  ['uzi', 'Uzi', 'smg', 0, 10, 60, 32, 1500, 0.1, 1, 16, true],
+  ['m4a1', 'M4A1', 'ar', 1, 14, 95, 30, 1900, 0.05, 1, 32, true],
+  ['ak47', 'AK-47', 'ar', 1, 18, 120, 30, 2100, 0.075, 1, 32, true, { ammo: '762' }],
+  ['scarl', 'SCAR-L', 'ar', 1, 15, 100, 30, 2000, 0.055, 1, 32, true],
+  ['aug', 'AUG', 'ar', 1, 15, 95, 30, 2200, 0.045, 1, 34, true],
+  ['spas12', 'SPAS-12', 'shotgun', 1, 10, 800, 8, 2600, 0.35, 8, 12, false],
+  ['m870', 'M870', 'shotgun', 1, 12, 950, 5, 2300, 0.32, 8, 13, false],
+  ['dbarrel', 'Escopeta de doble cañón', 'shotgun', 1, 14, 300, 2, 2200, 0.38, 8, 11, false],
+  ['sks', 'SKS', 'dmr', 2, 34, 280, 10, 2400, 0.02, 1, 45, false],
+  ['mini14', 'Mini-14', 'dmr', 2, 28, 220, 20, 2300, 0.02, 1, 45, false, { ammo: '556' }],
+  ['kar98k', 'Kar98k', 'sniper', 2, 80, 1400, 5, 2600, 0, 1, 55, false, { releaseToFire: true }],
+  ['m24', 'M24', 'sniper', 2, 85, 1500, 5, 2800, 0, 1, 56, false, { releaseToFire: true }],
+  ['awm', 'AWM', 'sniper', 3, 110, 1700, 5, 3000, 0, 1, 62, false, { releaseToFire: true }],
+  ['m249', 'M249', 'lmg', 2, 13, 80, 100, 5200, 0.08, 1, 32, true],
+  // Especiales legendarias (solo cajas doradas y lanzamientos aéreos)
+  ['rpg', 'Lanzacohetes', 'special', 3, 110, 1500, 1, 3200, 0.01, 1, 50, false, { projectile: 'rocket', blast: 4.5 }],
+  ['crossbow', 'Ballesta', 'special', 3, 75, 1200, 1, 1700, 0.005, 1, 45, false, { ammo: 'bolt', silent: true }],
+  ['gl', 'Lanzagranadas', 'special', 3, 85, 900, 4, 3200, 0.03, 1, 22, false, { projectile: 'lob', blast: 3.8 }],
+  // Gulag sin aciertos: golpe cuerpo a cuerpo (alcance corto, sin munición)
+  ['fists', 'Puños', 'melee', 0, 24, 450, 999, 0, 0.2, 1, 2.2, false],
+];
+export const WEAPONS = Object.fromEntries(ARSENAL.map(([id, name, category, rarity, damage, intervalMs, magazine, reloadMs, spread, pellets, range, auto, extra = {}]) => [
+  id,
+  { name, category, rarity, damage, intervalMs, magazine, reloadMs, spread, pellets, range, auto, ammo: WEAPON_CATEGORIES[category].ammo, ...extra },
+]));
+export const weaponCategory = (id) => WEAPON_CATEGORIES[WEAPONS[id]?.category];
+export const isSniper = (id) => WEAPONS[id]?.category === 'sniper';
+export const START_WEAPON = 'm1911';
+export const START_BULLETS = 3; // fase 29: se arranca con la pistola y solo 3 balas en total
+
+// Tipos de munición: nombre y cuánto trae una caja del suelo
+export const AMMO_TYPES = {
+  '9mm': { name: '9 mm', pack: 24 },
+  556: { name: '5,56', pack: 30 },
+  762: { name: '7,62', pack: 20 },
+  '12g': { name: 'Calibre 12', pack: 8 },
+  300: { name: '.300', pack: 5 },
+  rocket: { name: 'Cohetes', pack: 1 },
+  bolt: { name: 'Flechas', pack: 3 },
+};
+
+// Lanzables y equipo táctico (fase 29): máximo por tipo en la mochila (además del límite de la mochila)
+export const THROWABLES = {
+  frag: { name: 'Fragmentación', max: 4 },
+  smoke: { name: 'Humo', max: 4, ms: 15_000, radius: 5 },
+  flash: { name: 'Aturdidora', max: 4, radius: 11, ms: 3_000, slow: 0.6 },
+  molotov: { name: 'Molotov', max: 3, ms: 8_000, radius: 3, maxRadius: 4.2, dps: 14, teamFactor: 0.5 },
+  sensor: { name: 'Sensor de movimiento', max: 2, ms: 10_000, radius: 22, pulseMs: 1_000, hp: 30 },
+  wall: { name: 'Granada muro', max: 3, ms: 25_000, hp: 260, arc: 3.2, pieces: 7, pieceRadius: 0.55 },
+  uav: { name: 'UAV', max: 1, ms: 8_000, targets: 3, instant: true },
+};
+export const THROWABLE_IDS = Object.keys(THROWABLES);
+
+// Índice de cada arma o lanzable en snapshots y killfeed. 'zone', 'bomb' y 'jeep' solo aparecen en el
+// killfeed (zona, bombardeo retirado y atropello o explosión). Cliente y servidor se despliegan juntos.
+export const WEAPON_IDS = [...Object.keys(WEAPONS), ...THROWABLE_IDS, 'zone', 'bomb', 'jeep'];
 
 // Apuntado (cliente): zona de cancelación del joystick derecho (fracción del radio)
 // y cuánto se desplaza la cámara hacia la mira del francotirador
@@ -98,8 +145,8 @@ export const AIM_CANCEL_ZONE = 0.3;
 export const SNIPER_LOOK_AHEAD = 16;
 
 export const GRENADE = {
-  name: 'Granada',
-  max: 2, // máximo en el inventario
+  name: 'Granada de fragmentación',
+  max: 4,
   fuseMs: 2000,
   flightMs: 800, // tiempo que tarda en llegar al punto apuntado
   minRange: 3,
@@ -297,18 +344,16 @@ export const RADIO_PRIORITY = { closing: 2, final: 2, zone: 2, duel: 2, airdrop:
 export const RADIO_MAX_WAIT_MS = 15000;
 export const RADIO_MIN_SHOW_MS = 2500; // si lo interrumpen antes, vuelve a la cola con lo que le faltaba
 
-// --- Botín de battle royale (fase 18) ---
-// Objetos del suelo y de las cajas. kind: weapon | ammo | heal | grenade | armor | helmet | backpack | attachment
-// tier: 0 común, 1 raro (en el suelo solo hay común y raro; las cajas dan de raro en adelante)
+// --- Botín de battle royale (fases 18 y 29) ---
+// Objetos del suelo y de las cajas. kind: weapon | ammo | heal | throwable | armor | helmet | backpack | attachment
+// tier: rareza para el color (0 gris, 1 azul, 2 morado, 3 dorado)
 export const LOOT_ITEMS = {
-  shotgun: { name: 'Escopeta', kind: 'weapon', tier: 1 },
-  rifle: { name: 'Rifle de asalto', kind: 'weapon', tier: 1 },
-  sniper: { name: 'Francotirador', kind: 'weapon', tier: 2 },
-  ammo: { name: 'Munición', kind: 'ammo', tier: 0 },
+  ...Object.fromEntries(Object.entries(WEAPONS).filter(([id]) => id !== 'fists').map(([id, w]) => [id, { name: w.name, kind: 'weapon', tier: w.rarity }])),
+  ...Object.fromEntries(Object.entries(AMMO_TYPES).map(([id, a]) => [`ammo_${id}`, { name: `Munición ${a.name}`, kind: 'ammo', ammo: id, amount: a.pack, tier: id === 'rocket' || id === 'bolt' ? 3 : 0 }])),
   bandage: { name: 'Venda', kind: 'heal', tier: 0 },
   medkit: { name: 'Botiquín', kind: 'heal', tier: 1 },
   drink: { name: 'Bebida energética', kind: 'heal', tier: 0 },
-  grenade: { name: 'Granada', kind: 'grenade', tier: 0 },
+  ...Object.fromEntries(Object.entries(THROWABLES).map(([id, t]) => [id, { name: t.name, kind: 'throwable', tier: id === 'uav' || id === 'sensor' ? 2 : 1 }])),
   armor1: { name: 'Chaleco 1', kind: 'armor', level: 1, tier: 0 },
   armor2: { name: 'Chaleco 2', kind: 'armor', level: 2, tier: 1 },
   armor3: { name: 'Chaleco 3', kind: 'armor', level: 3, tier: 2 },
@@ -325,13 +370,14 @@ export const LOOT_ITEMS = {
   stock: { name: 'Culata', kind: 'attachment', slot: 'stock', tier: 1 },
   silencer: { name: 'Silenciador', kind: 'attachment', slot: 'muzzle', tier: 1 },
 };
-// Índice fijo de cada objeto (eventos de botín); no cambiar el orden, solo agregar al final
+// Índice de cada objeto en los eventos de botín (cliente y servidor se despliegan juntos)
 export const LOOT_IDS = Object.keys(LOOT_ITEMS);
+export const TIER_COLORS = ['#9ca3af', '#3b82f6', '#a855f7', '#eab308'];
 
-// Botín suelto en el suelo (fase 23): SOLO estos objetos. Todo lo demás (armas, granadas, miras,
-// accesorios, mochilas, chalecos, cascos 2–3, botiquines y bebidas) sale de cajas con pregunta, de la
-// caja de botín de un caído o del lanzamiento aéreo: el cálculo es la llave del poder.
-export const LOOT_GROUND = ['ammo', 'bandage', 'helmet1'];
+// Botín suelto en el suelo (fase 23): SOLO munición, vendas y casco 1. Todo lo demás (armas, lanzables,
+// miras, accesorios, mochilas, chalecos, cascos 2–3, botiquines y bebidas) sale de cajas con pregunta, de
+// la caja de botín de un caído o del lanzamiento aéreo: el cálculo es la llave del poder.
+export const LOOT_GROUND = ['ammo_9mm', 'ammo_556', 'ammo_762', 'ammo_12g', 'ammo_300', 'bandage', 'helmet1'];
 
 // Botín en el suelo por partida: cuántos por punto de zona y peso de cada objeto
 export const LOOT = {
@@ -341,8 +387,9 @@ export const LOOT = {
   pickupRadius: 2.2,
   dropSpread: 1.2, // al soltar algo queda a esta distancia, alrededor del jugador
   deathBox: true,
-  // Peso de cada objeto al sortear (los que no figuran pesan 1)
-  weights: { ammo: 4, bandage: 3, helmet1: 1 },
+  privateMs: 10_000, // lo que no elegiste de una caja es solo tuyo este tiempo
+  // Peso de cada objeto al sortear (los que no figuran pesan 1): el arranque con 3 balas pide munición
+  weights: { ammo_9mm: 6, ammo_556: 3, ammo_762: 2, ammo_12g: 2, ammo_300: 1, bandage: 3, helmet1: 1 },
 };
 
 // Curación con tiempo. Mientras cura se camina más lento; disparar o cambiar de arma la cancela.
@@ -354,14 +401,14 @@ export const HEALING = {
   moveFactor: 0.5,
 };
 
-// Mochila: cuánto se puede llevar de cada consumible (nivel 0 = sin mochila)
+// Mochila (nivel 0 = sin mochila): munición por tipo, consumibles, lanzables (en total) y accesorios
+// sueltos. Cada lanzable tiene además su máximo propio (THROWABLES[id].max).
 export const BACKPACK = [
-  { bandage: 3, medkit: 1, drink: 1, grenade: 2, reserve: 2 },
-  { bandage: 5, medkit: 2, drink: 2, grenade: 3, reserve: 2.5 },
-  { bandage: 8, medkit: 3, drink: 3, grenade: 4, reserve: 3 },
-  { bandage: 10, medkit: 4, drink: 4, grenade: 5, reserve: 4 },
+  { ammo: { '9mm': 60, 556: 90, 762: 60, '12g': 20, 300: 15, rocket: 2, bolt: 6 }, bandage: 3, medkit: 1, drink: 1, throwables: 3, loose: 2 },
+  { ammo: { '9mm': 90, 556: 135, 762: 90, '12g': 30, 300: 22, rocket: 3, bolt: 9 }, bandage: 5, medkit: 2, drink: 2, throwables: 5, loose: 3 },
+  { ammo: { '9mm': 120, 556: 180, 762: 120, '12g': 40, 300: 30, rocket: 4, bolt: 12 }, bandage: 8, medkit: 3, drink: 3, throwables: 7, loose: 4 },
+  { ammo: { '9mm': 180, 556: 270, 762: 180, '12g': 60, 300: 45, rocket: 6, bolt: 18 }, bandage: 10, medkit: 4, drink: 4, throwables: 9, loose: 6 },
 ];
-// reserve: tope de munición de reserva = WEAPONS[arma].reserve × este valor
 
 // Casco: fracción del daño que resta (después del chaleco)
 export const HELMET = [0, 0.1, 0.16, 0.22];
@@ -406,7 +453,7 @@ export const CAMERA = {
 // Retroceso: cada disparo abre la dispersión (multiplicador 1 + retroceso) y se recupera con el tiempo.
 // La culata reduce lo que sube por disparo. La cámara del que dispara "salta" en proporción.
 export const RECOIL = {
-  perShot: { pistol: 0.35, shotgun: 0.25, rifle: 0.22, sniper: 0.6 },
+  perShot: Object.fromEntries(Object.entries(WEAPONS).map(([id, w]) => [id, WEAPON_CATEGORIES[w.category].recoil])),
   max: 2.2, // dispersión hasta ×3,2 disparando seguido
   recoverPerSec: 2.5,
   stock: 0.5, // con culata, la mitad por disparo

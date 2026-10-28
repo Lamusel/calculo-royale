@@ -229,6 +229,22 @@ export function draw(ctx, size, data, detailed, view = FULL) {
     ctx.strokeRect(X(data.airdrop[0]) - 4, Y(data.airdrop[1]) - 4, 8, 8);
   }
 
+  // Marcados por un UAV (rombo amarillo) o un sensor de movimiento (rombo rojo que late)
+  if (data.marks?.ids?.length) {
+    ctx.fillStyle = data.marks.kind === 'uav' ? '#facc15' : `rgba(248, 113, 113, ${0.6 + 0.4 * Math.sin(now / 120)})`;
+    for (const id of data.marks.ids) {
+      const p = data.others?.get(id);
+      if (!p) continue;
+      ctx.beginPath();
+      ctx.moveTo(X(p.x), Y(p.y) - 6);
+      ctx.lineTo(X(p.x) + 5, Y(p.y));
+      ctx.lineTo(X(p.x), Y(p.y) + 6);
+      ctx.lineTo(X(p.x) - 5, Y(p.y));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
   // Enemigos (solo con radar)
   if (data.radar) {
     ctx.fillStyle = '#f87171';
@@ -425,10 +441,10 @@ function BigMap({ frameRef, extra, onClose, radio }) {
 export const minimapSize = (isTouch) => (isTouch ? 104 : 140);
 
 // Minimapa en la esquina; al tocarlo se abre el mapa grande
-export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, night = false, lastShot = null, deployRoute = null }) {
+export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, marks = null, night = false, lastShot = null, deployRoute = null }) {
   const [open, setOpen] = useState(false);
   const extra = useRef({});
-  extra.current = { myId, radar, night, lastShot, deployRoute };
+  extra.current = { myId, radar, marks, night, lastShot, deployRoute };
   const size = minimapSize(isTouch);
   const ref = useMapCanvas(frameRef, extra, size, false);
   return (

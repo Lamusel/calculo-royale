@@ -63,7 +63,7 @@ test('granada con G: mantener muestra el arco, soltar la lanza a la distancia de
   assert.equal(input.buttons, BUTTONS.GRENADE);
   assert.equal(input.aimDist, 9);
   send(room, p, input, 1);
-  assert.equal(p.grenades, GRENADE.max - 1);
+  assert.equal(p.throwables.frag, GRENADE.max - 1);
   assert.equal(room.game.grenades.length, 1);
   let exploded = false;
   for (let i = 0; i < (GRENADE.flightMs + GRENADE.fuseMs) / TICK_MS + 4 && !exploded; i++) {
@@ -112,7 +112,7 @@ test('R recarga, B pide balas, E interactúa, 1/2 cambian de arma, clic izquierd
   fire('mousedown', { button: 0 });
   assert.equal(readInput().buttons & BUTTONS.FIRE, BUTTONS.FIRE);
   fire('mouseup', { button: 0 });
-  inputState.weapon = 'sniper';
+  inputState.weapon = 'kar98k';
   fire('mousedown', { button: 2 });
   assert.equal(aimPreview(), 'sniper');
   assert.equal(readInput().buttons & BUTTONS.AIM, BUTTONS.AIM);

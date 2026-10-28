@@ -85,7 +85,7 @@ test('todos empiezan en el bus; no se puede saltar antes de que arranque; saltar
   assert.equal(p.deploy.phase, 'chute');
   advance(room, (DEPLOY.chuteAltitude / DEPLOY.chuteSpeed) * 1000 + 200);
   assert.equal(p.deploy, null, 'aterrizó');
-  assert.equal(p.weaponId, 'pistol');
+  assert.equal(p.weaponId, 'm1911');
   const landed = room.game.snapshot([...room.players.values()])[1].find((e) => e[0] === p.id);
   assert.equal(landed[9], 0, 'en el suelo la altura es 0 (desde la fase 25 siempre viaja, seguida del equipo)');
 });
@@ -107,12 +107,12 @@ test('en el aire: se dirige con el joystick, no dispara, no es blanco y no recib
   send(p, BUTTONS.JUMP);
   advance(room, TICK_MS);
   const x = p.x;
-  const mag = p.pistolMag;
+  const mag = p.mag;
   const toCenter = -Math.sign(x) || 1;
   send(p, BUTTONS.FIRE, toCenter, 0);
   advance(room, TICK_MS * 2);
   assert.ok((p.x - x) * toCenter > 0, 'se mueve en el aire');
-  assert.equal(p.pistolMag, mag, 'no dispara');
+  assert.equal(p.mag, mag, 'no dispara');
   assert.ok(!targetsAt(room.game, q, room.game.tick).some((t) => t.id === p.id), 'no es blanco');
   // La zona no le hace daño aunque esté afuera
   const hp = p.hp;

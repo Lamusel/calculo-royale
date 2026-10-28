@@ -54,7 +54,7 @@ test('granada táctil: botón, arrastre con arco, soltar lanza y cae donde se ap
   p.giveItem('grenade');
   const gesture = createAimGesture();
 
-  assert.equal(toggleGrenadeMode(p.grenades > 0), true);
+  assert.equal(toggleGrenadeMode(p.throwables.frag > 0), true);
   gesture.start(0);
   drag(gesture, [[0.1, 0.1], [0.3, 0.3], [0.48, 0.64]]); // fuerza 0.8 hacia el noreste
   assert.equal(aimPreview(), 'grenade', 'se dibuja el arco mientras arrastra');
@@ -70,7 +70,7 @@ test('granada táctil: botón, arrastre con arco, soltar lanza y cae donde se ap
   assert.equal(inputState.grenadeMode, false, 'tras lanzar sale del modo granada');
 
   send(room, p, input, 1);
-  assert.equal(p.grenades, GRENADE.max - 1);
+  assert.equal(p.throwables.frag, GRENADE.max - 1);
   assert.equal(room.game.grenades.length, 1);
   for (let i = 0; i < GRENADE.flightMs / TICK_MS + 2; i++) room.game.update();
   const g = room.game.grenades[0];
@@ -108,7 +108,7 @@ test('sin granadas no se entra al modo granada', () => {
 });
 
 test('francotirador: arrastrar apunta (camina lento), soltar dispara, volver al centro cancela', () => {
-  inputState.weapon = 'sniper';
+  inputState.weapon = 'kar98k';
   const gesture = createAimGesture();
 
   gesture.start(0);
@@ -159,7 +159,7 @@ test('solo el francotirador y la granada muestran vista previa', () => {
     assert.equal(aimPreview(), null, weapon);
     gesture.end(300);
   }
-  inputState.weapon = 'sniper';
+  inputState.weapon = 'kar98k';
   inputState.adsHeld = true;
   assert.equal(aimPreview(), 'sniper');
 });

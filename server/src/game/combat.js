@@ -11,13 +11,17 @@ import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
 import { waterAt } from '@calculo-royale/shared/mapPlan';
 import { worldLimits } from '@calculo-royale/shared/mapLayout';
+import { isSniper, THROWABLES } from '@calculo-royale/shared/constants';
+import { activateUav, blastTactical, damageSensor, damageWall, detonateTactical, smokeBlocks } from './throwables.js';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
 
 // Margen extra del radio de impacto: hace los disparos un poco más indulgentes
 const HIT_LENIENCY = 0.15;
 const GRENADE_RADIUS = 0.2;
-const GRENADE_INDEX = WEAPON_IDS.indexOf('grenade');
+// Explosiones: fragmentación, cohete y granada del lanzagranadas
+const BLASTS = { frag: { radius: GRENADE.radius, damage: GRENADE.damage }, rocket: { radius: WEAPONS.rpg.blast, damage: WEAPONS.rpg.damage }, lob: { radius: WEAPONS.gl.blast, damage: WEAPONS.gl.damage } };
+const PROJECTILE_SPEED = { rocket: 32, lob: 20 };
 const MAX_REWIND_TICKS = LAG_COMP_MAX_MS / TICK_MS;
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -57,9 +61,11 @@ export function finishReload(p) {
   p.reloadUntil = 0;
 }
 
+// slot: 1 y 2 (principales) o 3 (secundaria)
 export function switchWeapon(game, p, slot) {
-  if (slot === p.slot || (slot === 2 && !p.primary) || ![1, 2].includes(slot)) return;
-  p.slot = slot;
+  const i = Number(slot) - 1;
+  if (![0, 1, 2].includes(i) || i === p.active || !p.weapons[i]) return;
+  p.active = i;
   p.healing = null; // cambiar de arma cancela la curación
   p.reloadUntil = 0;
   p.nextFireAt = Math.max(p.nextFireAt, game.now + 250);
@@ -75,13 +81,12 @@ export function aliveCount(game) {
   return n;
 }
 
-const SNIPER_INDEX = WEAPON_IDS.indexOf('sniper');
 
 // Aplica daño: el casco lo reduce (más contra el francotirador), después el chaleco absorbe y el
 // resto va a la vida (salvo ignoreArmor: zona y bombardeo). Devuelve { dealt (ya reducido), killed }.
 export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ignoreArmor = false } = {}) {
   if (!target.alive) return { dealt: 0, killed: false };
-  if (!ignoreArmor) amount *= helmetFactor(target.helmetLevel ?? 0, weaponIndex === SNIPER_INDEX);
+  if (!ignoreArmor) amount *= helmetFactor(target.helmetLevel ?? 0, isSniper(WEAPON_IDS[weaponIndex]));
   const absorbed = ignoreArmor ? 0 : Math.min(target.armor, amount);
   target.armor -= absorbed;
   if (target.armor <= 0 && target.armorLevel > 0) {
@@ -150,7 +155,8 @@ export function fire(game, p, input) {
   p.nextFireAt = game.now + w.intervalMs;
   p.mag -= 1;
 
-  const targets = targetsAt(game, p, input.viewTick);
+  // El humo tapa a quien está detrás (también para el auto apuntado)
+  const targets = targetsAt(game, p, input.viewTick).filter((t) => !smokeBlocks(game, p.x, p.y, t.x, t.y));
   let aim = input.aim;
   if (input.buttons & BUTTONS.AUTO) {
     const target = findAutoTarget(p.x, p.y, w.range, targets);
@@ -159,6 +165,13 @@ export function fire(game, p, input) {
   }
 
   const weaponIndex = WEAPON_IDS.indexOf(id);
+  // Lanzacohetes y lanzagranadas: proyectil que explota (no hitscan)
+  if (w.projectile) {
+    launchProjectile(game, p, w, aim);
+    game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, [{ angle: aim, dist: 1 }], false));
+    if (p.mag === 0) startReload(game, p);
+    return;
+  }
   const damageByTarget = new Map();
   const pellets = pelletAngles(w, aim).map((angle) => {
     const dx = Math.cos(angle);
@@ -172,7 +185,28 @@ export function fire(game, p, input) {
         hit = t;
       }
     }
-    if (hit) damageByTarget.set(hit, (damageByTarget.get(hit) ?? 0) + w.damage);
+    // Muros de espuma y sensores: la bala se detiene ahí y les hace daño
+    for (const wall of game.walls ?? []) {
+      for (const c of wall.pieces) {
+        const d = rayCircle(p.x, p.y, dx, dy, c.x, c.y, c.r);
+        if (d <= dist) {
+          dist = d;
+          hit = { wall };
+        }
+      }
+    }
+    for (const sensor of game.sensors ?? []) {
+      const d = rayCircle(p.x, p.y, dx, dy, sensor.x, sensor.y, 0.5);
+      if (d < dist) {
+        dist = d;
+        hit = { sensor };
+      }
+    }
+    if (hit?.wall) damageWall(game, hit.wall, w.damage);
+    else if (hit?.sensor) damageSensor(game, hit.sensor, w.damage);
+    else if (hit) damageByTarget.set(hit, (damageByTarget.get(hit) ?? 0) + w.damage);
+    // La flecha de la ballesta queda en el suelo y se puede recoger
+    if (id === 'crossbow') game.dropLoot?.(p.x + dx * Math.max(0, dist - 0.8), p.y + dy * Math.max(0, dist - 0.8), [{ item: 'ammo_bolt', state: { n: 1 } }]);
     return { angle, dist };
   });
 
@@ -181,17 +215,45 @@ export function fire(game, p, input) {
     const { dealt, killed } = damageTarget(game, target, amount, p.id, weaponIndex);
     game.room.emitTo(p, EVENTS.COMBAT_HIT, [target.id, Math.round(dealt), target.x, target.y, killed ? 1 : 0]);
   }
-  game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, pellets, p.attachments?.muzzle === 'silencer'));
+  game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, pellets, p.attachments?.muzzle === 'silencer' || Boolean(w.silent)));
   p.recoil = Math.min(RECOIL.max, p.recoil + recoilStep(id, p.attachments));
   p.recoilAt = game.now;
   if (p.mag === 0) startReload(game, p);
 }
 
+// Cohete (recto, explota al chocar) o granada del lanzagranadas (en arco, explota al chocar o al caer)
+function launchProjectile(game, p, w, aim) {
+  const kind = w.projectile;
+  const speed = PROJECTILE_SPEED[kind];
+  const flight = w.range / speed;
+  game.grenades.push({
+    id: game.nextGrenadeId++,
+    ownerId: p.id,
+    kind,
+    weapon: p.weaponId,
+    impact: true,
+    x: p.x + Math.cos(aim) * (PLAYER_RADIUS + 0.4),
+    y: p.y + Math.sin(aim) * (PLAYER_RADIUS + 0.4),
+    vx: Math.cos(aim) * speed,
+    vy: Math.sin(aim) * speed,
+    decel: kind === 'lob' ? speed / flight : 0,
+    explodeAt: game.now + flight * 1000,
+  });
+}
+
+// Lanza el lanzable elegido (G o el botón de lanzables). El UAV no se lanza: se activa.
 export function throwGrenade(game, p, input) {
-  if (p.grenades <= 0 || game.now < p.nextGrenadeAt || waterAt(p.x, p.y) === 2) return;
-  p.grenades -= 1;
+  const kind = p.throwSel;
+  if (!THROWABLES[kind] || (p.throwables[kind] ?? 0) <= 0 || game.now < p.nextGrenadeAt || waterAt(p.x, p.y) === 2) return;
+  p.throwables[kind] -= 1;
   p.healing = null;
   p.nextGrenadeAt = game.now + GRENADE.intervalMs;
+  // Si se acabó, queda elegido el siguiente que tenga
+  if (p.throwables[kind] === 0) p.throwSel = Object.keys(THROWABLES).find((t) => p.throwables[t] > 0) ?? kind;
+  if (THROWABLES[kind].instant) {
+    activateUav(game, p);
+    return;
+  }
 
   let aim = input.aim;
   let dist = input.aimDist || GRENADE.maxRange * 0.75;
@@ -205,29 +267,43 @@ export function throwGrenade(game, p, input) {
   }
   dist = clamp(dist, GRENADE.minRange, GRENADE.maxRange);
 
-  // Desaceleración constante: recorre `dist` y se detiene al cabo de flightMs
+  // Desaceleración constante: recorre `dist` y se detiene al cabo de flightMs. La fragmentación
+  // explota a los 2 s; la aturdidora a 1,5 s; las demás al detenerse.
   const flight = GRENADE.flightMs / 1000;
   const speed = (2 * dist) / flight;
+  const fuse = kind === 'frag' ? GRENADE.fuseMs : kind === 'flash' ? 1500 : GRENADE.flightMs + 50;
   game.grenades.push({
     id: game.nextGrenadeId++,
     ownerId: p.id,
+    kind,
+    fromX: p.x,
+    fromY: p.y,
     x: p.x + Math.cos(aim) * (PLAYER_RADIUS + 0.3),
     y: p.y + Math.sin(aim) * (PLAYER_RADIUS + 0.3),
     vx: Math.cos(aim) * speed,
     vy: Math.sin(aim) * speed,
     decel: speed / flight,
-    explodeAt: game.now + GRENADE.fuseMs,
+    explodeAt: game.now + fuse,
   });
 }
 
 function explode(game, g) {
+  const kind = g.kind ?? 'frag';
+  // Humo, aturdidora, molotov, sensor y muro: su efecto (sin daño de explosión)
+  if (!BLASTS[kind]) {
+    detonateTactical(game, g);
+    return;
+  }
+  const { radius, damage } = BLASTS[kind];
+  const index = WEAPON_IDS.indexOf(g.weapon ?? 'frag');
   game.explosions.push([Math.round(g.x * 100) / 100, Math.round(g.y * 100) / 100]);
+  blastTactical(game, g.x, g.y, radius, damage);
   const owner = game.room.players.get(g.ownerId);
   const hurt = (target, x, y) => {
     const d = Math.hypot(x - g.x, y - g.y);
-    if (d > GRENADE.radius || !hasLineOfSight(g.x, g.y, x, y)) return;
-    const amount = Math.round(GRENADE.damage * (1 - 0.8 * (d / GRENADE.radius)));
-    const { dealt, killed } = damageTarget(game, target, amount, g.ownerId, GRENADE_INDEX);
+    if (d > radius || !hasLineOfSight(g.x, g.y, x, y)) return;
+    const amount = Math.round(damage * (1 - 0.8 * (d / radius)));
+    const { dealt, killed } = damageTarget(game, target, amount, g.ownerId, index);
     if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, [target.id, Math.round(dealt), x, y, killed ? 1 : 0]);
   };
   for (const p of game.room.players.values()) {
@@ -259,6 +335,20 @@ export function updateGrenades(game, dt) {
       // El borde del mapa o, en el Gulag, el de la arena
       const box = worldLimits(g.x, g.y, GRENADE_RADIUS);
       const nx = g.x + g.vx * dt;
+      if (g.impact) {
+        const ny0 = g.y + g.vy * dt;
+        const hitPlayer = [...game.room.players.values()].some((q) => q.id !== g.ownerId && q.alive && !q.deploying && Math.hypot(q.x - nx, q.y - ny0) < PLAYER_RADIUS + 0.4);
+        const hitVehicle = (game.vehicles ?? []).some((v) => v.state !== VEHICLE_STATE.DESTROYED && Math.hypot(v.x - nx, v.y - ny0) < JEEP.radius + 0.3);
+        if (hitPlayer || hitVehicle || overlapsObstacle(nx, ny0, GRENADE_RADIUS) || nx < box.minX || nx > box.maxX || ny0 < box.minY || ny0 > box.maxY) {
+          explode(game, g);
+          return false;
+        }
+        g.x = nx;
+        g.y = ny0;
+        if (game.now < g.explodeAt && (g.decel === 0 || Math.hypot(g.vx, g.vy) > 0.5)) return true;
+        explode(game, g);
+        return false;
+      }
       if (nx < box.minX || nx > box.maxX || overlapsObstacle(nx, g.y, GRENADE_RADIUS)) g.vx *= -0.5;
       else g.x = nx;
       const ny = g.y + g.vy * dt;

@@ -52,6 +52,16 @@ const touchesBox = (b, x, y, r) => x + r > b.minX && x - r < b.maxX && y + r > b
 // Empuja un círculo (pos: { x, y }) fuera de los obstáculos. Modifica pos.
 export function resolveCircle(pos, r) {
   for (let pass = 0; pass < 2; pass++) {
+    for (const o of DYNAMIC) {
+      const dx = pos.x - o.x;
+      const dy = pos.y - o.y;
+      const d = Math.hypot(dx, dy);
+      const min = r + o.r;
+      if (d < min && d > 1e-6) {
+        pos.x = o.x + (dx / d) * min;
+        pos.y = o.y + (dy / d) * min;
+      }
+    }
     for (const b of candidates(pos.x - r, pos.y - r, pos.x + r, pos.y + r)) {
       if (!touchesBox(b, pos.x, pos.y, r)) continue;
       const o = b.o;
@@ -96,6 +106,7 @@ export function resolveCircle(pos, r) {
 }
 
 export function overlapsObstacle(x, y, r) {
+  for (const o of DYNAMIC) if (Math.hypot(x - o.x, y - o.y) < r + o.r) return true;
   for (const b of candidates(x - r, y - r, x + r, y + r)) {
     if (!touchesBox(b, x, y, r)) continue;
     const o = b.o;
@@ -148,6 +159,7 @@ function rayBox(x, y, dx, dy, b) {
 // Distancia hasta el primer obstáculo en la dirección unitaria (dx, dy), o maxDist si no hay
 export function raycastObstacles(x, y, dx, dy, maxDist) {
   let best = maxDist;
+  for (const o of DYNAMIC) best = Math.min(best, rayCircle(x, y, dx, dy, o.x, o.y, o.r));
   const ex = x + dx * maxDist;
   const ey = y + dy * maxDist;
   const minX = Math.min(x, ex);
@@ -168,3 +180,12 @@ export function hasLineOfSight(x1, y1, x2, y2) {
   if (d < 1e-6) return true;
   return raycastObstacles(x1, y1, (x2 - x1) / d, (y2 - y1) / d, d) >= d - 1e-3;
 }
+
+// --- Obstáculos dinámicos (fase 29): las piezas de las granadas muro ---
+// Círculos { x, y, r } que se revisan además de la rejilla fija. El servidor los fija al crear o
+// romper un muro; el cliente, con cada snapshot (para predecir el movimiento igual).
+let DYNAMIC = [];
+export function setDynamicObstacles(circles) {
+  DYNAMIC = circles;
+}
+export const dynamicObstacles = () => DYNAMIC;

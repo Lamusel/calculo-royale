@@ -4,8 +4,10 @@ import { encodePlayerState } from '@calculo-royale/shared/codec';
 import { applyInput } from '@calculo-royale/shared/movement';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
+import { inventoryOp } from './inventoryOps.js';
+import { encodeEffects, resetThrowables, updateThrowables } from './throwables.js';
 import {
-  answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates, pickMatchCrates,
+  answerCrate, chooseOffer, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates, pickMatchCrates,
 } from './crates.js';
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
 import { answerTransmission, onPlayerDeath, resetRadio, startRadio, updateRadio } from './radio.js';
@@ -13,13 +15,13 @@ import { chooseGulagWeapon, encodeGulag, resetGulag, updateGulag } from './gulag
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
 import { driveBots } from './bots.js';
-import { clearLoot, deathBox, nearestLoot, pickUp, spawnGroundLoot, syncLoot, updateHealing, useItem } from './loot.js';
+import { clearLoot, deathBox, dropAround, nearestLoot, pickUp, spawnGroundLoot, syncLoot, updateHealing, useItem } from './loot.js';
 import { recordTick } from '../metrics.js';
 import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
   answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
-  resetVehicles, updateVehicles,
+  resetVehicles, switchSeat, updateVehicles,
 } from './vehicles.js';
 
 const DT = TICK_MS / 1000;
@@ -33,6 +35,7 @@ export class Game {
     this.now = 0; // tiempo del juego en ms (tick × TICK_MS)
     this.timer = null;
     this.grenades = [];
+    resetThrowables(this);
     this.nextGrenadeId = 1;
     this.dummies = [];
     this.crates = createCrates();
@@ -73,6 +76,7 @@ export class Game {
   // Al pasar del lobby a la partida (o volver)
   resetWorld() {
     this.grenades = [];
+    resetThrowables(this);
     this.leaderId = null;
     this.duel = null;
     this.deploy = null;
@@ -120,15 +124,17 @@ export class Game {
   }
 
   // Dentro de un jeep: bajarse. Si no, lo más cercano entre armeros (lobby), cajas y jeeps.
-  interact(player) {
+  // kind: qué prefiere el jugador si hay varias cosas cerca ('rack' | 'crate' | 'vehicle' | 'loot')
+  interact(player, kind = null) {
     if (!player.alive || player.question || player.engineQuestion || player.deploying) return;
     if (player.vehicleId !== null) {
-      exitVehicle(this, player);
+      if (kind === 'seat') switchSeat(this, player);
+      else exitVehicle(this, player);
       return;
     }
     const options = [];
     const rack = this.room.phase === 'lobby' ? nearestRack(player.x, player.y, INTERACT_RADIUS) : null;
-    if (rack) options.push({ dist: Math.hypot(rack.x - player.x, rack.y - player.y), use: () => {
+    if (rack) options.push({ kind: 'rack', dist: Math.hypot(rack.x - player.x, rack.y - player.y), use: () => {
           player.giveItem(rack.item);
           // Tarjeta del equipo también en el campo de entrenamiento (el chaleco del armero)
           const item = rack.item === 'armor' ? `armor${player.armorLevel}` : rack.item;
@@ -136,14 +142,14 @@ export class Game {
         },
       });
     const crate = nearestCrate(this, player.x, player.y);
-    if (crate) options.push({ dist: crate.dist, use: () => openCrate(this, player, crate.crate) });
+    if (crate) options.push({ kind: 'crate', dist: crate.dist, use: () => openCrate(this, player, crate.crate) });
     const vehicle = nearestVehicle(this, player.x, player.y);
-    if (vehicle) options.push({ dist: vehicle.dist, use: () => interactVehicle(this, player, vehicle.vehicle) });
+    if (vehicle) options.push({ kind: 'vehicle', dist: vehicle.dist, use: () => interactVehicle(this, player, vehicle.vehicle) });
     // Botín en el suelo: un poco de ventaja frente a cajas y jeeps (es lo que más se toca)
-    const loot = nearestLoot(this, player.x, player.y);
-    if (loot) options.push({ dist: loot.dist - 0.3, use: () => pickUp(this, player, loot.entry) });
+    const loot = nearestLoot(this, player.x, player.y, player);
+    if (loot) options.push({ kind: 'loot', dist: loot.dist - 0.3, use: () => pickUp(this, player, loot.entry) });
     options.sort((a, b) => a.dist - b.dist);
-    options[0]?.use();
+    (options.find((o) => o.kind === kind) ?? options[0])?.use();
   }
 
   startMatch() {
@@ -203,6 +209,19 @@ export class Game {
     useItem(this, player, item);
   }
 
+  inventoryOp(player, data) {
+    inventoryOp(this, player, data);
+  }
+
+  chooseOffer(player, index) {
+    if (Number.isInteger(index) && index >= 0 && index < (player.offer?.options.length ?? 0)) chooseOffer(this, player, index);
+  }
+
+  // Deja objetos en el suelo (la flecha de la ballesta)
+  dropLoot(x, y, items) {
+    if (this.loot) dropAround(this, x, y, items);
+  }
+
   // Al reconectar: el botín que hay en el suelo
   syncLoot(player) {
     syncLoot(this, player);
@@ -255,6 +274,7 @@ export class Game {
     }
     updateDeploy(this, DT);
     updateGrenades(this, DT);
+    updateThrowables(this, DT);
     updateCrates(this);
     updateMatch(this, DT);
     updateRadio(this);
@@ -298,7 +318,7 @@ export class Game {
     return [
       this.tick,
       encoded,
-      this.grenades.map((g) => [g.id, round2(g.x), round2(g.y)]),
+      this.grenades.map((g) => [g.id, round2(g.x), round2(g.y), WEAPON_IDS.indexOf(g.weapon ?? g.kind ?? 'frag')]),
       this.room.phase === 'lobby' ? this.dummies.map((d) => Math.ceil(d.hp)) : [],
       this.shots,
       this.explosions,
@@ -309,6 +329,7 @@ export class Game {
       encodeGulag(this),
       encodeVehicles(this),
       encodeBus(this),
+      encodeEffects(this),
     ];
   }
 

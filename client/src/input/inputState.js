@@ -1,3 +1,4 @@
+import { isSniper } from '@calculo-royale/shared/constants';
 import { AIM_CANCEL_ZONE, GRENADE } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 
@@ -35,6 +36,10 @@ export const inputState = {
 
 // Acciones que no van en el input (las conecta el GameClient)
 export const actions = {
+  toggleInventory: () => {},
+  cycleAction: () => {},
+  selectThrowable: () => {},
+  cycleThrowable: () => {},
   switchWeapon: () => {},
   interact: () => {},
   useItem: () => {},
@@ -71,7 +76,7 @@ export function aimPreview() {
   const s = inputState;
   if (s.grenadeHeld || s.grenadeAiming || (s.grenadeMode && s.stickAim !== null)) return 'grenade';
   if (s.grenadeMode) return null;
-  if ((s.stickAim !== null || s.adsHeld) && s.weapon === 'sniper') return 'sniper';
+  if ((s.stickAim !== null || s.adsHeld) && isSniper(s.weapon)) return 'sniper';
   return null;
 }
 
