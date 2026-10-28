@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEPLOY, MAP_HALF, MAP_SIZE } from '@calculo-royale/shared/constants';
 import { actions } from '../input/inputState.js';
 import { TouchButton } from './CombatHUD.jsx';
+import { sectorOf } from '@calculo-royale/shared/zone';
 import { draw } from './TacticalMap.jsx';
 
 // Interfaz del despliegue: en el bus (cuenta regresiva y ¡Saltar!), cayendo (altímetro) y,
@@ -77,12 +78,29 @@ export default function DeployHUD({ client, frameRef, isTouch }) {
   }
 
   const z = Math.max(0, Math.round(frameRef.current.altitude ?? 0));
+  const landing = frameRef.current.landing;
   return (
-    <div className="pointer-events-none absolute right-3 top-1/3 z-30 rounded bg-black/65 px-3 py-2 text-center font-mono text-stone-100">
-      <p className="text-[10px] uppercase tracking-widest text-khaki-light">Altura</p>
-      <p className="text-3xl font-black">{z} m</p>
-      <p className="text-[10px] text-stone-300">{state === 'fall' ? `Paracaídas a ${DEPLOY.chuteAltitude} m` : 'Paracaídas abierto'}</p>
-      <p className="mt-1 text-[10px] text-stone-400">{isTouch ? 'Joystick izquierdo: dirigir' : 'WASD: dirigir'}</p>
-    </div>
+    <>
+      <div className="pointer-events-none absolute right-3 top-1/3 z-30 rounded bg-black/65 px-3 py-2 text-center font-mono text-stone-100">
+        <p className="text-[10px] uppercase tracking-widest text-khaki-light">Altura</p>
+        <p className="text-3xl font-black">{z} m</p>
+        <p className="text-[10px] text-stone-300">{state === 'fall' ? `Paracaídas solo a ${DEPLOY.chuteAltitude} m` : 'Paracaídas abierto'}</p>
+        {landing && <p className="mt-1 text-[11px] text-yellow-300">Caes en ≈ {sectorOf(landing.x, landing.y)}</p>}
+        <p className="mt-1 text-[10px] text-stone-400">{isTouch ? 'Joystick: inclinarse (cae más rápido y avanza)' : 'WASD: inclinarse (cae más rápido y avanza)'}</p>
+      </div>
+      {state === 'fall' && (
+        <div className="absolute inset-x-0 bottom-[18%] z-30 flex justify-center">
+          {isTouch ? (
+            <TouchButton onPress={() => actions.jump()} className="rounded-full border-2 border-green-800 bg-yellow-400/90 px-5 py-2 text-sm font-black uppercase text-green-900 shadow">
+              🪂 Abrir paracaídas
+            </TouchButton>
+          ) : (
+            <p className="pointer-events-none rounded bg-black/60 px-3 py-1 text-xs text-stone-200">
+              <kbd className="mr-1 rounded bg-green-900 px-1.5 text-yellow-300">Espacio</kbd> abrir el paracaídas antes: llegas más lejos, pero más lento
+            </p>
+          )}
+        </div>
+      )}
+    </>
   );
 }

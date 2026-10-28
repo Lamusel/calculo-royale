@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { OBSTACLES } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
-import { box, merge, modelMaterial, piece } from './models/build.js';
+import { box, cylinder, merge, modelMaterial, piece } from './models/build.js';
+import { Chunked } from './chunks.js';
 
 // Piezas de las zonas del anillo exterior (fase 18), construidas por código desde mapLayout:
 // buses de la terminal, tribunas del estadio, puestos del mercado y paredes del cañón. Todo va
@@ -81,16 +82,70 @@ function cliffPieces(o) {
   });
 }
 
-const BUILDERS = { bus: busPieces, stand: standPieces, stall: stallPieces, cliff: cliffPieces };
+// --- Piezas del mapa de 1 km (fase 34) ---
+// Silo: cilindro metálico con anillos y techo cónico
+function siloPieces(o) {
+  const ground = terrainHeight(o.x, o.y);
+  const parts = [piece(cylinder(o.r, o.r, o.height, 12), '#b9bcb6', { position: [o.x, ground + o.height / 2, -o.y] })];
+  for (let k = 1; k < 4; k++) parts.push(piece(cylinder(o.r + 0.05, o.r + 0.05, 0.18, 12), '#8b8f89', { position: [o.x, ground + (o.height / 4) * k, -o.y] }));
+  parts.push(piece(new THREE.ConeGeometry(o.r + 0.2, 1.8, 12), '#8f3b2c', { position: [o.x, ground + o.height + 0.9, -o.y] }));
+  return parts;
+}
 
+// Antena de radio: torre roja y blanca (punto de referencia desde lejos)
+function antennaPieces(o) {
+  const ground = terrainHeight(o.x, o.y);
+  const parts = [];
+  const steps = 8;
+  for (let k = 0; k < steps; k++) {
+    const h = o.height / steps;
+    const w = 1.6 - k * 0.15;
+    parts.push(piece(box(w, h, w), k % 2 ? '#e8e4da' : '#c0392b', { position: [o.x, ground + h * (k + 0.5), -o.y] }));
+  }
+  parts.push(piece(box(2.6, 0.2, 0.2), '#555555', { position: [o.x, ground + o.height * 0.8, -o.y] }));
+  parts.push(piece(cylinder(0.08, 0.08, 4, 5), '#555555', { position: [o.x, ground + o.height + 2, -o.y] }));
+  return parts;
+}
+
+// Muro de la represa: concreto con borde claro (baja hasta el agua)
+function damPieces(o) {
+  const ground = terrainHeight(o.x, o.y);
+  return [
+    piece(box(o.w, o.height + 3, o.h), '#a3a097', { position: [o.x, ground + (o.height + 3) / 2 - 3, -o.y] }),
+    piece(box(o.w + 0.2, 0.3, o.h + 0.2), '#c9c6bc', { position: [o.x, ground + o.height + 0.15, -o.y] }),
+  ];
+}
+
+// Lápida con su losa
+function tombPieces(o) {
+  const ground = terrainHeight(o.x, o.y);
+  return [
+    piece(box(o.w, o.height, 0.3), '#9c9a94', { position: [o.x, ground + o.height / 2, -(o.y + o.h / 2 - 0.15)] }),
+    piece(box(o.w, 0.12, o.h), '#7e7c76', { position: [o.x, ground + 0.06, -o.y] }),
+  ];
+}
+
+// Pila de troncos: tres abajo y dos arriba
+function logPieces(o) {
+  const ground = terrainHeight(o.x, o.y);
+  const long = o.vertical ? o.h : o.w;
+  const rot = o.vertical ? [Math.PI / 2, 0, 0] : [0, 0, Math.PI / 2];
+  return [[-0.75, 0.4], [0, 0.4], [0.75, 0.4], [-0.38, 1.1], [0.38, 1.1]].map(([k, lift]) =>
+    piece(cylinder(0.38, 0.38, long, 7), k ? '#7a5634' : '#6b4a2c', { position: o.vertical ? [o.x + k, ground + lift, -o.y] : [o.x, ground + lift, -(o.y + k)], rotation: rot }),
+  );
+}
+
+const BUILDERS = {
+  bus: busPieces, stand: standPieces, stall: stallPieces, cliff: cliffPieces, silo: siloPieces, antenna: antennaPieces, dam: damPieces, tomb: tombPieces, logs: logPieces,
+};
+const RING_ITEMS = OBSTACLES.filter((o) => BUILDERS[o.kind]);
+
+function RingChunk({ items }) {
+  const geometry = useMemo(() => merge(items.flatMap((o) => BUILDERS[o.kind](o, Math.abs(Math.round(o.x + o.y))))), [items]);
+  return <mesh geometry={geometry} material={modelMaterial} castShadow receiveShadow />;
+}
+
+// Por bloques: solo los cercanos a la cámara
 export default function OuterRing() {
-  const geometry = useMemo(() => {
-    const counters = {};
-    const parts = OBSTACLES.filter((o) => BUILDERS[o.kind]).flatMap((o) => {
-      counters[o.kind] = (counters[o.kind] ?? 0) + 1;
-      return BUILDERS[o.kind](o, counters[o.kind]);
-    });
-    return parts.length ? merge(parts) : null;
-  }, []);
-  return geometry && <mesh geometry={geometry} material={modelMaterial} castShadow receiveShadow />;
+  return <Chunked items={RING_ITEMS} render={(list) => <RingChunk items={list} />} />;
 }

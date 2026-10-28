@@ -119,8 +119,8 @@ test('al caer después de la fase 2 se vota; el bombardeo cae en el sector más 
   kill(room, voter);
   assert.equal(voter.operator.mode, 'votes');
   const sector = 'C3';
-  room.game.voteSector(voter, 'I1'); // fuera de la cuadrícula A1–H8
-  assert.notEqual(voter.operator.sector, 'I1');
+  room.game.voteSector(voter, 'K1'); // fuera de la cuadrícula A1–J10
+  assert.notEqual(voter.operator.sector, 'K1');
   room.game.voteSector(voter, 'H8');
   assert.equal(voter.operator.sector, 'H8');
   room.game.voteSector(voter, sector);

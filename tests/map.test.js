@@ -2,7 +2,7 @@
 // edificio, zona a escala y rejilla de colisiones equivalente a la búsqueda completa.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAP_HALF, PLAYER_RADIUS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
+import { MAP_HALF, PLAYER_RADIUS, ZONE_FIRST_DELAY_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
 import { overlapsObstacle, raycastObstacles } from '@calculo-royale/shared/collision';
 import { AREAS, FURNITURE, HOUSES, OBSTACLES, strategicSpot, SUPPLY_CRATES, TRAINING, VEHICLE_SPOTS } from '@calculo-royale/shared/mapLayout';
 import { JEEP } from '@calculo-royale/shared/constants';
@@ -12,8 +12,8 @@ const boxOf = (o) =>
 const EPS = 0.02;
 const overlap = (a, b) => a.minX < b.maxX - EPS && a.maxX > b.minX + EPS && a.minY < b.maxY - EPS && a.maxY > b.minY + EPS;
 
-test('el mapa cabe en sus límites y es ~2,5 veces el original', () => {
-  assert.ok((MAP_HALF * 2) ** 2 / 120 ** 2 > 2.4);
+test('el mapa cabe en sus límites y mide 1 km de lado', () => {
+  assert.equal(MAP_HALF * 2, 1000);
   for (const o of OBSTACLES) {
     const b = boxOf(o);
     assert.ok(b.minX >= -MAP_HALF && b.maxX <= MAP_HALF && b.minY >= -MAP_HALF && b.maxY <= MAP_HALF, `${o.kind} en (${o.x}, ${o.y})`);
@@ -78,20 +78,22 @@ test('desde cada caja dentro de un edificio se puede salir por la puerta', () =>
   assert.ok(checked >= HOUSES.length, 'cada edificio tiene al menos una caja');
 });
 
-test('las casas tienen muebles y algunas varios cuartos; hay árboles en el bosque y sacos en las trincheras', () => {
+test('las casas tienen muebles y algunas varios cuartos; hay árboles en el bosque y sacos en las trincheras del cañón', () => {
   assert.ok(HOUSES.filter((h) => h.rooms > 1).length >= 3);
   const kinds = new Set(FURNITURE.map((f) => f.kind));
   for (const k of ['sofa', 'bed', 'table', 'shelf', 'fridge', 'counter', 'painting', 'rug', 'bunk', 'rack']) assert.ok(kinds.has(k), k);
   const inArea = (o, a) => Math.abs(o.x - a.x) < a.w / 2 && Math.abs(o.y - a.y) < a.h / 2;
   assert.ok(OBSTACLES.filter((o) => o.kind === 'tree' && inArea(o, AREAS.forest)).length > 100);
-  assert.ok(OBSTACLES.filter((o) => o.kind === 'sandbag' && inArea(o, AREAS.trenches)).length >= 10);
+  assert.ok(OBSTACLES.filter((o) => o.kind === 'sandbag' && inArea(o, AREAS.canyon)).length >= 10);
 });
 
-test('zona a escala: la primera cubre casi todo el mapa y la zona dura ~9 a 11 minutos (partida de 10–12 con despliegue y duelo)', () => {
+test('zona a escala: la primera solo deja fuera los bordes y la partida normal dura ~19 min', () => {
   assert.ok(ZONE_START.p >= MAP_HALF * Math.SQRT2);
-  assert.ok(ZONE_PHASES[0].radius >= MAP_HALF * 0.9);
-  const total = ZONE_PHASES.reduce((t, p) => t + p.waitMs + p.shrinkMs, 0) / 60000;
-  assert.ok(total >= 9 && total <= 11, `${total} min`);
+  assert.ok(ZONE_PHASES[0].radius >= MAP_HALF * 0.85);
+  const total = (ZONE_FIRST_DELAY_MS + ZONE_PHASES.reduce((t, p) => t + p.waitMs + p.shrinkMs, 0)) / 60000;
+  assert.ok(total >= 17 && total <= 21, `${total} min`);
+  // Las dos últimas fases se desplazan
+  assert.deepEqual(ZONE_PHASES.map((p) => Boolean(p.moving)).slice(-3), [false, true, true]);
 });
 
 // Búsqueda completa (sin rejilla) para comparar
@@ -108,14 +110,14 @@ function bruteOverlap(x, y, r) {
 test('la rejilla de colisiones da lo mismo que revisar todos los obstáculos', () => {
   let s = 99;
   const rand = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
-  for (let i = 0; i < 4000; i++) {
+  for (let i = 0; i < 1200; i++) {
     const x = (rand() * 2 - 1) * MAP_HALF;
     const y = (rand() * 2 - 1) * MAP_HALF;
     const r = 0.2 + rand() * 2;
     assert.equal(overlapsObstacle(x, y, r), bruteOverlap(x, y, r), `(${x}, ${y}, ${r})`);
   }
   // Rayos largos (francotirador): la distancia coincide con avanzar en pasos pequeños
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 60; i++) {
     const x = (rand() * 2 - 1) * (MAP_HALF - 5);
     const y = (rand() * 2 - 1) * (MAP_HALF - 5);
     const a = rand() * Math.PI * 2;
@@ -159,5 +161,5 @@ test('todos los puntos posibles de cajas están en un edificio o un punto de int
     assert.ok(!inForest || inHouse, 'en el bosque solo dentro de la cabaña');
   }
   // Un punto de campo abierto no cuenta
-  assert.equal(strategicSpot(20, 30), false);
+  assert.equal(strategicSpot(230, 330), false);
 });

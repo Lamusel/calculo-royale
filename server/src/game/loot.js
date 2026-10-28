@@ -1,6 +1,6 @@
 import { HEALING, LOOT, LOOT_GROUND, LOOT_IDS, LOOT_ITEMS, MAP_HALF, MAX_HP, TICK_MS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
-import { AREAS, HOUSES } from '@calculo-royale/shared/mapLayout';
+import { AREAS, HOUSES, waterAt } from '@calculo-royale/shared/mapLayout';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { counterOf, inventoryItems, take, wants } from '@calculo-royale/shared/inventory';
 
@@ -28,7 +28,7 @@ function freeSpot(rand, cx, cy, w, h) {
     const x = cx + (rand() - 0.5) * w;
     const y = cy + (rand() - 0.5) * h;
     if (Math.abs(x) > MAP_HALF - 3 || Math.abs(y) > MAP_HALF - 3) continue;
-    if (!overlapsObstacle(x, y, 0.6)) return { x, y };
+    if (!waterAt(x, y) && !overlapsObstacle(x, y, 0.6)) return { x, y };
   }
   return null;
 }
@@ -44,7 +44,7 @@ export function groundSpots(rand) {
   }
   for (const a of Object.values(AREAS)) {
     if (!a.name) continue;
-    for (let i = 0; i < LOOT.perArea; i++) {
+    for (let i = 0; i < (LOOT.perArea[a.size] ?? 6); i++) {
       const p = freeSpot(rand, a.x, a.y, a.w, a.h);
       if (p) spots.push(p);
     }

@@ -267,7 +267,7 @@ export class Game {
     const snapshot = this.snapshot(players);
     // La partida se graba (últimos segundos) para la repetición de la mejor jugada
     if (this.room.phase === 'playing') this.recorder.push(snapshot);
-    this.room.broadcastState(snapshot);
+    this.room.broadcastState(this.cratesDelta(snapshot));
     this.sendSelfStates(players);
   }
 
@@ -299,6 +299,14 @@ export class Game {
       encodeVehicles(this),
       encodeBus(this),
     ];
+  }
+
+  // Estados de las cajas: solo cuando cambian (y cada 2 s por si alguien recién entra); '' = igual
+  cratesDelta(snapshot) {
+    const states = snapshot[6];
+    if (states === this.lastCrates && this.tick % 40 !== 0) return [...snapshot.slice(0, 6), '', ...snapshot.slice(7)];
+    this.lastCrates = states;
+    return snapshot;
   }
 
   // El estado privado (munición, vida exacta) se envía solo al dueño y solo si cambió

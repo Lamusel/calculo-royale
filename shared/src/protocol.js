@@ -14,6 +14,7 @@ export const EVENTS = {
   ROOM_KICKED: 'room:kicked', // S → C: { reason } (la sesión se abrió en otra pestaña)
   ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
   ROOM_DEPLOY: 'room:deploy', // C → S (solo host, en el lobby): 'bus' | 'punto'
+  ROOM_DURATION: 'room:duration', // C → S (solo host, en el lobby): 'corta' | 'normal' | 'larga'
   ROOM_WEATHER: 'room:weather', // C → S (solo host, en el lobby): 'aleatorio' o un clima de WEATHERS
   ROOM_EASY: 'room:easy', // C → S (solo host, en el lobby): true | false — preguntas de aritmética
   ROOM_BOTS: 'room:bots', // C → S (solo host, en el lobby): completar con bots hasta N jugadores (0 = quitarlos)

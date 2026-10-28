@@ -63,6 +63,7 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.ROOM_BOTS, (n) => rooms.setBots(socket, n));
   socket.on(EVENTS.QUICK_PHRASE, (index) => rooms.phrase(socket, index));
   socket.on(EVENTS.ROOM_DEPLOY, (mode) => rooms.setDeploy(socket, mode));
+  socket.on(EVENTS.ROOM_DURATION, (duration) => rooms.setDuration(socket, duration));
   socket.on(EVENTS.DEPLOY_POINT, (data) => rooms.deployPoint(socket, data));
   socket.on(EVENTS.CRATE_ANSWER, (data) => rooms.crateAnswer(socket, data));
   socket.on(EVENTS.CRATE_CANCEL, () => rooms.crateCancel(socket));

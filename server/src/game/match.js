@@ -1,9 +1,9 @@
-import { AIRDROP, MAP_HALF, WEAPON_IDS, ZONE_PHASES } from '@calculo-royale/shared/constants';
+import { AIRDROP, DURATIONS, MAP_HALF, WEAPON_IDS, ZONE_PHASES } from '@calculo-royale/shared/constants';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { insideZone, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
 import { aliveCount, damagePlayer } from './combat.js';
-import { Zone } from './Zone.js';
+import { headingName, Zone } from './Zone.js';
 
 // La partida en sí: zona segura, transmisiones del mando, lanzamiento aéreo y victoria.
 
@@ -16,12 +16,20 @@ export function radio(game, kind, title, text, durationMs = 9000) {
 }
 
 function announce(game, event) {
-  if (event.type === 'announce') {
+  if (event.type === 'announce' && event.moving) {
+    const dir = headingName(event.zone.cx - event.from.cx, event.zone.cy - event.from.cy);
+    radio(
+      game,
+      'zone',
+      `Zona ${event.phase + 1} de ${ZONE_PHASES.length}: se desplaza`,
+      `Aquí Mando. La zona se desplaza hacia el ${dir}: ${zoneInequality(event.zone)}$. Muévanse, en ${Math.round(event.waitMs / 1000)} s empieza a correrse.`,
+    );
+  } else if (event.type === 'announce') {
     radio(
       game,
       'zone',
       `Zona ${event.phase + 1} de ${ZONE_PHASES.length}`,
-      `Aquí Mando. Nueva zona segura: $${zoneInequality(event.zone)}$. Tienen ${Math.round(event.waitMs / 1000)} s.`,
+      `Aquí Mando. Nueva zona segura: ${zoneInequality(event.zone)}$. Tienen ${Math.round(event.waitMs / 1000)} s.`,
     );
   } else if (event.type === 'closing') {
     radio(game, 'closing', 'La zona se está cerrando', `Fuera de $${zoneInequality(game.zone.target)}$ se recibe daño.`, 6000);
@@ -30,8 +38,12 @@ function announce(game, event) {
   }
 }
 
+// Escala de tiempo de la partida: pruebas (CR_TIME_SCALE) × duración que eligió el anfitrión
+export const matchTimeScale = (game) => TIME_SCALE / (DURATIONS[game.room.duration]?.scale ?? 1);
+
 export function startMatch(game, rand = Math.random) {
-  game.zone = new Zone(rand, TIME_SCALE);
+  game.timeScale = matchTimeScale(game);
+  game.zone = new Zone(rand, game.timeScale);
   game.matchStartedAt = game.now;
   game.airdropDone = false;
   game.finished = false;
@@ -58,7 +70,7 @@ export function airdropSpot(zone, rand = Math.random) {
 
 function updateAirdrop(game) {
   const crate = game.airdropCrate;
-  if (!game.airdropDone && game.now - game.matchStartedAt >= AIRDROP.atMs / TIME_SCALE) {
+  if (!game.airdropDone && game.now - game.matchStartedAt >= AIRDROP.atMs / game.timeScale) {
     const { x, y } = airdropSpot(game.zone.target);
     Object.assign(crate, { x, y, active: true, landed: false, landAt: game.now + AIRDROP.fallMs / TIME_SCALE, state: CRATE_STATE.CLOSED });
     game.airdropDone = true;

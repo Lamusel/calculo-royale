@@ -26,6 +26,7 @@ export class Room {
     this.topics = [...ALL_TOPICS]; // temas de las preguntas (los elige el host en el lobby)
     this.weatherChoice = 'aleatorio'; // lo elige el host; se resuelve al iniciar
     this.deployMode = 'bus'; // despliegue: 'bus' | 'punto' (lo elige el host)
+    this.duration = 'normal'; // duración de la partida: 'corta' | 'normal' | 'larga' (lo elige el host)
     this.weather = 'despejado';
     this.windAngle = 0;
     this.easy = false; // modo fácil: preguntas de aritmética (no cuenta para los logros; el CSV lo marca)
@@ -245,6 +246,7 @@ export class Room {
       weather: this.weather,
       weatherChoice: this.weatherChoice,
       deployMode: this.deployMode,
+      duration: this.duration,
       easy: this.easy,
       windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),

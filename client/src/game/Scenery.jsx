@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 import { MAP_HALF } from '@calculo-royale/shared/constants';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
@@ -6,6 +6,8 @@ import { AREAS } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { box, merge, modelMaterial, piece } from './models/build.js';
 import { distanceToPaths } from './paths.js';
+import { waterAt } from '@calculo-royale/shared/mapPlan';
+import { ChunkedInstances } from './chunks.js';
 
 // Decoración sin colisión: matorrales y la cerca baja del borde del mapa.
 
@@ -32,32 +34,26 @@ const bushModel = () =>
 function bushSpots() {
   const rand = seeded(7331);
   const spots = [];
-  for (let i = 0; i < 2400 && spots.length < 330; i++) {
+  for (let i = 0; i < 9000 && spots.length < 2200; i++) {
     const x = (rand() * 2 - 1) * (MAP_HALF - 2);
     const y = (rand() * 2 - 1) * (MAP_HALF - 2);
     if (Math.hypot(x, y) < AREAS.training.r + 2) continue;
-    if (distanceToPaths(x, y) < 3 || overlapsObstacle(x, y, 2.2)) continue;
+    if (waterAt(x, y) || waterAt(x, y + 4) || waterAt(x, y - 4) || distanceToPaths(x, y) < 5 || overlapsObstacle(x, y, 2.2)) continue;
     spots.push({ x, y, s: 0.7 + rand() * 0.7, r: rand() * Math.PI * 2 });
   }
   return spots;
 }
 
+const placeBush = (b, o) => {
+  o.position.set(b.x, terrainHeight(b.x, b.y) - 0.1, -b.y);
+  o.rotation.set(0, b.r, 0);
+  o.scale.setScalar(b.s);
+};
+
 function Bushes() {
-  const ref = useRef(null);
   const geometry = useMemo(bushModel, []);
   const spots = useMemo(bushSpots, []);
-  useLayoutEffect(() => {
-    const o = new THREE.Object3D();
-    spots.forEach((b, i) => {
-      o.position.set(b.x, terrainHeight(b.x, b.y) - 0.1, -b.y);
-      o.rotation.set(0, b.r, 0);
-      o.scale.setScalar(b.s);
-      o.updateMatrix();
-      ref.current.setMatrixAt(i, o.matrix);
-    });
-    ref.current.instanceMatrix.needsUpdate = true;
-  }, [spots]);
-  return <instancedMesh ref={ref} args={[geometry, modelMaterial, spots.length]} />;
+  return <ChunkedInstances items={spots} geometry={geometry} place={placeBush} castShadow={false} />;
 }
 
 // Cerca baja alrededor del área jugable: postes y dos rieles que siguen el terreno

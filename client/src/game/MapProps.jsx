@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { FURNITURE, FURNITURE_SIZES, HOUSES, OBSTACLES, TOWERS } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { box, cylinder, limb, merge, modelMaterial, piece } from './models/build.js';
+import { ChunkedInstances } from './chunks.js';
 
 // Piezas del mapa grande con instancing: árboles del bosque, torres de vigilancia, sacos de
 // arena y muebles. Los muebles solo se dibujan en las casas cercanas al foco de la cámara.
@@ -12,20 +13,6 @@ import { box, cylinder, limb, merge, modelMaterial, piece } from './models/build
 export const FURNITURE_DISTANCE = 42;
 
 const o3 = new THREE.Object3D();
-const tint = new THREE.Color();
-
-function useInstances(ref, items, place) {
-  useLayoutEffect(() => {
-    items.forEach((item, i) => {
-      place(item, o3, i);
-      o3.updateMatrix();
-      ref.current.setMatrixAt(i, o3.matrix);
-      ref.current.setColorAt(i, tint.setScalar(0.86 + ((i * 37) % 13) / 45));
-    });
-    ref.current.instanceMatrix.needsUpdate = true;
-    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
-  }, [items, place, ref]);
-}
 
 // --- Árboles: pino (0) y frondoso (1) ---
 const pineModel = () =>
@@ -47,22 +34,20 @@ function Trees() {
   const pines = useMemo(() => OBSTACLES.filter((o) => o.kind === 'tree' && o.variant === 0), []);
   const leafy = useMemo(() => OBSTACLES.filter((o) => o.kind === 'tree' && o.variant !== 0), []);
   const models = useMemo(() => ({ pine: pineModel(), leafy: leafyModel() }), []);
-  const a = useRef(null);
-  const b = useRef(null);
   const place = useMemo(
-    () => (t, o, i) => {
+    () => (t, o) => {
+      const k = Math.abs(Math.round(t.x * 13 + t.y * 7));
       o.position.set(t.x, terrainHeight(t.x, t.y) - 0.1, -t.y);
-      o.rotation.set(0, i * 2.39, 0);
-      o.scale.setScalar(0.85 + ((i * 53) % 17) / 40);
+      o.rotation.set(0, k * 2.39, 0);
+      o.scale.setScalar(0.85 + (k % 17) / 40);
     },
     [],
   );
-  useInstances(a, pines, place);
-  useInstances(b, leafy, place);
+  // Por bloques: solo los cercanos a la cámara
   return (
     <>
-      <instancedMesh ref={a} args={[models.pine, modelMaterial, pines.length]} castShadow receiveShadow />
-      <instancedMesh ref={b} args={[models.leafy, modelMaterial, leafy.length]} castShadow receiveShadow />
+      <ChunkedInstances items={pines} geometry={models.pine} place={place} />
+      <ChunkedInstances items={leafy} geometry={models.leafy} place={place} />
     </>
   );
 }
@@ -115,7 +100,6 @@ const sandbagModel = () =>
 function Sandbags() {
   const walls = useMemo(() => OBSTACLES.filter((o) => o.kind === 'sandbag'), []);
   const geometry = useMemo(sandbagModel, []);
-  const ref = useRef(null);
   const place = useMemo(
     () => (s, o) => {
       const alongX = s.w >= s.h;
@@ -125,8 +109,7 @@ function Sandbags() {
     },
     [],
   );
-  useInstances(ref, walls, place);
-  return <instancedMesh ref={ref} args={[geometry, modelMaterial, walls.length]} castShadow receiveShadow />;
+  return <ChunkedInstances items={walls} geometry={geometry} place={place} />;
 }
 
 // --- Muebles: un modelo por tipo, construido mirando a +x (su frente) con sus medidas ---

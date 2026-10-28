@@ -1,10 +1,11 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { HOUSES, OBSTACLES, WALL_HEIGHT } from '@calculo-royale/shared/mapLayout';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { box, cylinder, limb, merge, modelMaterial, piece, shade } from './models/build.js';
 import { findOccluders, insideRect } from './occlusion.js';
+import { Chunked, ChunkedInstances, nearCamera } from './chunks.js';
 
 // Edificios (casas, bodega, cabaña, hangar, barracas, búnker), contenedores y utilería,
 // construidos por código a partir de mapLayout.
@@ -24,7 +25,10 @@ const TYPE_LOOK = {
   hangar: { plaster: '#7f8673', roof: '#6c7363', shape: 'arch' },
   barraca: { plaster: '#8a8c6c', roof: '#55603f', shape: 'gable' },
   bunker: { plaster: '#8d8a80', roof: '#77736a', shape: 'flat' },
+  hospital: { plaster: '#dcdcd4', roof: '#9a9fa1', shape: 'flat' },
+  concreto: { plaster: '#9d9b93', roof: '#7d7b74', shape: 'flat' },
 };
+const FLOOR_HEIGHT = 3;
 const DOOR_WIDTH = 2.2;
 const ROOF_PEAK = 1.5;
 const ROOF_OVERHANG = 0.35;
@@ -107,17 +111,27 @@ function buildHouse(house, index, walls) {
     arch: () => archRoof(length, depth, look.roof),
     flat: () => [piece(box(length, 0.35, depth), look.roof, { position: [0, 0.17, 0] })],
   };
+  // Pisos de arriba (solo por fuera: el interior es la planta baja). Van con el techo, así que se
+  // ocultan con él al entrar.
+  const upper = ((house.floors ?? 1) - 1) * FLOOR_HEIGHT;
   const roof = shapes[look.shape]().map((g) => {
     g.applyMatrix4(new THREE.Matrix4().makeRotationY(alongX ? 0 : Math.PI / 2));
-    g.translate(house.x, top, -house.y);
+    g.translate(house.x, top + upper, -house.y);
     return g;
   });
+  for (let k = 0; k < upper / FLOOR_HEIGHT; k++) {
+    const y = top + k * FLOOR_HEIGHT;
+    roof.push(piece(box(house.w + 0.5, FLOOR_HEIGHT, house.h + 0.5), plaster, { position: [house.x, y + FLOOR_HEIGHT / 2, -house.y] }));
+    // Franja de ventanas y cornisa de cada piso
+    roof.push(piece(box(house.w + 0.56, 0.9, house.h + 0.56), '#3d4a52', { position: [house.x, y + 1.6, -house.y] }));
+    roof.push(piece(box(house.w + 0.62, 0.16, house.h + 0.62), TRIM, { position: [house.x, y + 0.08, -house.y] }));
+  }
 
   return {
     id: `house-${index}`,
     walls: merge(wallPieces),
     roof: merge(roof),
-    bounds: { minX, maxX, minY, maxY, height: top - hs.min + ROOF_PEAK },
+    bounds: { minX, maxX, minY, maxY, height: top - hs.min + ROOF_PEAK + upper },
   };
 }
 
@@ -216,46 +230,40 @@ function Props() {
   const crates = useMemo(() => OBSTACLES.filter((o) => o.kind === 'crate'), []);
   const barrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel'), []);
   const rocks = useMemo(() => OBSTACLES.filter((o) => o.kind === 'rock'), []);
-  const fences = useMemo(() => fenceGeometry(OBSTACLES.filter((o) => o.kind === 'fence')), []);
+  const fences = useMemo(() => OBSTACLES.filter((o) => o.kind === 'fence'), []);
   const models = useMemo(() => ({ crate: crateModel(), barrel: barrelModel(), rock: rockModel() }), []);
 
   return (
     <>
-      <InstancedProps items={crates} geometry={models.crate} place={(o, m) => {
-        m.position.set(o.x, terrainHeight(o.x, o.y) - 0.15, -o.y);
-        m.scale.set(o.w, o.height + 0.15, o.h);
-        m.rotation.set(0, 0, 0);
-      }} />
-      <InstancedProps items={barrels} geometry={models.barrel} place={(o, m) => {
-        m.position.set(o.x, terrainHeight(o.x, o.y) - 0.1, -o.y);
-        m.scale.set(o.r, o.height + 0.1, o.r);
-      }} />
-      <InstancedProps items={rocks} geometry={models.rock} place={(o, m) => {
-        m.position.set(o.x, terrainHeight(o.x, o.y) + o.r * 0.3, -o.y);
-        m.scale.set(o.r, o.r * 0.8, o.r);
-        m.rotation.set(0, o.x * 7.1 + o.y * 3.3, 0);
-      }} />
-      <mesh geometry={fences} material={modelMaterial} receiveShadow />
+      <ChunkedInstances items={crates} geometry={models.crate} place={PLACE.crate} />
+      <ChunkedInstances items={barrels} geometry={models.barrel} place={PLACE.barrel} />
+      <ChunkedInstances items={rocks} geometry={models.rock} place={PLACE.rock} />
+      <Chunked items={fences} render={(list) => <FenceChunk items={list} />} />
     </>
   );
 }
 
-function InstancedProps({ items, geometry, place }) {
-  const ref = useRef(null);
-  useLayoutEffect(() => {
-    const o3 = new THREE.Object3D();
-    const tint = new THREE.Color();
-    items.forEach((o, i) => {
-      place(o, o3);
-      o3.updateMatrix();
-      ref.current.setMatrixAt(i, o3.matrix);
-      // Leve variación de tono entre instancias
-      ref.current.setColorAt(i, tint.setScalar(0.88 + ((i * 37) % 13) / 50));
-    });
-    ref.current.instanceMatrix.needsUpdate = true;
-    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
-  }, [items, place]);
-  return <instancedMesh ref={ref} args={[geometry, modelMaterial, items.length]} receiveShadow />;
+const PLACE = {
+  crate: (o, m) => {
+    m.position.set(o.x, terrainHeight(o.x, o.y) - 0.15, -o.y);
+    m.scale.set(o.w, o.height + 0.15, o.h);
+    m.rotation.set(0, 0, 0);
+  },
+  barrel: (o, m) => {
+    m.position.set(o.x, terrainHeight(o.x, o.y) - 0.1, -o.y);
+    m.scale.set(o.r, o.height + 0.1, o.r);
+    m.rotation.set(0, 0, 0);
+  },
+  rock: (o, m) => {
+    m.position.set(o.x, terrainHeight(o.x, o.y) + o.r * 0.3, -o.y);
+    m.scale.set(o.r, o.r * 0.8, o.r);
+    m.rotation.set(0, o.x * 7.1 + o.y * 3.3, 0);
+  },
+};
+
+function FenceChunk({ items }) {
+  const geometry = useMemo(() => fenceGeometry(items), [items]);
+  return <mesh geometry={geometry} material={modelMaterial} receiveShadow />;
 }
 
 export default function Buildings({ frameRef, pitchDeg }) {
@@ -278,7 +286,17 @@ export default function Buildings({ frameRef, pitchDeg }) {
 
   const occluders = useMemo(() => new Set(), []);
   const cam = useMemo(() => ({ x: 0, y: 0, z: 0 }), []);
+  const groups = useRef(new Map());
+  const visibleAt = useRef(0);
   useFrame(({ camera }, delta) => {
+    // Mapa de 1 km: solo se dibujan los edificios cercanos a la cámara (cada 250 ms)
+    if (performance.now() - visibleAt.current > 250) {
+      visibleAt.current = performance.now();
+      for (const b of [...houses, ...containers]) {
+        const g = groups.current.get(b.id);
+        if (g) g.visible = nearCamera(camera, (b.bounds.minX + b.bounds.maxX) / 2, (b.bounds.minY + b.bounds.maxY) / 2, 20);
+      }
+    }
     const me = frameRef.current.me;
     if (me) {
       // Con la posición real de la cámara (se adelanta hacia la mira): coordenadas del mapa
@@ -308,13 +326,13 @@ export default function Buildings({ frameRef, pitchDeg }) {
   return (
     <group>
       {houses.map((h) => (
-        <group key={h.id}>
+        <group key={h.id} ref={(g) => groups.current.set(h.id, g)}>
           <mesh geometry={h.walls} material={materials.get(h.id)} castShadow receiveShadow />
           <mesh geometry={h.roof} material={materials.get(`${h.id}-roof`)} castShadow receiveShadow />
         </group>
       ))}
       {containers.map((c) => (
-        <mesh key={c.id} geometry={c.geometry} material={materials.get(c.id)} castShadow receiveShadow />
+        <mesh key={c.id} ref={(g) => groups.current.set(c.id, g)} geometry={c.geometry} material={materials.get(c.id)} castShadow receiveShadow />
       ))}
       <Props />
     </group>

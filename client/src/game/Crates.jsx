@@ -61,9 +61,12 @@ export default function Crates({ frameRef }) {
     for (let i = 0; i < CRATES.length; i++) lights.current.setColorAt(i, tmp.color.set('#000000'));
   }, [tmp]);
 
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     const now = performance.now();
     const states = frameRef.current.crates ?? [];
+    // Mapa de 1 km: las cajas lejos de la cámara no se dibujan (la niebla igual las taparía)
+    const reach = 170 + camera.position.y;
+    const far = (c) => Math.abs(c.x - camera.position.x) > reach || Math.abs(c.y + camera.position.z) > reach;
     const airdrop = frameRef.current.airdrop;
     const { o, color } = tmp;
 
@@ -78,9 +81,9 @@ export default function Crates({ frameRef }) {
 
     byRarity.forEach((list, r) => {
       list.forEach(({ i }, k) => {
-        const state = states[i] ?? CRATE_STATE.HIDDEN;
+        const state = states[i] === undefined ? CRATE_STATE.HIDDEN : +states[i];
         const c = cratePosition(i, airdrop);
-        if (state === CRATE_STATE.HIDDEN || !c) {
+        if (state === CRATE_STATE.HIDDEN || !c || far(c)) {
           bodies.current[r].setMatrixAt(k, HIDDEN);
           return;
         }
@@ -94,9 +97,9 @@ export default function Crates({ frameRef }) {
     });
 
     CRATES.forEach((_, i) => {
-      const state = states[i] ?? CRATE_STATE.HIDDEN;
+      const state = states[i] === undefined ? CRATE_STATE.HIDDEN : +states[i];
       const c = cratePosition(i, airdrop);
-      if (state === CRATE_STATE.HIDDEN || !c) {
+      if (state === CRATE_STATE.HIDDEN || !c || far(c)) {
         lids.current.setMatrixAt(i, HIDDEN);
         lights.current.setMatrixAt(i, HIDDEN);
         return;

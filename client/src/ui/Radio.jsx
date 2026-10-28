@@ -40,7 +40,10 @@ const clock = (ms) => {
 // Estado de la zona bajo el GPS y aviso grande si estás afuera
 export function ZoneStatus({ zone, me, alive, mapSize }) {
   if (!zone?.length) return null;
-  const [cx, cy, p, q, nx, ny, np, nq, phase, msLeft, closing] = zone;
+  const [cx, cy, p, q, nx, ny, np, nq, phase, msLeft, closing, moving, msToEnd] = zone;
+  // Antes de la primera zona: cuenta regresiva; en las finales la zona se desplaza
+  const verb = moving ? (closing ? 'se desplaza' : 'se mueve en') : closing ? 'se cierra' : 'cierra en';
+  const label = phase < 0 ? `Primera zona en ${clock(msLeft)}` : `Zona ${phase + 1}/${ZONE_PHASES.length} · ${verb} ${clock(msLeft)}`;
   const outside = me && alive && !insideZone({ cx, cy, p, q }, me.x, me.y);
   const next = { cx: nx, cy: ny, p: np, q: nq };
   return (
@@ -49,7 +52,8 @@ export function ZoneStatus({ zone, me, alive, mapSize }) {
         className="pointer-events-none absolute z-20 rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-stone-200"
         style={{ top: 48, left: 12 + mapSize + 8 }}
       >
-        Zona {phase + 1}/{ZONE_PHASES.length} · {closing ? 'se cierra' : 'cierra en'} {clock(msLeft)}
+        {label}
+        {msToEnd > 0 && <span className="text-stone-400"> · fin ≈ {clock(msToEnd)}</span>}
       </p>
       {outside && (
         <>

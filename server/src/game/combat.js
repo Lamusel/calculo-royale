@@ -9,6 +9,7 @@ import { encodeShot } from '@calculo-royale/shared/codec';
 import { hasLineOfSight, overlapsObstacle, raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
+import { waterAt } from '@calculo-royale/shared/mapPlan';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
 
@@ -131,7 +132,8 @@ export const recoilStep = (weaponId, attachments) => (RECOIL.perShot[weaponId] ?
 // Disparo hitscan con compensación de lag: los objetivos se ubican donde el tirador los veía
 export function fire(game, p, input) {
   const id = p.weaponId;
-  if (game.now < p.nextFireAt || p.reloadUntil) return;
+  // Nadando (agua honda) no se dispara
+  if (game.now < p.nextFireAt || p.reloadUntil || waterAt(p.x, p.y) === 2) return;
   // Retroceso acumulado (se recupera con el tiempo); culata y punto rojo cierran la dispersión
   p.recoil = currentRecoil(game, p);
   const w = weaponWith(id, p.attachments, p.recoil);
@@ -181,7 +183,7 @@ export function fire(game, p, input) {
 }
 
 export function throwGrenade(game, p, input) {
-  if (p.grenades <= 0 || game.now < p.nextGrenadeAt) return;
+  if (p.grenades <= 0 || game.now < p.nextGrenadeAt || waterAt(p.x, p.y) === 2) return;
   p.grenades -= 1;
   p.healing = null;
   p.nextGrenadeAt = game.now + GRENADE.intervalMs;

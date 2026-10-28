@@ -1,7 +1,7 @@
 // Zona, lanzamiento aéreo y victoria (npm test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AIRDROP, MAP_HALF, MAX_HP, TICK_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
+import { AIRDROP, MAP_HALF, MAX_HP, TICK_MS, ZONE_FIRST_DELAY_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { ALL_SECTORS, insideZone, sectorBounds, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
@@ -69,7 +69,7 @@ test('cada zona nueva queda dentro de la anterior (500 partidas simuladas)', () 
 
 test('la zona avisa, se cierra interpolando y termina en la zona anunciada', () => {
   const zone = new Zone(rand);
-  const [announce] = zone.start(0);
+  const [announce] = zone.start(0, 0);
   assert.equal(announce.type, 'announce');
   const def = ZONE_PHASES[0];
   assert.deepEqual(zone.update(def.waitMs - 1), []);
@@ -93,16 +93,16 @@ test('una fase usa elipse y la desigualdad se escribe bien', () => {
   assert.equal(insideZone(e, 2, 6), false);
 });
 
-test('sectores A1 (noroeste) a H8 (sureste)', () => {
+test('sectores A1 (noroeste) a J10 (sureste)', () => {
   assert.equal(sectorOf(-MAP_HALF + 1, MAP_HALF - 1), 'A1');
-  assert.equal(sectorOf(MAP_HALF - 1, -MAP_HALF + 1), 'H8');
-  assert.equal(sectorOf(0.5, 0.5), 'E4');
+  assert.equal(sectorOf(MAP_HALF - 1, -MAP_HALF + 1), 'J10');
+  assert.equal(sectorOf(0.5, 0.5), 'F5');
   const b = sectorBounds('C4');
   assert.equal(sectorOf(b.cx, b.cy), 'C4');
-  // 8×8: 64 sectores de 35 m que cubren el mapa sin huecos
-  assert.equal(ALL_SECTORS.length, 64);
-  assert.equal(ALL_SECTORS.at(-1), 'H8');
-  assert.equal(b.maxX - b.minX, 35);
+  // 10×10: 100 sectores de 100 m que cubren el mapa sin huecos
+  assert.equal(ALL_SECTORS.length, 100);
+  assert.equal(ALL_SECTORS.at(-1), 'J10');
+  assert.equal(b.maxX - b.minX, 100);
   for (const s of ALL_SECTORS) assert.equal(sectorOf(sectorBounds(s).cx, sectorBounds(s).cy), s);
 });
 
@@ -113,7 +113,7 @@ test('fuera de la zona se recibe daño que el chaleco no absorbe', () => {
   startMatch(room);
   const zone = room.game.zone;
   // Al terminar el primer cierre, se pone a uno fuera de la zona
-  advance(room, ZONE_PHASES[0].waitMs + ZONE_PHASES[0].shrinkMs);
+  advance(room, ZONE_FIRST_DELAY_MS + ZONE_PHASES[0].waitMs + ZONE_PHASES[0].shrinkMs);
   const z = zone.current;
   inside.teleport(z.cx, z.cy);
   const edge = MAP_HALF - 2;
@@ -140,9 +140,9 @@ test('lanzamiento aéreo: se anuncia con coordenadas y aterriza como caja dorada
   const msg = room.broadcasts.find((b) => b.event === EVENTS.RADIO_MESSAGE && b.data.kind === 'airdrop');
   assert.ok(msg.data.text.includes(`(${crate.x}, ${crate.y})`));
   const states = () => room.game.snapshot([...room.players.values()])[6];
-  assert.equal(states()[crate.id], CRATE_STATE.HIDDEN, 'todavía en el aire');
+  assert.equal(+states()[crate.id], CRATE_STATE.HIDDEN, 'todavía en el aire');
   advance(room, AIRDROP.fallMs + TICK_MS);
-  assert.equal(states()[crate.id], CRATE_STATE.CLOSED);
+  assert.equal(+states()[crate.id], CRATE_STATE.CLOSED);
   assert.equal(crate.rarity, 3);
 });
 

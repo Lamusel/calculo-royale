@@ -16,6 +16,8 @@ import Bus from './Bus.jsx';
 import MapProps from './MapProps.jsx';
 import GroundLoot from './GroundLoot.jsx';
 import OuterRing from './OuterRing.jsx';
+import Waterworks from './Waterworks.jsx';
+import LandingMarker from './LandingMarker.jsx';
 import Crates from './Crates.jsx';
 import Effects from './Effects.jsx';
 import Grenades from './Grenades.jsx';
@@ -37,7 +39,8 @@ const LOOK_AHEAD = 2.5;
 // Al apuntar con el francotirador la cámara se aleja un poco y se desplaza hacia la mira
 const SNIPER_ZOOM = 1.15;
 // Vista del proyector sin nadie a quien seguir: todo el mapa desde arriba
-const OVERVIEW_DISTANCE = 176;
+// Mapa de 1 km: el plano general del proyector va mucho más arriba
+const OVERVIEW_DISTANCE = 640;
 const OVERVIEW_PITCH = (62 * Math.PI) / 180;
 
 const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
@@ -105,6 +108,11 @@ function CameraRig({ client, frameRef, sun, overview }) {
       camera.position.set(0, Math.sin(OVERVIEW_PITCH) * OVERVIEW_DISTANCE, Math.cos(OVERVIEW_PITCH) * OVERVIEW_DISTANCE);
       camera.lookAt(0, 0, 4);
       s.target.set(0, 0, 0);
+      if (scene.fog) {
+        if (s.fog?.fog !== scene.fog) s.fog = { fog: scene.fog, near: scene.fog.near, far: scene.fog.far };
+        scene.fog.near = OVERVIEW_DISTANCE;
+        scene.fog.far = OVERVIEW_DISTANCE * 2;
+      }
       if (sun.current) {
         sun.current.position.copy(SUN_OFFSET);
         sun.current.target.position.set(0, 0, 0);
@@ -117,7 +125,7 @@ function CameraRig({ client, frameRef, sun, overview }) {
     // Despliegue: en el bus, el bus y el mapa desde arriba; cayendo, más lejos cuanto más alto
     const air = follow ? null : deploying;
     const lift = air === 'bus' ? DEPLOY.busAltitude : air ? altitude : 0;
-    const deployZoom = air === 'bus' ? 3 : air ? 1 + altitude / 28 : 1;
+    const deployZoom = air === 'bus' ? 4 : air ? 1 + altitude / 28 : 1;
     if (focusOn) s.goal.set(focusOn.x, terrainHeight(focusOn.x, focusOn.y) + lift * 0.6, -focusOn.y);
     s.target.lerp(s.goal, 1 - Math.exp(-12 * dt));
 
@@ -273,7 +281,7 @@ export default function Scene({
     <Canvas
       dpr={quality.dpr}
       shadows
-      camera={{ fov: CAMERA_FOV, near: 0.5, far: 420, position: CAMERA_OFFSET.toArray() }}
+      camera={{ fov: CAMERA_FOV, near: 0.5, far: 1500, position: CAMERA_OFFSET.toArray() }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
       <color attach="background" args={[look.sky]} />
@@ -291,6 +299,7 @@ export default function Scene({
       <Buildings frameRef={frameRef} pitchDeg={CAMERA_PITCH_DEG} />
       <MapProps frameRef={frameRef} />
       <OuterRing />
+      <Waterworks />
       {phase !== 'lobby' && client.loot && <GroundLoot client={client} />}
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
@@ -298,6 +307,7 @@ export default function Scene({
       <BombingMesh frameRef={frameRef} />
       <Vehicles client={client} frameRef={frameRef} quality={quality} />
       <Bus frameRef={frameRef} />
+      <LandingMarker frameRef={frameRef} />
       <Weather weather={active} windAngle={windAngle} client={client} frameRef={frameRef} quality={quality} />
       <Players client={client} roster={roster} myId={myId} frameRef={frameRef} quality={quality} night={active === 'noche'} />
       <Grenades frameRef={frameRef} />

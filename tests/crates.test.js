@@ -64,7 +64,7 @@ test('abrir una caja manda la pregunta sin la respuesta correcta y marca al juga
   tick(room);
   const snap = room.game.snapshot([...room.players.values()]);
   assert.ok(snap[1][0][8] & PLAYER_FLAGS.ANSWERING);
-  assert.equal(snap[6][0], CRATE_STATE.BUSY);
+  assert.equal(+snap[6][0], CRATE_STATE.BUSY);
 });
 
 test('lejos de una caja no se abre nada', () => {
@@ -202,7 +202,7 @@ test('caja de práctica: solo en el lobby, no cuenta en las estadísticas y se v
   assert.equal(room.game.crates[practice].state, CRATE_STATE.CLOSED);
   // En el lobby las del mapa no existen
   const states = room.game.snapshot([...room.players.values()])[6];
-  assert.equal(states[0], CRATE_STATE.HIDDEN);
+  assert.equal(+states[0], CRATE_STATE.HIDDEN);
 });
 
 test('botín de cajas: curaciones al inventario, munición, armas y lo que no cabe', () => {

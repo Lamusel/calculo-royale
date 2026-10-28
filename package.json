@@ -20,7 +20,8 @@
     "loadtest": "node server/scripts/loadtest.js",
     "tunnel": "node scripts/tunnel.js",
     "test": "node --test \"tests/*.test.js\"",
-    "stop": "node scripts/stop.js"
+    "stop": "node scripts/stop.js",
+    "map:image": "node scripts/map-image.js"
   },
   "devDependencies": {
     "cloudflared": "^0.7.3",

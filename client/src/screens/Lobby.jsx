@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { DEPLOY_MODES, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -128,6 +128,26 @@ function DeployPicker({ room, isHost }) {
   );
 }
 
+// Duración de la partida: escala la zona (el host la elige, los demás la ven)
+function DurationPicker({ room, isHost }) {
+  const value = room.duration ?? 'normal';
+  if (!isHost) return <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">⏱ {DURATIONS[value]?.name}</span>;
+  return (
+    <select
+      value={value}
+      onChange={(e) => socket.emit(EVENTS.ROOM_DURATION, e.target.value)}
+      className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100"
+      title="Duración"
+    >
+      {Object.entries(DURATIONS).map(([id, d]) => (
+        <option key={id} value={id} className="bg-olive-900">
+          ⏱ {d.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // Modo fácil y bots (fase 20): solo el anfitrión los cambia; los demás ven qué está activo
 const BOT_TARGETS = [0, 4, 8, 12, 20, 30, 40];
 function PresentationPicker({ room, isHost }) {
@@ -246,6 +266,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
           </button>
           <WeatherPicker room={room} isHost={isHost} />
           <DeployPicker room={room} isHost={isHost} />
+          <DurationPicker room={room} isHost={isHost} />
           <PresentationPicker room={room} isHost={isHost} />
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">

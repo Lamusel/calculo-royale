@@ -1,4 +1,6 @@
-import { PATHS } from '@calculo-royale/shared/mapLayout';
+import { PATHS, ROADS } from '@calculo-royale/shared/mapLayout';
+
+const ALL = [...PATHS, ...ROADS];
 
 // Distancia de un punto al segmento AB
 function segmentDistance(px, py, ax, ay, bx, by) {
@@ -10,7 +12,7 @@ function segmentDistance(px, py, ax, ay, bx, by) {
 }
 
 // Distancia al camino de tierra más cercano (solo visual: terreno y decoración)
-export function distanceToPaths(x, y, paths = PATHS) {
+export function distanceToPaths(x, y, paths = ALL) {
   let best = Infinity;
   for (const path of paths) {
     for (let i = 1; i < path.length; i++) {

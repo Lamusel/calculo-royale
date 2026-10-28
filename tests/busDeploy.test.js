@@ -118,6 +118,7 @@ test('en el aire: se dirige con el joystick, no dispara, no es blanco y no recib
   const hp = p.hp;
   room.game.zone.current = { cx: 1000, cy: 1000, p: 1, q: 1 };
   room.game.zone.state = 'shrinking';
+  room.game.zone.phase = 0;
   advance(room, 500);
   assert.equal(p.hp, hp);
 });

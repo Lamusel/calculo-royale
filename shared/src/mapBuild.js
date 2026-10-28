@@ -221,3 +221,15 @@ export const stand = (x, y, w, h, face) => ({ kind: 'stand', shape: 'rect', x, y
 export const stall = (x, y, vertical = false) => ({ kind: 'stall', shape: 'rect', x, y, w: vertical ? 1.4 : 2.6, h: vertical ? 2.6 : 1.4, height: 1, vertical });
 // Pared de roca del cañón (alta, no se ve a través)
 export const cliff = (x, y, w, h) => ({ kind: 'cliff', shape: 'rect', x, y, w, h, height: 6 });
+
+// --- Piezas del mapa de 1 km (fase 34) ---
+// Silo de la granja (punto de referencia alto)
+export const silo = (x, y) => ({ kind: 'silo', shape: 'circle', x, y, r: 2.6, height: 11 });
+// Antena de radio en la cima de la montaña
+export const antenna = (x, y) => ({ kind: 'antenna', shape: 'circle', x, y, r: 1.6, height: 32 });
+// Muro de concreto de la represa
+export const damWall = (x, y, w, h) => ({ kind: 'dam', shape: 'rect', x, y, w, h, height: 4.5 });
+// Lápida del cementerio (cobertura baja)
+export const tomb = (x, y) => ({ kind: 'tomb', shape: 'rect', x, y, w: 0.9, h: 1.8, height: 0.9 });
+// Pila de troncos del aserradero
+export const logs = (x, y, vertical = false) => ({ kind: 'logs', shape: 'rect', x, y, w: vertical ? 2.4 : 6, h: vertical ? 6 : 2.4, height: 1.6, vertical });

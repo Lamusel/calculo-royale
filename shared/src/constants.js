@@ -28,8 +28,8 @@ export const RECONNECT_GRACE_MS = 60_000;
 
 // --- Mapa ---
 // Cuadrado centrado en el origen: x e y van de -MAP_HALF a MAP_HALF
-// ~2,5 veces el área del mapa original (120): para 40 jugadores
-export const MAP_SIZE = 280;
+// Fase 34: 1 km de lado. A pie (~8 m/s) se cruza en ~2 min y en vehículo en ~30 s
+export const MAP_SIZE = 1000;
 export const MAP_HALF = MAP_SIZE / 2;
 
 // Terreno z = A·sin(x/k)·cos(y/k), solo interno. Colinas suaves: pendiente máxima ≈ A/k
@@ -40,7 +40,7 @@ export const SLOPE_SPEED = { k: 0.7, min: 0.8, max: 1.15 };
 
 // Radios de aparición
 export const LOBBY_SPAWN_RADIUS = 6;
-export const GAME_SPAWN_RADIUS = 40;
+export const GAME_SPAWN_RADIUS = 140;
 
 // --- Jugador ---
 export const PLAYER_RADIUS = 0.6;
@@ -135,14 +135,14 @@ export const TOPIC_NAMES = { ...TOPICS, basicas: 'Derivadas y límites (balas)',
 export const optionCount = (difficulty) => (difficulty <= 2 ? 2 : 3);
 
 // "Obtener balas": pregunta rápida de dificultad 1 (te puedes mover pero no disparar)
-export const AMMO = { questionMs: 15_000, failCooldownMs: 10_000, okCooldownMs: 1_500 };
+export const AMMO = { questionMs: 20_000, failCooldownMs: 10_000, okCooldownMs: 1_500 };
 
 // Rareza = dificultad de la pregunta = calidad del botín. El índice es la dificultad − 1.
 export const RARITIES = [
-  { id: 'comun', name: 'Común', color: '#9ca3af', difficulty: 1, timeMs: 25_000, loot: ['Munición', 'Venda', 'Bebida', 'Granada'] },
-  { id: 'raro', name: 'Raro', color: '#3b82f6', difficulty: 2, timeMs: 35_000, loot: ['Escopeta o rifle', 'Chaleco 2 y casco', 'Mochila 2', 'Mira 2x', 'Accesorios'] },
-  { id: 'epico', name: 'Épico', color: '#a855f7', difficulty: 3, timeMs: 45_000, loot: ['Francotirador con mira 4x', 'Chaleco 3', 'Casco 3', 'Mochila 3', 'Silenciador'] },
-  { id: 'legendario', name: 'Legendario', color: '#eab308', difficulty: 4, timeMs: 60_000, loot: ['Todo o nada: botín épico doble', 'Si fallas pierdes el chaleco'] },
+  { id: 'comun', name: 'Común', color: '#9ca3af', difficulty: 1, timeMs: 35_000, loot: ['Munición', 'Venda', 'Bebida', 'Granada'] },
+  { id: 'raro', name: 'Raro', color: '#3b82f6', difficulty: 2, timeMs: 45_000, loot: ['Escopeta o rifle', 'Chaleco 2 y casco', 'Mochila 2', 'Mira 2x', 'Accesorios'] },
+  { id: 'epico', name: 'Épico', color: '#a855f7', difficulty: 3, timeMs: 55_000, loot: ['Francotirador con mira 4x', 'Chaleco 3', 'Casco 3', 'Mochila 3', 'Silenciador'] },
+  { id: 'legendario', name: 'Legendario', color: '#eab308', difficulty: 4, timeMs: 70_000, loot: ['Todo o nada: botín épico doble', 'Si fallas pierdes el chaleco'] },
 ];
 
 // Cajas por partida: los puntos calientes siempre; de los demás, esta fracción al azar
@@ -156,37 +156,48 @@ export const RADAR_MS = 10_000;
 
 // --- Zona segura ---
 // Todas las zonas son elipses (x − cx)²/p² + (y − cy)²/q² ≤ 1; el círculo es p = q.
-// La inicial cubre todo el mapa (las esquinas están a 140·√2 ≈ 198).
-export const ZONE_START = { cx: 0, cy: 0, p: 200, q: 200 };
-// Cada fase: aviso (waitMs), cierre (shrinkMs), radio de la zona nueva y daño por segundo fuera.
-// `ellipse` escala los semiejes (idea #3: una fase con elipse).
+// La inicial cubre todo el mapa (las esquinas están a 500·√2 ≈ 707).
+export const ZONE_START = { cx: 0, cy: 0, p: 710, q: 710 };
+// La primera zona se anuncia a los 3:30 de partida (bus ~1:30 + caída) y empieza a cerrarse 90 s
+// después: unos 3 min tras aterrizar. Cada fase: aviso (waitMs), cierre (shrinkMs), radio y daño.
+// `ellipse` escala los semiejes; `moving`: el centro se desplaza lejos (las dos últimas).
+export const ZONE_FIRST_DELAY_MS = 210_000;
 export const ZONE_PHASES = [
-  // Mapa de 280 m (radios ×1,47 respecto del de 190): ~10 min de zona; con despliegue y duelo, 11–12 min
-  { radius: 135, waitMs: 80_000, shrinkMs: 70_000, dps: 2 },
-  { radius: 93, waitMs: 70_000, shrinkMs: 60_000, dps: 4 },
-  { radius: 63, waitMs: 60_000, shrinkMs: 55_000, dps: 6, ellipse: [1.3, 0.75] },
-  { radius: 35, waitMs: 55_000, shrinkMs: 45_000, dps: 9 },
-  { radius: 13, waitMs: 50_000, shrinkMs: 40_000, dps: 14 },
+  // Mapa de 1 km: ~19 min de partida en duración normal (la primera solo deja fuera los bordes)
+  { radius: 430, waitMs: 90_000, shrinkMs: 120_000, dps: 1 },
+  { radius: 300, waitMs: 100_000, shrinkMs: 100_000, dps: 2 },
+  { radius: 200, waitMs: 90_000, shrinkMs: 90_000, dps: 4, ellipse: [1.3, 0.75] },
+  { radius: 120, waitMs: 75_000, shrinkMs: 70_000, dps: 7 },
+  { radius: 60, waitMs: 55_000, shrinkMs: 60_000, dps: 11, moving: true },
+  { radius: 22, waitMs: 40_000, shrinkMs: 50_000, dps: 16, moving: true },
 ];
 // Daño fuera de la zona cuando ya terminó la última fase
-export const ZONE_FINAL_DPS = 20;
+export const ZONE_FINAL_DPS = 22;
+// Duración elegible por el anfitrión: escala todos los tiempos de la zona y el lanzamiento aéreo
+export const DURATIONS = {
+  corta: { name: 'Corta (~12 min)', scale: 0.62 },
+  normal: { name: 'Normal (~19 min)', scale: 1 },
+  larga: { name: 'Larga (~24 min)', scale: 1.27 },
+};
 
 // Lanzamiento aéreo: a mitad de partida cae una caja dorada en paracaídas
-export const AIRDROP = { atMs: 320_000, fallMs: 20_000, rarity: 3 };
+export const AIRDROP = { atMs: 620_000, fallMs: 25_000, rarity: 3 };
 
-// Cuadrícula militar de sectores: 6 × 6 (A1 arriba a la izquierda)
-export const SECTORS = 8; // cuadrícula militar A1–H8 (sectores de 35 m)
+// Cuadrícula militar de sectores: 10 × 10 (A1 arriba a la izquierda)
+export const SECTORS = 10; // cuadrícula militar A1–J10 (sectores de 100 m)
 
 // --- Operadores de radio (los caídos siguen jugando) ---
 export const OPERATOR = {
   firstDelayMs: 2_000, // tras caer, primera transmisión
-  questionMs: 30_000,
+  questionMs: 30_000, // también es el tiempo del Gulag
   gapMs: 2_500, // entre una transmisión y la siguiente
   reviveStreak: 3, // aciertos seguidos para reanimar
   revivePhases: 2, // solo si caíste en las fases 1 y 2 de la zona
   reviveHp: 75, // 50 de vida + la venda
 };
 // Sector de 35 m (8×8): más chico que antes (46,7 m), así que pega un poco más fuerte
+// Reanimación en equipo (dúos y escuadras): tiempo de la pregunta
+export const TEAM_REVIVE = { questionMs: 20_000 };
 export const BOMBING = { everyMs: 60_000, warningMs: 5_000, damage: 80, disabledAtAlive: 5 };
 export const INTERCEPT = { everyMs: 120_000, questionMs: 20_000, winners: 5 };
 // Puntaje final: puestos superados, bajas y aciertos (también de operador e intercepción)
@@ -221,7 +232,7 @@ export const JEEP = {
   turnRate: 2.4, // rad/s
   hp: 300,
   engineLockMs: 10_000, // motor trabado tras fallar el código
-  questionMs: 30_000,
+  questionMs: 25_000,
   enterRadius: 3,
   noiseRadius: 35, // con el motor encendido aparece en el minimapa de los cercanos
   runOverMinSpeed: 4,
@@ -249,16 +260,19 @@ export const REPLAY = {
 // Despliegue al iniciar la partida: bus volador o elegir punto (lo decide el anfitrión)
 export const DEPLOY_MODES = { bus: 'Bus', punto: 'Elegir punto' };
 export const DEPLOY = {
-  busSpeed: 15, // m/s
-  busAltitude: 45, // m sobre el suelo
-  busWaitMs: 4_000, // la ruta se ve antes de que el bus arranque
-  routeMargin: 8, // el bus empieza y termina fuera del mapa
-  routeCenterJitter: 0.3, // la ruta pasa a lo sumo a este tanto del semiancho del centro
-  fallSpeed: 13, // caída libre (m/s)
-  airSpeed: 11, // desplazamiento horizontal en caída libre
-  chuteAltitude: 14, // se abre el paracaídas
-  chuteSpeed: 4.5, // bajada con paracaídas
-  chuteAirSpeed: 6,
+  busSpeed: 14, // m/s (una ruta de ~1,2 km dura ~1:30)
+  busAltitude: 112, // m sobre el suelo (2,5 veces el de antes)
+  busWaitMs: 5_000, // la ruta se ve antes de que el bus arranque
+  routeMargin: 10, // el bus empieza y termina fuera del mapa
+  routeCenterJitter: 0.55, // la ruta pasa a lo sumo a este tanto del semiancho del centro
+  // Caída libre con planeo: inclinarse (empujar el joystick) cae más rápido y avanza más
+  fallSpeed: 9, // m/s sin inclinarse
+  fallLeanSpeed: 7, // m/s extra inclinado del todo
+  airSpeed: 18, // desplazamiento horizontal inclinado del todo
+  chuteAltitude: 22, // se abre solo a esta altura (mínima segura)
+  chuteManualMs: 1_200, // tras saltar, desde cuándo se puede abrir a mano (Espacio otra vez)
+  chuteSpeed: 3.6, // bajada con paracaídas: abrirlo antes llega más lejos pero más lento
+  chuteAirSpeed: 9,
   pickMs: 10_000, // modo elegir punto: tiempo para tocar el mapa
   pointAltitude: 30, // desde dónde se cae en paracaídas al elegir punto
   reviveAltitude: 24, // reanimación de operador: cae en paracaídas
@@ -309,8 +323,8 @@ export const LOOT_GROUND = ['ammo', 'bandage', 'helmet1'];
 // Botín en el suelo por partida: cuántos por punto de zona y peso de cada objeto
 export const LOOT = {
   perHouseRoom: 2, // objetos por cuarto de casa
-  perArea: 14, // objetos sueltos por zona con nombre
-  scattered: 40, // objetos sueltos por el campo abierto
+  perArea: { big: 24, mid: 14, small: 6 }, // objetos sueltos por zona con nombre, según su tamaño
+  scattered: 320, // objetos sueltos por el campo abierto
   pickupRadius: 2.2,
   dropSpread: 1.2, // al soltar algo queda a esta distancia, alrededor del jugador
   deathBox: true,

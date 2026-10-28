@@ -461,6 +461,21 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - **Fuera el modo Profe Jefe Final:** opción del lobby, servidor, cliente, eventos, música, pruebas y README. Solo queda anotado en la bitácora como descartado.
 - **Interfaz:** el panel del lobby y "Esperando a que el anfitrión inicie…" nunca encima de la barra superior; la ayuda de controles se va sola a los pocos segundos o al usar los controles (nunca en partida); barra de armas con fondo sólido.
 
+### Tanda 6 (última gran actualización), parte 6.1
+
+#### Fase 34: mapa grande con río (plan)
+- **1 km de lado, cuadrícula 10×10 (A1–J10, sectores de 100 m).** No cambia la velocidad del soldado.
+- **Plano primero:** `shared/src/mapPlan.js` (río `y = riverY(x)`, represa y embalse, 4 puentes y un vado, montaña con antena, vía del tren, 28 zonas con nombre, carreteras, caminos y puntos marcados para la parte 6.4: estacionamientos, muelles, tirolinas y plataformas). `npm run map:image` dibuja `docs/mapa.png` desde el plano.
+- **Contenido:** `mapLayout.js` reubica las zonas viejas (pueblo → barrio residencial, contenedores → zona industrial, trincheras dentro del cañón…) y llena las nuevas (ciudad de 32 edificios de 1 a 3 pisos, hospital, universidad, represa, granja con silos, gasolinera, muelle, cantera, cementerio, aserradero, hacienda, estación, ranchos); bosquecitos y cobertura dispersa entre zonas.
+- **Agua:** `waterAt(x, y)`: honda (se nada al 45 % y no se dispara ni se lanzan granadas), poco profunda (orillas y vado, 70 %). El terreno hunde el cauce y nivela puentes y represa.
+- **Rendimiento:** terreno en baldosas de 100 m (gruesas siempre, finas solo cerca de la cámara, una por cuadro); árboles, rocas, cajas, cercas, matorrales y piezas por bloques de 125 m que solo se dibujan cerca; edificios y cajas de suministro lejanos ocultos; agua como plano de color. Las cajas viajan como cadena de dígitos y solo cuando cambian. Minimapa y mapa táctico desde el plano (capa fija prerenderizada; el minimapa es un acercamiento de 300 m).
+
+#### Fase 31: ritmo de partida y salto desde muy arriba (plan)
+- **Zona de 6 fases (~19 min en Normal):** primera zona a los 3:30 de partida (≈3 min tras aterrizar) con aviso de 90 s; primeras fases largas, últimas cortas. **Duración** elegible por el anfitrión: Corta ~12, Normal ~19, Larga ~24 min (escala zona y lanzamiento aéreo).
+- **Tiempos:** candado común 35 s, raro 45, épico 55, legendario 70; munición 20 s; motor 25 s; operador/Gulag 30 s; reanimación en equipo 20 s (constante lista para la parte 6.2).
+- **Bus** a 112 m y 14 m/s, rutas diagonales o por un costado. **Caída con planeo:** inclinarse cae más rápido y avanza más; Espacio (o el botón 🪂) abre el paracaídas antes: llega más lejos pero más lento; se abre solo a 22 m. Altímetro con sector estimado de aterrizaje y aro en el suelo.
+- **Zona final móvil:** en las dos últimas fases el centro se desplaza lejos (sin caer en el agua ni salirse del mapa); el Mando dice hacia dónde y el mapa muestra una flecha. HUD con "fin ≈ m:ss".
+
 **Meta semana 1:** fases 0 a 5 (núcleo jugable con su look).
 **Semanas 2 y 3:** fases 6 y 7, y cargar las preguntas reales del corte 3.
 
@@ -764,6 +779,8 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 25 | ✅ Completa | Accesorios visibles en el modelo y en la red, retroceso y culata, casco contra francotirador, retícula por mira, tarjetas e iconos que los explican |
 | 26 | ✅ Completa | Esqueletos de Tripo reparados al cargar; Furina en modo C con casco, mochila y arma en su mano; 2B, Ghost y Luffy en modo A (sus archivos no traen pesos usables); texturas a 1024 |
 | 27 | ✅ Completa | Cuadrícula A1–H8 en mapa, GPS, votos, bombardeo, voz y proyector; modo jefe quitado; lobby, ayuda y barra de armas que no se enciman |
+| 34 | ✅ Completa | Mapa de 1 km (A1–J10) con río, represa, 4 puentes, vado, montaña con antena, 28 zonas y carreteras; plano en `docs/mapa.png`; terreno y objetos por bloques. Falta revisar el plano y el rendimiento en celular |
+| 31 | ✅ Completa | Zona de 6 fases (~19 min) que arranca 3 min tras aterrizar, duración elegible, tiempos de preguntas nuevos, bus a 112 m con planeo y paracaídas a mano, zona final que se desplaza |
 
 ### Bitácora
 
@@ -948,3 +965,17 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | Lobby del invitado sin encimarse en 740×360, 844×390 y 1920×1080 (Edge) | PASS |
 | Ayuda de controles que se va sola y barra de armas sólida (Edge) | PASS |
 | Build y 190 pruebas | PASS |
+
+- 2026-10-27: **fases 34 y 31 completas (parte 6.1: mapa de 1 km y ritmo de partida).** Se hicieron juntas y van en un solo commit porque se tocan en los mismos archivos (constantes, zona, despliegue). *Mapa:* `MAP_SIZE` 280 → 1000 y `SECTORS` 8 → 10; el plano vive en `mapPlan.js` (sin dependencias: lo usan terreno, colisiones, minimapa y la imagen) y `mapLayout.js` lo re-exporta y llena cada zona; las zonas viejas se desplazan con `at(dx, dy, …)` para no reescribir sus piezas. Piezas nuevas: silo, antena, muro de represa, lápida, troncos. Edificios de 2 y 3 pisos solo por fuera (el interior es la planta baja; los pisos van con el techo y se ocultan al entrar): subir escaleras quedaría para otra tanda. El gradiente del terreno pasa a diferencias centrales (la f ahora suma montaña y cauce). *Coherencia:* el campo de entrenamiento del lobby quedó como la plaza central de la ciudad; el bombardeo sigue cayendo en todo el sector, que ahora es de 100 m (más difícil de esquivar: revisar en la prueba). *Ritmo:* la primera zona espera `ZONE_FIRST_DELAY_MS` (3:30) antes de anunciarse; `Zone` ya no anuncia al iniciar, sabe cuánto falta para el final (`msToEnd`) y elige centros de las fases `moving` lejos del anterior y fuera del agua. Caída: velocidad vertical 9 + 7·inclinación m/s, horizontal hasta 18 m/s; paracaídas 3,6 m/s y 9 m/s de lado (desde 112 m abierto llega a ~280 m de la ruta). Rendimiento: las cajas del snapshot pasan de arreglo a cadena y solo se envían al cambiar (o cada 2 s). Pruebas: la rejilla de colisiones ahora compara 1 200 puntos y 60 rayos (antes 4 000 y 200: con 2 800 obstáculos tardaba 32 s).
+
+| Validación fases 34 y 31 | Estado |
+|---|---|
+| Mapa de 1 km: obstáculos sin superposiciones, cajas y jeeps libres, se sale de cada edificio (prueba) | PASS |
+| Agua: río hondo, vado poco profundo, puentes secos; nadando más lento (prueba) | PASS |
+| Zona que se desplaza: centro lejos, radio dentro del mapa, fuera del agua y dentro de la anterior (prueba, 60 partidas) | PASS |
+| 8 bots saltando al azar caen en ≥ 4 sectores y ≥ 2 zonas (prueba) | PASS |
+| Sectores A1–J10, partida ~19 min, cajas compactas (pruebas) | PASS |
+| Build, servidor arranca y 193 pruebas | PASS |
+| `docs/mapa.png` generado | PASS (falta revisión del usuario) |
+| Vista en el juego (terreno por baldosas, agua, puentes, pisos, rendimiento en celular) | Pendiente (prueba del usuario) |
+

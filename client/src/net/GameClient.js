@@ -124,7 +124,9 @@ export class GameClient {
 
     this.handlers = {
       [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = [], bus = []]) => {
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles, bus);
+        // Cajas: llegan solo cuando cambian ('' = igual que antes)
+        if (crates) this.lastCrates = crates;
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, this.lastCrates ?? '', alarms, zone, airdrop, bombing, vehicles, bus);
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
         const riding = vehicles.find((v) => v[7] === this.myId);
@@ -281,7 +283,8 @@ export class GameClient {
     actions.requestAmmo = () => this.requestAmmo();
     actions.useItem = (item) => this.useItem(item);
     actions.phrase = (index) => this.socket.emit(EVENTS.QUICK_PHRASE, index);
-    actions.jump = () => this.deploying === 'bus' && press(BUTTONS.JUMP);
+    // En el bus salta; cayendo, abre el paracaídas antes
+    actions.jump = () => (this.deploying === 'bus' || this.deploying === 'fall') && press(BUTTONS.JUMP);
 
     this.pingTimer = setInterval(() => socket.emit(EVENTS.PING, Date.now()), 2000);
     socket.emit(EVENTS.PING, Date.now());
@@ -366,7 +369,8 @@ export class GameClient {
       input.my = 0;
       input.buttons &= BUTTONS.JUMP;
     } else if (this.deploying) {
-      input.buttons = 0;
+      // Cayendo: solo Espacio (abrir el paracaídas antes)
+      input.buttons &= this.deploying === 'fall' ? BUTTONS.JUMP : 0;
     }
     // El pasajero no camina: solo apunta y dispara
     if (this.seat === 'passenger') {

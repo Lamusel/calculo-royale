@@ -76,8 +76,9 @@ export function resetCrates(game) {
   game.alarms = [];
 }
 
+// Un dígito por caja (el mapa de 1 km tiene cientos): "0042…"
 export function crateStates(game) {
-  return game.crates.map((c) => (crateVisible(c, game.room.phase) ? c.state : CRATE_STATE.HIDDEN));
+  return game.crates.map((c) => (crateVisible(c, game.room.phase) ? c.state : CRATE_STATE.HIDDEN)).join('');
 }
 
 // Caja visible más cercana dentro del radio de interacción (en cualquier estado)

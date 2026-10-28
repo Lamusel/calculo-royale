@@ -1,19 +1,37 @@
-import { ZONE_FINAL_DPS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
+import { MAP_HALF, ZONE_FINAL_DPS, ZONE_FIRST_DELAY_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
+import { onDam, waterAt } from '@calculo-royale/shared/mapPlan';
 import { lerpZone } from '@calculo-royale/shared/zone';
 
 // Zona segura por fases. En cada fase: aviso (la zona nueva ya se conoce) y luego cierre.
 // Cada zona nueva queda completamente dentro de la anterior.
 
-// Zona siguiente dentro de `cur`: semiejes enteros y centro entero (desigualdad legible)
+// ¿Sirve como centro? Dentro del mapa con todo el radio y fuera del río y la represa
+const goodCenter = (cx, cy, p, q) => Math.abs(cx) + p <= MAP_HALF && Math.abs(cy) + q <= MAP_HALF && !waterAt(cx, cy) && !onDam(cx, cy);
+
+// Zona siguiente dentro de `cur`: semiejes enteros y centro entero (desigualdad legible).
+// En las fases que se desplazan (def.moving) el centro nuevo queda lejos del anterior.
 export function nextZone(cur, def, rand = Math.random) {
   const [sx, sy] = def.ellipse ?? [1, 1];
   const p = Math.round(def.radius * sx);
   const q = Math.round(def.radius * sy);
   // Holgura para que la nueva quepa en la anterior aunque el centro se redondee
   const room = Math.max(0, Math.min(cur.p, cur.q) - Math.max(p, q) - 1.5);
-  const angle = rand() * Math.PI * 2;
-  const dist = Math.sqrt(rand()) * room;
-  return { cx: Math.round(cur.cx + Math.cos(angle) * dist), cy: Math.round(cur.cy + Math.sin(angle) * dist), p, q };
+  let fallback = null;
+  for (let i = 0; i < 40; i++) {
+    const angle = rand() * Math.PI * 2;
+    const dist = def.moving ? room * (0.75 + rand() * 0.25) : Math.sqrt(rand()) * room;
+    const zone = { cx: Math.round(cur.cx + Math.cos(angle) * dist), cy: Math.round(cur.cy + Math.sin(angle) * dist), p, q };
+    if (goodCenter(zone.cx, zone.cy, p, q)) return zone;
+    if (!fallback && Math.abs(zone.cx) + p <= MAP_HALF && Math.abs(zone.cy) + q <= MAP_HALF) fallback = zone;
+  }
+  return fallback ?? { cx: Math.round(cur.cx), cy: Math.round(cur.cy), p, q };
+}
+
+// Rumbo de un desplazamiento en palabras ("noreste")
+const HEADINGS = ['este', 'noreste', 'norte', 'noroeste', 'oeste', 'suroeste', 'sur', 'sureste'];
+export function headingName(dx, dy) {
+  const k = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+  return HEADINGS[(k + 8) % 8];
 }
 
 // ¿La elipse `inner` está dentro de `outer`? (muestreo del borde)
@@ -30,10 +48,11 @@ export function zoneContains(outer, inner) {
 }
 
 export class Zone {
-  // timeScale > 1 acelera la zona (solo para pruebas: variable CR_TIME_SCALE)
+  // timeScale > 1 acelera la zona (pruebas: CR_TIME_SCALE; duración corta del anfitrión: 1 / 0,62)
   constructor(rand = Math.random, timeScale = 1) {
     this.rand = rand;
     this.timeScale = timeScale;
+    this.startAt = 0;
     this.reset();
   }
 
@@ -49,9 +68,12 @@ export class Zone {
     this.nextShrinkMs = null; // cierre forzado (duelo final)
   }
 
+  // La primera fase se anuncia tras ZONE_FIRST_DELAY_MS (mientras, la zona cubre todo el mapa).
   // Devuelve los eventos para anunciar por radio: [{ type, zone, phase }]
-  start(now) {
-    return [this.beginPhase(0, now)];
+  start(now, delayMs = ZONE_FIRST_DELAY_MS) {
+    this.startAt = now + delayMs / this.timeScale;
+    this.stateEndsAt = this.startAt;
+    return delayMs > 0 ? [] : [this.beginPhase(0, now)];
   }
 
   beginPhase(i, now) {
@@ -61,11 +83,12 @@ export class Zone {
     this.upcoming = null;
     this.state = 'waiting';
     this.stateEndsAt = now + ZONE_PHASES[i].waitMs / this.timeScale;
-    return { type: 'announce', phase: i, zone: this.target, waitMs: ZONE_PHASES[i].waitMs / this.timeScale };
+    return { type: 'announce', phase: i, zone: this.target, from: this.from, moving: Boolean(ZONE_PHASES[i].moving), waitMs: ZONE_PHASES[i].waitMs / this.timeScale };
   }
 
   update(now) {
     const events = [];
+    if (this.state === 'idle' && this.startAt && now >= this.startAt) events.push(this.beginPhase(0, now));
     if (this.state === 'waiting' && now >= this.stateEndsAt) {
       this.state = 'shrinking';
       this.shrinkMs = this.nextShrinkMs ?? ZONE_PHASES[this.phase].shrinkMs / this.timeScale;
@@ -103,13 +126,24 @@ export class Zone {
   // Se decide una sola vez y es la que se anunciará después.
   peekUpcoming() {
     const next = this.phase + 1;
-    if (this.state === 'idle' || next >= ZONE_PHASES.length) return null;
+    if (next >= ZONE_PHASES.length) return null;
     this.upcoming ??= nextZone(this.target, ZONE_PHASES[next], this.rand);
     return this.upcoming;
   }
 
+  // ms hasta que la última zona termine de cerrarse (0 si ya terminó)
+  msToEnd(now) {
+    if (this.state === 'final') return 0;
+    let ms = Math.max(0, this.stateEndsAt - now);
+    const from = this.state === 'idle' ? 0 : this.phase + 1;
+    if (this.state === 'waiting') ms += ZONE_PHASES[this.phase].shrinkMs / this.timeScale;
+    for (let i = from; i < ZONE_PHASES.length; i++) ms += (ZONE_PHASES[i].waitMs + ZONE_PHASES[i].shrinkMs) / this.timeScale;
+    return ms;
+  }
+
   // ms hasta el próximo anuncio de zona (o null si ya no habrá más)
   msToNextAnnounce(now) {
+    if (this.state === 'idle') return Math.max(0, this.startAt - now);
     if (this.phase + 1 >= ZONE_PHASES.length) return null;
     const shrink = ZONE_PHASES[this.phase].shrinkMs / this.timeScale;
     return this.state === 'waiting' ? this.stateEndsAt - now + shrink : this.stateEndsAt - now;
@@ -123,7 +157,7 @@ export class Zone {
     return 0;
   }
 
-  // [cx, cy, p, q, cx', cy', p', q', fase, ms al siguiente evento, cerrándose]
+  // [cx, cy, p, q, cx', cy', p', q', fase, ms al siguiente evento, cerrándose, se desplaza, ms al final]
   encode(now) {
     const r = (v) => Math.round(v * 100) / 100;
     const c = this.current;
@@ -131,6 +165,7 @@ export class Zone {
     return [
       r(c.cx), r(c.cy), r(c.p), r(c.q), n.cx, n.cy, n.p, n.q,
       this.phase, Math.max(0, Math.round(this.stateEndsAt - now)), this.state === 'shrinking' ? 1 : 0,
+      this.phase >= 0 && ZONE_PHASES[this.phase].moving && this.state !== 'final' ? 1 : 0, Math.round(this.msToEnd(now)),
     ];
   }
 }

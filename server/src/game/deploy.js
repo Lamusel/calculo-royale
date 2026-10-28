@@ -12,9 +12,11 @@ const r2 = (v) => Math.round(v * 100) / 100;
 const LIMIT = MAP_HALF - PLAYER_RADIUS;
 const clamp = (v) => Math.max(-LIMIT, Math.min(LIMIT, v));
 
-// Ruta recta con dirección al azar que pasa cerca del centro y empieza y termina fuera del mapa
+// Ruta recta con dirección al azar que empieza y termina fuera del mapa. Una de cada tres va
+// diagonal; el desplazamiento perpendicular hace que a veces pase por un costado y no por el centro.
 export function busRoute(rand = Math.random) {
-  const angle = rand() * Math.PI * 2;
+  const diagonal = rand() < 0.34;
+  const angle = diagonal ? Math.PI / 4 + Math.floor(rand() * 4) * (Math.PI / 2) + (rand() - 0.5) * 0.2 : rand() * Math.PI * 2;
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
   // Desplazamiento perpendicular: la ruta no siempre pasa por el centro exacto
@@ -69,10 +71,19 @@ export function startDeploy(game, mode = 'bus', rand = Math.random) {
 export const busDeparted = (game) => game.deploy?.mode === 'bus' && game.now >= game.deploy.departAt;
 
 // Saltar del bus (solo con el bus ya en marcha)
+// Cayendo: Espacio otra vez abre el paracaídas antes (llega más lejos pero baja más lento)
 export function jump(game, player) {
-  if (player.deploy?.phase !== 'bus' || !busDeparted(game)) return;
-  player.deploy = { phase: 'fall', z: DEPLOY.busAltitude };
+  const s = player.deploy;
+  if (s?.phase === 'fall' && game.now - (s.since ?? 0) >= DEPLOY.chuteManualMs) {
+    s.phase = 'chute';
+    return;
+  }
+  if (s?.phase !== 'bus' || !busDeparted(game)) return;
+  player.deploy = { phase: 'fall', z: DEPLOY.busAltitude, since: game.now };
 }
+
+// Velocidad de caída libre: inclinarse del todo (lean = 1) cae más rápido
+export const fallSpeed = (lean = 0) => DEPLOY.fallSpeed + DEPLOY.fallLeanSpeed * lean;
 
 // Empezar a caer en paracaídas en (x, y) desde cierta altura (elegir punto, reanimación)
 export function dropWithChute(player, x, y, z) {
@@ -115,9 +126,10 @@ export function updateDeploy(game, dt) {
     if (s.phase === 'bus') {
       p.x = clamp(d.x);
       p.y = clamp(d.y);
-      if (d.done) p.deploy = { phase: 'fall', z: s.z };
+      // Quien no saltó sale expulsado al final de la ruta
+      if (d.done) p.deploy = { phase: 'fall', z: s.z, since: game.now };
     } else if (s.phase === 'fall') {
-      s.z -= DEPLOY.fallSpeed * dt;
+      s.z -= fallSpeed(p.lean ?? 0) * dt;
       if (s.z <= DEPLOY.chuteAltitude) s.phase = 'chute';
     } else if (s.phase === 'chute') {
       s.z -= DEPLOY.chuteSpeed * dt;
