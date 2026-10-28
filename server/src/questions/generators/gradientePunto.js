@@ -3,7 +3,7 @@ import { options, pick, randInt, term } from './format.js';
 // f(x, y) = a x² y + b y³  →  ∇f = (2 a x y, a x² + 3 b y²)
 export default {
   name: 'gradiente-punto',
-  tema: 'gradiente_direccional',
+  tema: 'derivadas_direccionales',
   dificultad: 2,
   generar(rand, n = 4) {
     const a = randInt(1, 3, rand);

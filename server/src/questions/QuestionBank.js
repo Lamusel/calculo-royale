@@ -3,13 +3,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { optionCount, TOPICS } from '@calculo-royale/shared/constants';
 import aritmetica from './basic/aritmetica.js';
-import derivadaEnPunto from './basic/derivadaEnPunto.js';
-import limiteSustitucion from './basic/limiteSustitucion.js';
-import reglaPotencia from './basic/reglaPotencia.js';
+import clasificar from './generators/clasificar.js';
 import derivadaDireccional from './generators/derivadaDireccional.js';
 import gradientePunto from './generators/gradientePunto.js';
 import integralDobleRect from './generators/integralDobleRect.js';
-import polarACartesiano from './generators/polarACartesiano.js';
+import integralTipoI from './generators/integralTipoI.js';
+import lagrangeLineal from './generators/lagrangeLineal.js';
+import lagrangeRecta from './generators/lagrangeRecta.js';
+import puntoCritico from './generators/puntoCritico.js';
+import { QUICK } from './quick/rapidas.js';
 
 // Banco de preguntas: JSON por tema (bank/) más generadores paramétricos (generators/).
 // Las preguntas que salen de aquí incluyen `correcta`: eso nunca se envía al cliente.
@@ -20,12 +22,13 @@ export const BANK = readdirSync(BANK_DIR)
   .filter((f) => f.endsWith('.json'))
   .flatMap((f) => JSON.parse(readFileSync(join(BANK_DIR, f), 'utf8')));
 
-export const GENERATORS = [integralDobleRect, gradientePunto, derivadaDireccional, polarACartesiano];
+// Dos generadores paramétricos por tema
+export const GENERATORS = [gradientePunto, derivadaDireccional, lagrangeLineal, lagrangeRecta, integralDobleRect, integralTipoI, puntoCritico, clasificar];
 
 export const ALL_TOPICS = Object.keys(TOPICS);
 
-// Preguntas rápidas de "Obtener balas" (cálculo básico, no dependen de los temas de la sala)
-export const QUICK_GENERATORS = [derivadaEnPunto, reglaPotencia, limiteSustitucion];
+// Preguntas rápidas de dificultad 1 de los temas del corte ("Obtener balas" y reanimación en equipo)
+export const QUICK_GENERATORS = QUICK;
 
 // Deja n opciones: la correcta y los primeros distractores. En el banco, el orden en que están
 // escritos (o el campo opcional `plausibles`, índices de los distractores de más a menos plausible).
@@ -77,9 +80,11 @@ export function drawEasyQuestion(difficulty = 1, rand = Math.random, count = opt
   return shuffleOptions(aritmetica.generar(rand, count, difficulty), rand);
 }
 
-// Pregunta rápida de "Obtener balas" (dificultad 1, 2 opciones); en modo fácil, una suma
-export function drawQuickQuestion(rand = Math.random, easy = false) {
+// Pregunta rápida (dificultad 1, 2 opciones) de los temas de la sala; en modo fácil, una suma
+export function drawQuickQuestion(rand = Math.random, easy = false, topics = ALL_TOPICS) {
   if (easy) return drawEasyQuestion(1, rand);
-  const g = QUICK_GENERATORS[Math.floor(rand() * QUICK_GENERATORS.length)];
+  const allowed = QUICK_GENERATORS.filter((g) => topics.includes(g.tema));
+  const list = allowed.length ? allowed : QUICK_GENERATORS;
+  const g = list[Math.floor(rand() * list.length)];
   return shuffleOptions(g.generar(rand, optionCount(g.dificultad)), rand);
 }

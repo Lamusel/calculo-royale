@@ -1,0 +1,561 @@
+[
+  {
+    "id": "dd-01",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "Gradiente de $f(x,y) = x^2 + 3y$",
+    "opciones": [
+      "$(2x, 3)$",
+      "$(2x, 3y)$",
+      "$(x^2, 3)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_x = 2x$, $f_y = 3$.",
+    "verifica": {
+      "tipo": "gradsym",
+      "f": "x*x+3*y"
+    }
+  },
+  {
+    "id": "dd-02",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "$\\frac{\\partial f}{\\partial x}$ de $f(x,y) = x^2 y$ en $(1, 3)$",
+    "opciones": [
+      "$6$",
+      "$1$",
+      "$3$"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_x = 2xy = 2(1)(3) = 6$.",
+    "verifica": {
+      "tipo": "parcial",
+      "f": "x*x*y",
+      "p": [
+        1,
+        3
+      ],
+      "var": "x"
+    }
+  },
+  {
+    "id": "dd-03",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "$\\nabla f(1, 2)$ para $f(x,y) = xy$",
+    "opciones": [
+      "$(2, 1)$",
+      "$(1, 2)$",
+      "$(2, 2)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (y, x) = (2, 1)$.",
+    "verifica": {
+      "tipo": "grad",
+      "f": "x*y",
+      "p": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "id": "dd-04",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "$\\frac{\\partial f}{\\partial y}$ de $f(x,y) = 3x + y^2$ en $(2, 1)$",
+    "opciones": [
+      "$2$",
+      "$3$",
+      "$5$"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_y = 2y = 2$.",
+    "verifica": {
+      "tipo": "parcial",
+      "f": "3*x+y*y",
+      "p": [
+        2,
+        1
+      ],
+      "var": "y"
+    }
+  },
+  {
+    "id": "dd-05",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "En $D_{\\mathbf u} f = \\nabla f \\cdot \\mathbf u$, el vector $\\mathbf u$ debe ser",
+    "opciones": [
+      "unitario",
+      "cualquier vector",
+      "perpendicular a $\\nabla f$"
+    ],
+    "correcta": 0,
+    "explicacion": "La derivada direccional usa un vector unitario: si no lo es, hay que dividir entre su norma.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "unitario"
+    }
+  },
+  {
+    "id": "dd-06",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "La dirección de máximo crecimiento de $f$ en un punto es la de",
+    "opciones": [
+      "la misma de $\\nabla f$",
+      "la de $-\\nabla f$",
+      "una perpendicular a $\\nabla f$"
+    ],
+    "correcta": 0,
+    "explicacion": "$D_{\\mathbf u} f = |\\nabla f|\\cos\\theta$ es máxima con $\\theta = 0$: en la dirección de $\\nabla f$.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "la misma de"
+    }
+  },
+  {
+    "id": "dd-07",
+    "tema": "derivadas_direccionales",
+    "dificultad": 1,
+    "enunciado": "$\\nabla f(0, 0)$ para $f(x,y) = 5x - 2y + 7$",
+    "opciones": [
+      "$(5, -2)$",
+      "$(5, 2)$",
+      "$(-2, 5)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (5, -2)$ en todo punto.",
+    "verifica": {
+      "tipo": "grad",
+      "f": "5*x-2*y+7",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "dd-08",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "$D_{\\mathbf u} f$ de $f(x,y) = x^2 + y^2$ en $(1, 2)$ con $\\mathbf u = (1, 0)$",
+    "opciones": [
+      "$2$",
+      "$4$",
+      "$6$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f(1,2) = (2, 4)$; $\\nabla f \\cdot (1,0) = 2$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x+y*y",
+      "p": [
+        1,
+        2
+      ],
+      "v": [
+        1,
+        0
+      ]
+    }
+  },
+  {
+    "id": "dd-09",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "$D_{\\mathbf u} f$ de $f(x,y) = xy$ en $(2, 3)$ con $\\mathbf u = (0, 1)$",
+    "opciones": [
+      "$2$",
+      "$3$",
+      "$5$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (y, x) = (3, 2)$; $D_{\\mathbf u} f = 2$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*y",
+      "p": [
+        2,
+        3
+      ],
+      "v": [
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "id": "dd-10",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "$D_{\\mathbf u} f$ de $f(x,y) = x^2 y$ en $(1, 1)$ con $\\mathbf u = \\left(\\frac{3}{5}, \\frac{4}{5}\\right)$",
+    "opciones": [
+      "$2$",
+      "$3$",
+      "$\\frac{6}{5}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2xy, x^2) = (2, 1)$; $\\frac{6}{5} + \\frac{4}{5} = 2$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x*y",
+      "p": [
+        1,
+        1
+      ],
+      "v": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "id": "dd-11",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "Valor máximo de $D_{\\mathbf u} f$ para $f(x,y) = 3x + 4y$",
+    "opciones": [
+      "$5$",
+      "$7$",
+      "$25$"
+    ],
+    "correcta": 0,
+    "explicacion": "Es $|\\nabla f| = |(3, 4)| = 5$.",
+    "verifica": {
+      "tipo": "maxdir",
+      "f": "3*x+4*y",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "dd-12",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "Máxima tasa de cambio de $f(x,y) = x^2 + y^2$ en $(3, 4)$",
+    "opciones": [
+      "$10$",
+      "$14$",
+      "$100$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (6, 8)$, $|\\nabla f| = 10$.",
+    "verifica": {
+      "tipo": "maxdir",
+      "f": "x*x+y*y",
+      "p": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "id": "dd-13",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "$\\nabla f(3, 0)$ para $f(x,y) = x e^{y}$",
+    "opciones": [
+      "$(1, 3)$",
+      "$(3, 1)$",
+      "$(1, 0)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (e^y, x e^y) = (1, 3)$.",
+    "verifica": {
+      "tipo": "grad",
+      "f": "x*Math.exp(y)",
+      "p": [
+        3,
+        0
+      ]
+    }
+  },
+  {
+    "id": "dd-14",
+    "tema": "derivadas_direccionales",
+    "dificultad": 2,
+    "enunciado": "$D_{\\mathbf u} f$ de $f(x,y) = x^2 + y^2$ en $(1, 1)$ en la dirección de $-\\nabla f$",
+    "opciones": [
+      "$-2\\sqrt{2}$",
+      "$2\\sqrt{2}$",
+      "$0$"
+    ],
+    "correcta": 0,
+    "explicacion": "Hacia $-\\nabla f$ la derivada vale $-|\\nabla f| = -|(2,2)| = -2\\sqrt{2}$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x+y*y",
+      "p": [
+        1,
+        1
+      ],
+      "v": [
+        -2,
+        -2
+      ]
+    }
+  },
+  {
+    "id": "dd-15",
+    "tema": "derivadas_direccionales",
+    "dificultad": 3,
+    "enunciado": "Derivada direccional de $f(x,y) = x^2 + y^2$ en $(1, 2)$ en la dirección de $\\mathbf v = (3, 4)$",
+    "opciones": [
+      "$\\frac{22}{5}$",
+      "$22$",
+      "$\\frac{22}{25}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\mathbf v$ no es unitario: $\\mathbf u = \\frac{1}{5}(3,4)$. $\\nabla f = (2,4)$, $D_{\\mathbf u} f = \\frac{6 + 16}{5} = \\frac{22}{5}$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x+y*y",
+      "p": [
+        1,
+        2
+      ],
+      "v": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "id": "dd-16",
+    "tema": "derivadas_direccionales",
+    "dificultad": 3,
+    "enunciado": "Derivada direccional de $f(x,y) = xy$ en $(1, 2)$ en la dirección de $\\mathbf v = (1, 1)$",
+    "opciones": [
+      "$\\frac{3}{\\sqrt{2}}$",
+      "$3$",
+      "$\\frac{3}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2, 1)$, $|\\mathbf v| = \\sqrt 2$: $D_{\\mathbf u} f = \\frac{3}{\\sqrt 2}$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*y",
+      "p": [
+        1,
+        2
+      ],
+      "v": [
+        1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "dd-17",
+    "tema": "derivadas_direccionales",
+    "dificultad": 3,
+    "enunciado": "Derivada direccional de $f(x,y) = x^2 - y^2$ en $(2, 1)$ en la dirección de $\\mathbf v = (1, -1)$",
+    "opciones": [
+      "$3\\sqrt{2}$",
+      "$6$",
+      "$\\sqrt{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (4, -2)$; $\\frac{4 + 2}{\\sqrt 2} = 3\\sqrt 2$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x-y*y",
+      "p": [
+        2,
+        1
+      ],
+      "v": [
+        1,
+        -1
+      ]
+    }
+  },
+  {
+    "id": "dd-18",
+    "tema": "derivadas_direccionales",
+    "dificultad": 3,
+    "enunciado": "Dirección unitaria de máximo crecimiento de $f(x,y) = x^2 + 2y$ en $(1, 1)$",
+    "opciones": [
+      "$\\left(\\frac{1}{\\sqrt{2}}, \\frac{1}{\\sqrt{2}}\\right)$",
+      "$(2, 2)$",
+      "$\\left(-\\frac{1}{\\sqrt{2}}, -\\frac{1}{\\sqrt{2}}\\right)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2, 2)$; dividido entre $|\\nabla f| = 2\\sqrt2$.",
+    "verifica": {
+      "tipo": "unitgrad",
+      "f": "x*x+2*y",
+      "p": [
+        1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "dd-19",
+    "tema": "derivadas_direccionales",
+    "dificultad": 3,
+    "enunciado": "Máxima tasa de cambio de $f(x,y) = x^3 y$ en $(1, 2)$",
+    "opciones": [
+      "$\\sqrt{37}$",
+      "$7$",
+      "$37$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (3x^2 y, x^3) = (6, 1)$; $|\\nabla f| = \\sqrt{37}$.",
+    "verifica": {
+      "tipo": "maxdir",
+      "f": "x**3*y",
+      "p": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "id": "dd-20",
+    "tema": "derivadas_direccionales",
+    "dificultad": 3,
+    "enunciado": "Derivada direccional de $f(x,y) = x^2 + xy$ en $(1, 0)$ en la dirección de $\\mathbf v = (4, 3)$",
+    "opciones": [
+      "$\\frac{11}{5}$",
+      "$11$",
+      "$2$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2x + y, x) = (2, 1)$; $\\frac{8 + 3}{5} = \\frac{11}{5}$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x+x*y",
+      "p": [
+        1,
+        0
+      ],
+      "v": [
+        4,
+        3
+      ]
+    }
+  },
+  {
+    "id": "dd-21",
+    "tema": "derivadas_direccionales",
+    "dificultad": 4,
+    "enunciado": "Derivada direccional de $f(x,y) = x^2 y + y^3$ en $(1, 1)$ en la dirección de $\\mathbf v = (1, 2)$",
+    "opciones": [
+      "$2\\sqrt{5}$",
+      "$10$",
+      "$2$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2xy, x^2 + 3y^2) = (2, 4)$; $\\frac{2 + 8}{\\sqrt 5} = 2\\sqrt 5$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x*y+y**3",
+      "p": [
+        1,
+        1
+      ],
+      "v": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "id": "dd-22",
+    "tema": "derivadas_direccionales",
+    "dificultad": 4,
+    "enunciado": "Una dirección unitaria en la que $f(x,y) = x^2 + y^2$ no cambia en $(3, 4)$",
+    "opciones": [
+      "$\\left(\\frac{4}{5}, -\\frac{3}{5}\\right)$",
+      "$\\left(\\frac{3}{5}, \\frac{4}{5}\\right)$",
+      "$\\left(-\\frac{3}{5}, -\\frac{4}{5}\\right)$"
+    ],
+    "correcta": 0,
+    "explicacion": "Debe ser perpendicular a $\\nabla f = (6, 8)$: $(4, -3)/5$.",
+    "verifica": {
+      "tipo": "zerodir",
+      "f": "x*x+y*y",
+      "p": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "id": "dd-23",
+    "tema": "derivadas_direccionales",
+    "dificultad": 4,
+    "enunciado": "Derivada direccional de $f(x,y) = e^{xy}$ en $(0, 1)$ en la dirección de $\\mathbf v = (3, 4)$",
+    "opciones": [
+      "$\\frac{3}{5}$",
+      "$3$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (y e^{xy}, x e^{xy}) = (1, 0)$; $\\frac{3}{5}$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "Math.exp(x*y)",
+      "p": [
+        0,
+        1
+      ],
+      "v": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "id": "dd-24",
+    "tema": "derivadas_direccionales",
+    "dificultad": 4,
+    "enunciado": "Derivada direccional de $f(x,y) = x^2 y - 2y$ en $(2, 1)$ hacia el punto $(5, 5)$",
+    "opciones": [
+      "$4$",
+      "$20$",
+      "$\\frac{4}{5}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\mathbf v = (3, 4)$, $|\\mathbf v| = 5$; $\\nabla f = (2xy, x^2 - 2) = (4, 2)$; $\\frac{12 + 8}{5} = 4$.",
+    "verifica": {
+      "tipo": "dir",
+      "f": "x*x*y-2*y",
+      "p": [
+        2,
+        1
+      ],
+      "v": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "id": "dd-25",
+    "tema": "derivadas_direccionales",
+    "dificultad": 4,
+    "enunciado": "Máxima tasa de cambio de $f(x,y) = x^2 + 4xy + y^2$ en $(1, 1)$",
+    "opciones": [
+      "$6\\sqrt{2}$",
+      "$12$",
+      "$72$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (2x + 4y, 4x + 2y) = (6, 6)$; $|\\nabla f| = 6\\sqrt 2$.",
+    "verifica": {
+      "tipo": "maxdir",
+      "f": "x*x+4*x*y+y*y",
+      "p": [
+        1,
+        1
+      ]
+    }
+  }
+]

@@ -1,58 +1,491 @@
 [
   {
-    "id": "max-01",
+    "id": "mm-01",
     "tema": "maximos_minimos",
     "dificultad": 1,
-    "enunciado": "El punto crítico de $f(x,y) = x^2 + y^2$ es",
+    "enunciado": "Punto crítico de $f(x,y) = x^2 + y^2$",
     "opciones": [
       "$(0, 0)$",
       "$(1, 1)$",
-      "$(0, 1)$",
-      "No tiene"
+      "$(1, 0)$"
     ],
     "correcta": 0,
-    "explicacion": "$\\nabla f = (2x, 2y) = (0,0)$ solo en el origen."
+    "explicacion": "$\\nabla f = (2x, 2y) = \\mathbf 0$ en $(0, 0)$.",
+    "verifica": {
+      "tipo": "critico",
+      "f": "x*x+y*y"
+    }
   },
   {
-    "id": "max-02",
+    "id": "mm-02",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "Punto crítico de $f(x,y) = (x - 1)^2 + (y + 2)^2$",
+    "opciones": [
+      "$(1, -2)$",
+      "$(-1, 2)$",
+      "$(1, 2)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$2(x - 1) = 0$, $2(y + 2) = 0$.",
+    "verifica": {
+      "tipo": "critico",
+      "f": "(x-1)**2+(y+2)**2"
+    }
+  },
+  {
+    "id": "mm-03",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "$f(x,y) = x^2 + y^2$ en $(0, 0)$ tiene un",
+    "opciones": [
+      "Mínimo local",
+      "Máximo local",
+      "Punto de silla"
+    ],
+    "correcta": 0,
+    "explicacion": "$D = 4 > 0$ y $f_{xx} = 2 > 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x*x+y*y",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-04",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "$f(x,y) = 3 - x^2 - y^2$ en $(0, 0)$ tiene un",
+    "opciones": [
+      "Máximo local",
+      "Mínimo local",
+      "Punto de silla"
+    ],
+    "correcta": 0,
+    "explicacion": "$D = 4 > 0$ y $f_{xx} = -2 < 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "3-x*x-y*y",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-05",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "$f(x,y) = x^2 - y^2$ en $(0, 0)$ tiene un",
+    "opciones": [
+      "Punto de silla",
+      "Mínimo local",
+      "Máximo local"
+    ],
+    "correcta": 0,
+    "explicacion": "$D = (2)(-2) - 0 = -4 < 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x*x-y*y",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-06",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "Un punto crítico de $f$ es donde",
+    "opciones": [
+      "$\\nabla f = \\mathbf 0$ (o no existe)",
+      "$f = 0$",
+      "$f_{xx} = 0$"
+    ],
+    "correcta": 0,
+    "explicacion": "Se anulan (o no existen) las derivadas parciales.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "\\nabla f = \\mathbf 0"
+    }
+  },
+  {
+    "id": "mm-07",
+    "tema": "maximos_minimos",
+    "dificultad": 1,
+    "enunciado": "El discriminante del criterio de la segunda derivada es $D =$",
+    "opciones": [
+      "$f_{xx} f_{yy} - f_{xy}^2$",
+      "$f_{xx} f_{yy} + f_{xy}^2$",
+      "$f_{xx} + f_{yy}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$D = f_{xx} f_{yy} - f_{xy}^2$ evaluado en el punto crítico.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "f_{xx} f_{yy} - f_{xy}^2"
+    }
+  },
+  {
+    "id": "mm-08",
     "tema": "maximos_minimos",
     "dificultad": 2,
-    "enunciado": "Para $f(x,y) = x^2 - y^2$, el punto $(0,0)$ es",
+    "enunciado": "Punto crítico de $f(x,y) = x^2 + 4x + y^2 - 6y$",
     "opciones": [
-      "Un mínimo local",
-      "Un punto de silla",
-      "Un máximo local",
-      "No es crítico"
+      "$(-2, 3)$",
+      "$(2, -3)$",
+      "$(4, -6)$"
     ],
-    "correcta": 1,
-    "explicacion": "$D = f_{xx}f_{yy} - f_{xy}^2 = (2)(-2) - 0 = -4 < 0$: punto de silla."
+    "correcta": 0,
+    "explicacion": "$2x + 4 = 0$, $2y - 6 = 0$.",
+    "verifica": {
+      "tipo": "critico",
+      "f": "x*x+4*x+y*y-6*y"
+    }
   },
   {
-    "id": "max-03",
+    "id": "mm-09",
     "tema": "maximos_minimos",
-    "dificultad": 3,
-    "enunciado": "Para $f(x,y) = x^3 - 3x + y^2$, el punto crítico $(1, 0)$ es",
+    "dificultad": 2,
+    "enunciado": "$D$ en $(0, 0)$ para $f(x,y) = x^2 + 3xy + y^2$",
     "opciones": [
-      "Un máximo local",
-      "Un punto de silla",
-      "Un mínimo local",
-      "No es crítico"
+      "$-5$",
+      "$13$",
+      "$4$"
     ],
-    "correcta": 2,
-    "explicacion": "$D = (6x)(2) - 0 = 12 > 0$ y $f_{xx} = 6 > 0$ en $(1,0)$: mínimo local."
+    "correcta": 0,
+    "explicacion": "$f_{xx} = 2$, $f_{yy} = 2$, $f_{xy} = 3$: $D = 4 - 9 = -5$.",
+    "verifica": {
+      "tipo": "D",
+      "f": "x*x+3*x*y+y*y",
+      "p": [
+        0,
+        0
+      ]
+    }
   },
   {
-    "id": "max-04",
+    "id": "mm-10",
     "tema": "maximos_minimos",
-    "dificultad": 4,
-    "enunciado": "El valor mínimo local de $f(x,y) = 4 + x^3 + y^3 - 3xy$ es",
+    "dificultad": 2,
+    "enunciado": "$f(x,y) = x^2 + xy + y^2$ en $(0, 0)$ tiene un",
+    "opciones": [
+      "Mínimo local",
+      "Máximo local",
+      "Punto de silla"
+    ],
+    "correcta": 0,
+    "explicacion": "$D = 4 - 1 = 3 > 0$, $f_{xx} = 2 > 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x*x+x*y+y*y",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-11",
+    "tema": "maximos_minimos",
+    "dificultad": 2,
+    "enunciado": "Si en un punto crítico $D > 0$ y $f_{xx} < 0$, hay un",
+    "opciones": [
+      "Máximo local",
+      "Mínimo local",
+      "Punto de silla"
+    ],
+    "correcta": 0,
+    "explicacion": "$D > 0$ con $f_{xx} < 0$: máximo local.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "Máximo"
+    }
+  },
+  {
+    "id": "mm-12",
+    "tema": "maximos_minimos",
+    "dificultad": 2,
+    "enunciado": "Si en un punto crítico $D < 0$, hay un",
+    "opciones": [
+      "Punto de silla",
+      "Mínimo local",
+      "Máximo local"
+    ],
+    "correcta": 0,
+    "explicacion": "$D < 0$: punto de silla.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "silla"
+    }
+  },
+  {
+    "id": "mm-13",
+    "tema": "maximos_minimos",
+    "dificultad": 2,
+    "enunciado": "Valor mínimo de $f(x,y) = x^2 + y^2 - 2x + 5$",
     "opciones": [
       "$4$",
-      "$1$",
       "$5$",
-      "$3$"
+      "$6$"
     ],
-    "correcta": 3,
-    "explicacion": "Puntos críticos: $(0,0)$ (silla, $D = -9$) y $(1,1)$ ($D = 27 > 0$, $f_{xx} = 6 > 0$). $f(1,1) = 4 + 1 + 1 - 3 = 3$."
+    "correcta": 0,
+    "explicacion": "El punto crítico es $(1, 0)$ y $f(1, 0) = 4$.",
+    "verifica": {
+      "tipo": "valcrit",
+      "f": "x*x+y*y-2*x+5",
+      "p": [
+        1,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-14",
+    "tema": "maximos_minimos",
+    "dificultad": 2,
+    "enunciado": "Punto crítico de $f(x,y) = 3x^2 - 6x + 2y^2 + 8y$",
+    "opciones": [
+      "$(1, -2)$",
+      "$(-1, 2)$",
+      "$(2, -1)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$6x - 6 = 0$, $4y + 8 = 0$.",
+    "verifica": {
+      "tipo": "critico",
+      "f": "3*x*x-6*x+2*y*y+8*y"
+    }
+  },
+  {
+    "id": "mm-15",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "$f(x,y) = x^3 - 3x + y^2$ en $(1, 0)$ tiene un",
+    "opciones": [
+      "Mínimo local",
+      "Máximo local",
+      "Punto de silla"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_{xx} = 6x = 6$, $f_{yy} = 2$, $D = 12 > 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x**3-3*x+y*y",
+      "p": [
+        1,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-16",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "$f(x,y) = x^3 - 3x + y^2$ en $(-1, 0)$ tiene un",
+    "opciones": [
+      "Punto de silla",
+      "Mínimo local",
+      "Máximo local"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_{xx} = -6$, $f_{yy} = 2$, $D = -12 < 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x**3-3*x+y*y",
+      "p": [
+        -1,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-17",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "Valor de $f(x,y) = 4 + x^3 + y^3 - 3xy$ en su mínimo local $(1, 1)$",
+    "opciones": [
+      "$3$",
+      "$4$",
+      "$5$"
+    ],
+    "correcta": 0,
+    "explicacion": "$f(1, 1) = 4 + 1 + 1 - 3 = 3$.",
+    "verifica": {
+      "tipo": "valcrit",
+      "f": "4+x**3+y**3-3*x*y",
+      "p": [
+        1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "mm-18",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "$D$ en $(1, 1)$ para $f(x,y) = x^3 + y^3 - 3xy$",
+    "opciones": [
+      "$27$",
+      "$45$",
+      "$9$"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_{xx} = 6$, $f_{yy} = 6$, $f_{xy} = -3$: $D = 36 - 9 = 27$.",
+    "verifica": {
+      "tipo": "D",
+      "f": "x**3+y**3-3*x*y",
+      "p": [
+        1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "mm-19",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "Punto crítico de $f(x,y) = 2x^2 + y^2 - xy - 7y$",
+    "opciones": [
+      "$(1, 4)$",
+      "$(4, 1)$",
+      "$(0, 7)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$4x - y = 0$ y $2y - x - 7 = 0$: $y = 4x$, $7x = 7$.",
+    "verifica": {
+      "tipo": "critico",
+      "f": "2*x*x+y*y-x*y-7*y"
+    }
+  },
+  {
+    "id": "mm-20",
+    "tema": "maximos_minimos",
+    "dificultad": 3,
+    "enunciado": "$f(x,y) = xy$ en $(0, 0)$ tiene un",
+    "opciones": [
+      "Punto de silla",
+      "Mínimo local",
+      "Máximo local"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_{xx} = f_{yy} = 0$, $f_{xy} = 1$: $D = -1 < 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x*y",
+      "p": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "id": "mm-21",
+    "tema": "maximos_minimos",
+    "dificultad": 4,
+    "enunciado": "Valor de $f(x,y) = x^4 + y^4 - 4xy$ en su mínimo local $(1, 1)$",
+    "opciones": [
+      "$-2$",
+      "$0$",
+      "$2$"
+    ],
+    "correcta": 0,
+    "explicacion": "$D = 144 - 16 > 0$, $f_{xx} = 12 > 0$; $f(1, 1) = 1 + 1 - 4 = -2$.",
+    "verifica": {
+      "tipo": "valcrit",
+      "f": "x**4+y**4-4*x*y",
+      "p": [
+        1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "mm-22",
+    "tema": "maximos_minimos",
+    "dificultad": 4,
+    "enunciado": "Valor mínimo local de $f(x,y) = x^3 - 12x + y^2 - 2y$",
+    "opciones": [
+      "$-17$",
+      "$15$",
+      "$-16$"
+    ],
+    "correcta": 0,
+    "explicacion": "Críticos en $(\\pm 2, 1)$; el mínimo es $(2, 1)$: $8 - 24 + 1 - 2 = -17$.",
+    "verifica": {
+      "tipo": "valcrit",
+      "f": "x**3-12*x+y*y-2*y",
+      "p": [
+        2,
+        1
+      ]
+    }
+  },
+  {
+    "id": "mm-23",
+    "tema": "maximos_minimos",
+    "dificultad": 4,
+    "enunciado": "$f(x,y) = x^3 - 12x + y^2 - 2y$ en $(-2, 1)$ tiene un",
+    "opciones": [
+      "Punto de silla",
+      "Mínimo local",
+      "Máximo local"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_{xx} = 6x = -12$, $f_{yy} = 2$: $D = -24 < 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x**3-12*x+y*y-2*y",
+      "p": [
+        -2,
+        1
+      ]
+    }
+  },
+  {
+    "id": "mm-24",
+    "tema": "maximos_minimos",
+    "dificultad": 4,
+    "enunciado": "Valor mínimo de $f(x,y) = x^2 + y^2 + xy - 3x$",
+    "opciones": [
+      "$-3$",
+      "$3$",
+      "$-\\frac{9}{4}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$2x + y = 3$, $2y + x = 0$: $(2, -1)$ y $f = 4 + 1 - 2 - 6 = -3$.",
+    "verifica": {
+      "tipo": "valcrit",
+      "f": "x*x+y*y+x*y-3*x",
+      "p": [
+        2,
+        -1
+      ]
+    }
+  },
+  {
+    "id": "mm-25",
+    "tema": "maximos_minimos",
+    "dificultad": 4,
+    "enunciado": "$f(x,y) = x^3 - 3x + y^3 - 3y$ en $(-1, -1)$ tiene un",
+    "opciones": [
+      "Máximo local",
+      "Mínimo local",
+      "Punto de silla"
+    ],
+    "correcta": 0,
+    "explicacion": "$f_{xx} = -6$, $f_{yy} = -6$, $f_{xy} = 0$: $D = 36 > 0$ con $f_{xx} < 0$.",
+    "verifica": {
+      "tipo": "clasif",
+      "f": "x**3-3*x+y**3-3*y",
+      "p": [
+        -1,
+        -1
+      ]
+    }
   }
 ]

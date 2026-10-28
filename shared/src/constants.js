@@ -116,20 +116,17 @@ export const DUMMY_REGEN_MS = 2000;
 
 // --- Cajas de suministro y preguntas ---
 // Temas del banco (slug → nombre). Provisionales hasta tener los temas del corte 3.
+// Temas reales del corte 3 (fase 28). El gradiente va dentro de derivadas direccionales; el cambio
+// de orden de integración y las polares sencillas, dentro de integrales dobles.
 export const TOPICS = {
-  integrales_dobles: 'Integrales dobles',
-  integrales_triples: 'Integrales triples',
-  cambio_orden: 'Cambio de orden de integración',
-  polares: 'Coordenadas polares',
-  cilindricas_esfericas: 'Coordenadas cilíndricas y esféricas',
-  jacobiano: 'Jacobiano y cambio de variables',
-  maximos_minimos: 'Máximos y mínimos',
+  derivadas_direccionales: 'Derivadas direccionales',
   lagrange: 'Multiplicadores de Lagrange',
-  gradiente_direccional: 'Gradiente y derivada direccional',
+  integrales_dobles: 'Integrales dobles',
+  maximos_minimos: 'Máximos y mínimos',
 };
 
 // Nombres de todos los temas que pueden aparecer en las estadísticas (los elegibles + el de las balas)
-export const TOPIC_NAMES = { ...TOPICS, basicas: 'Derivadas y límites (balas)', facil: 'Aritmética (modo fácil)' };
+export const TOPIC_NAMES = { ...TOPICS, facil: 'Aritmética (modo fácil)' };
 
 // Opciones por pregunta según la dificultad: con 4 era demasiado en medio de un tiroteo
 export const optionCount = (difficulty) => (difficulty <= 2 ? 2 : 3);

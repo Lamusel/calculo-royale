@@ -1,72 +1,559 @@
 [
   {
-    "id": "lag-01",
+    "id": "lg-01",
     "tema": "lagrange",
     "dificultad": 1,
-    "enunciado": "En el método de multiplicadores de Lagrange para optimizar $f$ sujeta a $g = k$ se resuelve",
+    "enunciado": "En el método de Lagrange para optimizar $f$ sujeta a $g = k$ se resuelve",
     "opciones": [
       "$\\nabla f = \\lambda \\nabla g$",
       "$\\nabla f = \\lambda g$",
-      "$f = \\lambda g$",
       "$\\nabla f \\cdot \\nabla g = 0$"
     ],
     "correcta": 0,
-    "explicacion": "En el óptimo los gradientes son paralelos: $\\nabla f = \\lambda \\nabla g$, junto con $g = k$."
+    "explicacion": "En el óptimo los gradientes son paralelos: $\\nabla f = \\lambda \\nabla g$, junto con $g = k$.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "\\nabla f = \\lambda \\nabla g"
+    }
   },
   {
-    "id": "lag-02",
+    "id": "lg-02",
     "tema": "lagrange",
-    "dificultad": 2,
-    "enunciado": "Valor máximo de $f(x,y) = xy$ sujeto a $x + y = 10$",
+    "dificultad": 1,
+    "enunciado": "Sistema de Lagrange para $f = x + y$ con $x^2 + y^2 = 1$",
     "opciones": [
-      "$50$",
-      "$25$",
-      "$20$",
-      "$10$"
+      "$1 = 2\\lambda x,\\ 1 = 2\\lambda y,\\ x^2 + y^2 = 1$",
+      "$1 = \\lambda x,\\ 1 = \\lambda y,\\ x^2 + y^2 = 1$",
+      "$x + y = 2\\lambda,\\ x^2 + y^2 = 1$"
     ],
-    "correcta": 1,
-    "explicacion": "$(y, x) = \\lambda(1,1)$ da $x = y = 5$; $f = 25$."
+    "correcta": 0,
+    "explicacion": "$\\nabla f = (1, 1)$ y $\\nabla g = (2x, 2y)$.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "1 = 2\\lambda x"
+    }
   },
   {
-    "id": "lag-03",
+    "id": "lg-03",
     "tema": "lagrange",
-    "dificultad": 2,
-    "enunciado": "Valor mínimo de $f(x,y) = x^2 + y^2$ sujeto a $x + y = 2$",
+    "dificultad": 1,
+    "enunciado": "Ecuaciones del sistema de Lagrange con 2 variables y 1 restricción",
     "opciones": [
-      "$1$",
-      "$4$",
+      "$3$",
       "$2$",
-      "$\\sqrt{2}$"
+      "$4$"
     ],
-    "correcta": 2,
-    "explicacion": "$(2x, 2y) = \\lambda(1,1)$ da $x = y = 1$; $f = 2$."
+    "correcta": 0,
+    "explicacion": "Dos de $\\nabla f = \\lambda \\nabla g$ y la restricción.",
+    "verifica": {
+      "tipo": "valor",
+      "valor": 3
+    }
   },
   {
-    "id": "lag-04",
+    "id": "lg-04",
     "tema": "lagrange",
-    "dificultad": 3,
-    "enunciado": "Valor máximo de $f(x,y) = x + y$ sobre la circunferencia $x^2 + y^2 = 2$",
+    "dificultad": 1,
+    "enunciado": "Máximo de $f(x,y) = x$ sobre $x^2 + y^2 = 4$",
     "opciones": [
-      "$\\sqrt{2}$",
+      "$2$",
       "$4$",
-      "$2\\sqrt{2}$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "$1 = 2\\lambda x$, $0 = 2\\lambda y$: $y = 0$, $x = \\pm 2$. El máximo es $2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x",
+      "curva": {
+        "tipo": "circ",
+        "r": 2
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-05",
+    "tema": "lagrange",
+    "dificultad": 1,
+    "enunciado": "Mínimo de $f(x,y) = y$ sobre $x^2 + y^2 = 9$",
+    "opciones": [
+      "$-3$",
+      "$0$",
+      "$-9$"
+    ],
+    "correcta": 0,
+    "explicacion": "Con $x = 0$, $y = \\pm 3$: el mínimo es $-3$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "y",
+      "curva": {
+        "tipo": "circ",
+        "r": 3
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-06",
+    "tema": "lagrange",
+    "dificultad": 1,
+    "enunciado": "Máximo de $f(x,y) = xy$ sujeto a $x + y = 10$",
+    "opciones": [
+      "$25$",
+      "$50$",
+      "$20$"
+    ],
+    "correcta": 0,
+    "explicacion": "$(y, x) = \\lambda(1, 1)$ da $x = y = 5$; $f = 25$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*y",
+      "curva": {
+        "tipo": "recta",
+        "x0": 0,
+        "y0": 10,
+        "dx": 1,
+        "dy": -1
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-07",
+    "tema": "lagrange",
+    "dificultad": 1,
+    "enunciado": "El multiplicador $\\lambda$ indica",
+    "opciones": [
+      "cuánto cambia el óptimo de $f$ si cambia $k$ en $g = k$",
+      "el valor máximo de $f$",
+      "la pendiente de la restricción"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\lambda$ es la sensibilidad del valor óptimo respecto de $k$.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "cambia el óptimo"
+    }
+  },
+  {
+    "id": "lg-08",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Máximo de $f(x,y) = 3x + 4y$ sobre $x^2 + y^2 = 1$",
+    "opciones": [
+      "$5$",
+      "$7$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "$(3, 4) = 2\\lambda(x, y)$: el punto es $(3, 4)/5$ y $f = 5$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "3*x+4*y",
+      "curva": {
+        "tipo": "circ",
+        "r": 1
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-09",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Mínimo de $f(x,y) = x^2 + y^2$ sobre $x + y = 2$",
+    "opciones": [
+      "$2$",
+      "$4$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "$2x = \\lambda = 2y$: $(1, 1)$ y $f = 2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*x+y*y",
+      "curva": {
+        "tipo": "recta",
+        "x0": 0,
+        "y0": 2,
+        "dx": 1,
+        "dy": -1
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-10",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Punto donde $f(x,y) = x^2 + y^2$ es mínima sobre $x + 2y = 5$",
+    "opciones": [
+      "$(1, 2)$",
+      "$(2, 1)$",
+      "$(5, 0)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$(2x, 2y) = \\lambda(1, 2)$: $y = 2x$, $5x = 5$, punto $(1, 2)$.",
+    "verifica": {
+      "tipo": "lagpunto",
+      "f": "x*x+y*y",
+      "curva": {
+        "tipo": "recta",
+        "x0": 5,
+        "y0": 0,
+        "dx": -2,
+        "dy": 1
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-11",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Máximo de $f(x,y) = xy$ sobre $x^2 + y^2 = 8$",
+    "opciones": [
+      "$4$",
+      "$8$",
       "$2$"
     ],
-    "correcta": 3,
-    "explicacion": "$(1,1) = \\lambda(2x, 2y)$ da $x = y$; con $x^2 + y^2 = 2$: $x = y = 1$, $f = 2$."
+    "correcta": 0,
+    "explicacion": "$y = 2\\lambda x$, $x = 2\\lambda y$: $x = \\pm y$, $x^2 = 4$; el máximo es $4$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*y",
+      "curva": {
+        "tipo": "circ",
+        "r": 2.8284271247461903
+      },
+      "modo": "max"
+    }
   },
   {
-    "id": "lag-05",
+    "id": "lg-12",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Máximo de $f(x,y) = x + y$ sobre $x^2 + y^2 = 2$",
+    "opciones": [
+      "$2$",
+      "$2\\sqrt{2}$",
+      "$\\sqrt{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x = y = 1$: $f = 2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x+y",
+      "curva": {
+        "tipo": "circ",
+        "r": 1.4142135623730951
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-13",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Mínimo de $f(x,y) = x - y$ sobre $x^2 + y^2 = 2$",
+    "opciones": [
+      "$-2$",
+      "$-\\sqrt{2}$",
+      "$0$"
+    ],
+    "correcta": 0,
+    "explicacion": "$(1, -1) = 2\\lambda(x, y)$: el mínimo está en $(-1, 1)$ y vale $-2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x-y",
+      "curva": {
+        "tipo": "circ",
+        "r": 1.4142135623730951
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-14",
+    "tema": "lagrange",
+    "dificultad": 2,
+    "enunciado": "Mínimo de $f(x,y) = 2x + y$ sobre $x^2 + y^2 = 5$",
+    "opciones": [
+      "$-5$",
+      "$-\\sqrt{5}$",
+      "$-3$"
+    ],
+    "correcta": 0,
+    "explicacion": "El punto es $-(2, 1)$: $f = -5$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "2*x+y",
+      "curva": {
+        "tipo": "circ",
+        "r": 2.23606797749979
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-15",
+    "tema": "lagrange",
+    "dificultad": 3,
+    "enunciado": "Máximo de $f(x,y) = x^2 + y^2$ sobre la elipse $\\frac{x^2}{4} + y^2 = 1$",
+    "opciones": [
+      "$4$",
+      "$2$",
+      "$5$"
+    ],
+    "correcta": 0,
+    "explicacion": "En $(\\pm 2, 0)$: $f = 4$ (los extremos están en los ejes de la elipse).",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*x+y*y",
+      "curva": {
+        "tipo": "elip",
+        "a": 2,
+        "b": 1
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-16",
+    "tema": "lagrange",
+    "dificultad": 3,
+    "enunciado": "Mínimo de $f(x,y) = x^2 + y^2$ sobre la elipse $\\frac{x^2}{9} + \\frac{y^2}{4} = 1$",
+    "opciones": [
+      "$4$",
+      "$9$",
+      "$2$"
+    ],
+    "correcta": 0,
+    "explicacion": "En $(0, \\pm 2)$: $f = 4$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*x+y*y",
+      "curva": {
+        "tipo": "elip",
+        "a": 3,
+        "b": 2
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-17",
+    "tema": "lagrange",
+    "dificultad": 3,
+    "enunciado": "Valor de $\\lambda$ en el máximo de $f = x + y$ con $g = x^2 + y^2 = 2$",
+    "opciones": [
+      "$\\frac{1}{2}$",
+      "$2$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "En $(1, 1)$: $(1, 1) = \\lambda(2, 2)$, $\\lambda = \\frac12$.",
+    "verifica": {
+      "tipo": "lambda",
+      "f": "x+y",
+      "g": "x*x+y*y",
+      "curva": {
+        "tipo": "circ",
+        "r": 1.4142135623730951
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-18",
+    "tema": "lagrange",
+    "dificultad": 3,
+    "enunciado": "Máximo de $f(x,y) = xy$ sobre $\\frac{x^2}{8} + \\frac{y^2}{2} = 1$",
+    "opciones": [
+      "$2$",
+      "$4$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x = 2\\sqrt2\\cos t$, $y = \\sqrt2 \\sin t$: $f = 2\\sin 2t$, máximo $2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*y",
+      "curva": {
+        "tipo": "elip",
+        "a": 2.8284271247461903,
+        "b": 1.4142135623730951
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-19",
+    "tema": "lagrange",
+    "dificultad": 3,
+    "enunciado": "Mínimo de $f(x,y) = x^2 + 2y^2$ sobre $x + y = 3$",
+    "opciones": [
+      "$6$",
+      "$\\frac{9}{2}$",
+      "$9$"
+    ],
+    "correcta": 0,
+    "explicacion": "$2x = \\lambda$, $4y = \\lambda$: $x = 2y$, $y = 1$, $x = 2$; $f = 6$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*x+2*y*y",
+      "curva": {
+        "tipo": "recta",
+        "x0": 0,
+        "y0": 3,
+        "dx": 1,
+        "dy": -1
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-20",
+    "tema": "lagrange",
+    "dificultad": 3,
+    "enunciado": "Distancia mínima del origen a la recta $x + y = 4$",
+    "opciones": [
+      "$2\\sqrt{2}$",
+      "$4$",
+      "$8$"
+    ],
+    "correcta": 0,
+    "explicacion": "Se minimiza $x^2 + y^2$: punto $(2, 2)$, distancia $2\\sqrt 2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "Math.hypot(x,y)",
+      "curva": {
+        "tipo": "recta",
+        "x0": 0,
+        "y0": 4,
+        "dx": 1,
+        "dy": -1
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-21",
     "tema": "lagrange",
     "dificultad": 4,
-    "enunciado": "Valor máximo de $f(x,y,z) = xyz$ con $x, y, z > 0$ y $x + y + z = 6$",
+    "enunciado": "Máximo de $f(x,y) = x^2 y$ sobre $x^2 + y^2 = 3$",
+    "opciones": [
+      "$2$",
+      "$3$",
+      "$\\sqrt{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x^2 = 3 - y^2$: $f = (3 - y^2) y$, máximo en $y = 1$: $f = 2$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "x*x*y",
+      "curva": {
+        "tipo": "circ",
+        "r": 1.7320508075688772
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-22",
+    "tema": "lagrange",
+    "dificultad": 4,
+    "enunciado": "Máximo de $f = xyz$ con $x, y, z > 0$ y $x + y + z = 6$",
     "opciones": [
       "$8$",
       "$6$",
-      "$27$",
       "$12$"
     ],
     "correcta": 0,
-    "explicacion": "$(yz, xz, xy) = \\lambda(1,1,1)$ da $x = y = z = 2$; $f = 8$."
+    "explicacion": "Por simetría $x = y = z = 2$: $f = 8$.",
+    "verifica": {
+      "tipo": "max2d",
+      "f": "x*y*(6-x-y)",
+      "dom": [
+        0,
+        6
+      ],
+      "cond": "x+y<6"
+    }
+  },
+  {
+    "id": "lg-23",
+    "tema": "lagrange",
+    "dificultad": 4,
+    "enunciado": "Valor de $\\lambda$ en el mínimo de $f = x^2 + y^2$ con $g = x + y = 2$",
+    "opciones": [
+      "$2$",
+      "$1$",
+      "$\\frac{1}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "En $(1, 1)$: $(2, 2) = \\lambda(1, 1)$, $\\lambda = 2$.",
+    "verifica": {
+      "tipo": "lambda",
+      "f": "x*x+y*y",
+      "g": "x+y",
+      "curva": {
+        "tipo": "recta",
+        "x0": 0,
+        "y0": 2,
+        "dx": 1,
+        "dy": -1
+      },
+      "modo": "min"
+    }
+  },
+  {
+    "id": "lg-24",
+    "tema": "lagrange",
+    "dificultad": 4,
+    "enunciado": "Máximo de $f(x,y) = 2x + 3y$ sobre $\\frac{x^2}{4} + \\frac{y^2}{9} = 1$",
+    "opciones": [
+      "$\\sqrt{97}$",
+      "$13$",
+      "$\\sqrt{13}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x = 2\\cos t$, $y = 3\\sin t$: $4\\cos t + 9\\sin t$, máximo $\\sqrt{16 + 81} = \\sqrt{97}$.",
+    "verifica": {
+      "tipo": "lag",
+      "f": "2*x+3*y",
+      "curva": {
+        "tipo": "elip",
+        "a": 2,
+        "b": 3
+      },
+      "modo": "max"
+    }
+  },
+  {
+    "id": "lg-25",
+    "tema": "lagrange",
+    "dificultad": 4,
+    "enunciado": "Punto de $2x + y = 5$ más cercano al origen",
+    "opciones": [
+      "$(2, 1)$",
+      "$(1, 2)$",
+      "$\\left(\\frac{5}{2}, 0\\right)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$(2x, 2y) = \\lambda(2, 1)$: $x = 2y$, $5y = 5$: $(2, 1)$.",
+    "verifica": {
+      "tipo": "lagpunto",
+      "f": "x*x+y*y",
+      "curva": {
+        "tipo": "recta",
+        "x0": 0,
+        "y0": 5,
+        "dx": 1,
+        "dy": -2
+      },
+      "modo": "min"
+    }
   }
 ]

@@ -18,7 +18,7 @@ function norm(u, v) {
 
 export default {
   name: 'derivada-direccional',
-  tema: 'gradiente_direccional',
+  tema: 'derivadas_direccionales',
   dificultad: 3,
   generar(rand, n = 4) {
     const a = randInt(1, 3, rand);
