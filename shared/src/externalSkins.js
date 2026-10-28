@@ -6,6 +6,16 @@ export default [
     "portrait": true
   },
   {
+    "id": "android18",
+    "source": "/assets/skins/external/android18/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "cj",
+    "source": "/assets/skins/external/cj/character.glb",
+    "portrait": true
+  },
+  {
     "id": "furina",
     "source": "/assets/skins/external/furina/character.glb",
     "portrait": true
@@ -18,6 +28,21 @@ export default [
   {
     "id": "luffy",
     "source": "/assets/skins/external/luffy/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "miku",
+    "source": "/assets/skins/external/miku/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "sparkle",
+    "source": "/assets/skins/external/sparkle/character.glb",
+    "portrait": true
+  },
+  {
+    "id": "tanjiro",
+    "source": "/assets/skins/external/tanjiro/character.glb",
     "portrait": true
   }
 ]
