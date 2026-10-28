@@ -75,12 +75,12 @@ export const EVENTS = {
   RESULTS_SELF: 'results:self',
 
   // Operadores de radio e intercepciones
-  // S → C: { id, kind: 'operator'|'intercept', tema, enunciado, opciones, timeLimitMs } (sin la respuesta)
+  // S → C: { id, kind: 'operator'|'gulag', tema, dificultad, enunciado, opciones, timeLimitMs } (sin la respuesta)
   TRANSMISSION: 'radio:transmission',
   TRANSMISSION_ANSWER: 'radio:answer', // C → S: { id, index }
-  // S → C: { id, kind, correct, explicacion, revived?, intel?: { cx, cy }, late? }
+  // S → C: { id, kind, correct, explicacion }
   TRANSMISSION_RESULT: 'radio:result',
-  VOTE_SECTOR: 'radio:vote', // C → S: sector elegido para el bombardeo ('C3')
+  GULAG_CHOICE: 'gulag:choice', // C → S: 'rifle' | 'shotgun' (Gulag con 3 aciertos)
   // S → C (host y espectadores): { byTopic, alive, total, operators, votes }
   CLASS_STATS: 'class:stats',
   ROOM_SPECTATE: 'room:spectate', // C → S con ack: { code } (vista para proyector, sin jugador)

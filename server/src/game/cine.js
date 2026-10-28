@@ -1,7 +1,7 @@
 import { DUEL, REPLAY, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { zoneInequality } from '@calculo-royale/shared/zone';
-import { aliveCount } from './combat.js';
+import { aliveCount, inMatch } from './combat.js';
 import { radio } from './match.js';
 import { zoneContains } from './Zone.js';
 
@@ -35,7 +35,7 @@ export function duelCircle(current, a, b, radius = DUEL.radius) {
 // Al quedar 2 vivos (si la partida empezó con más): presentación y última zona
 export function checkDuel(game) {
   if (game.duel || game.room.phase !== 'playing' || !game.zone || game.startingPlayers <= 2) return;
-  const alive = [...game.room.players.values()].filter((p) => p.alive && p.connected);
+  const alive = [...game.room.players.values()].filter(inMatch);
   if (alive.length !== 2) return;
   const [a, b] = alive;
   game.duel = { ids: [a.id, b.id], introEndsAt: game.now + DUEL.introMs };

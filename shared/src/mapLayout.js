@@ -388,8 +388,35 @@ function scatteredCover(taken) {
   return items;
 }
 
+// --- Gulag (fase 30): patios de prisión privados, fuera del mapa de 1 km (al este) ---
+// Cada arena es un cuadrado de GULAG_HALF m de semilado por dentro, con muros y cobertura simétrica.
+export const GULAG_HALF = 14;
+export const GULAG_ARENAS = [[700, 200], [790, 200], [700, 300], [790, 300]].map(([x, y], index) => ({ index, x, y }));
+// Esquinas donde empieza cada combatiente (relativas al centro)
+export const GULAG_SPAWNS = [[-10, -10], [10, 10], [-10, 10]];
+const gulagWall = (x, y, w, h) => ({ kind: 'gulagwall', shape: 'rect', x, y, w, h, height: 3.5, gulag: true });
+const gulag = GULAG_ARENAS.flatMap(({ x, y }) => {
+  const H2 = GULAG_HALF + 0.5;
+  return [
+    gulagWall(x, y + H2, GULAG_HALF * 2 + 2, 1), gulagWall(x, y - H2, GULAG_HALF * 2 + 2, 1),
+    gulagWall(x + H2, y, 1, GULAG_HALF * 2), gulagWall(x - H2, y, 1, GULAG_HALF * 2),
+    ...[[-5, 0], [5, 0], [0, -5], [0, 5]].map(([dx, dy]) => ({ ...crate(x + dx, y + dy, 2), gulag: true })),
+    ...[[-7, 7], [7, -7]].map(([dx, dy]) => ({ ...sandbags(x + dx, y + dy, 4, 0.9), gulag: true })),
+  ];
+});
+
+// Arena que contiene el punto (o null)
+export const gulagArenaAt = (x, y) => GULAG_ARENAS.find((a) => Math.abs(x - a.x) <= GULAG_HALF + 2 && Math.abs(y - a.y) <= GULAG_HALF + 2) ?? null;
+
+// Límite del mundo para un círculo de radio r: el mapa, o la arena del Gulag si está adentro de una
+export function worldLimits(x, y, r) {
+  const a = Math.abs(x) > MAP_HALF ? gulagArenaAt(x, y) : null;
+  if (a) return { minX: a.x - GULAG_HALF + r, maxX: a.x + GULAG_HALF - r, minY: a.y - GULAG_HALF + r, maxY: a.y + GULAG_HALF - r };
+  return { minX: -MAP_HALF + r, maxX: MAP_HALF - r, minY: -MAP_HALF + r, maxY: MAP_HALF - r };
+}
+
 const NATURE = [...forest(), ...groves()];
-export const OBSTACLES = [...NAMED, ...NATURE, ...scatteredCover(NATURE)];
+export const OBSTACLES = [...NAMED, ...NATURE, ...scatteredCover(NATURE), ...gulag];
 export const TREES = OBSTACLES.filter((o) => o.kind === 'tree');
 
 // Pista del aeródromo (solo visual): rectángulo de asfalto

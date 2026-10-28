@@ -122,7 +122,7 @@ export class Zone {
     this.nextShrinkMs = shrinkMs;
   }
 
-  // Zona de la fase siguiente (sin anunciar): la reciben antes quienes interceptan una transmisión.
+  // Zona de la fase siguiente (sin anunciar): se decide una sola vez y es la que se anunciará.
   // Se decide una sola vez y es la que se anunciará después.
   peekUpcoming() {
     const next = this.phase + 1;

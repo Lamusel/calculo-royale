@@ -14,7 +14,8 @@ const overlap = (a, b) => a.minX < b.maxX - EPS && a.maxX > b.minX + EPS && a.mi
 
 test('el mapa cabe en sus límites y mide 1 km de lado', () => {
   assert.equal(MAP_HALF * 2, 1000);
-  for (const o of OBSTACLES) {
+  // Las arenas del Gulag están afuera a propósito (al este del mapa)
+  for (const o of OBSTACLES.filter((x) => !x.gulag)) {
     const b = boxOf(o);
     assert.ok(b.minX >= -MAP_HALF && b.maxX <= MAP_HALF && b.minY >= -MAP_HALF && b.maxY <= MAP_HALF, `${o.kind} en (${o.x}, ${o.y})`);
   }

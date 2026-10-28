@@ -135,7 +135,19 @@ function logPieces(o) {
   );
 }
 
+// Muro del patio del Gulag: concreto con una franja oscura y alambre arriba
+function gulagWallPieces(o) {
+  const ground = terrainHeight(o.x, o.y) - 2;
+  const h = o.height + 2;
+  return [
+    piece(box(o.w, h, o.h), '#8c8a83', { position: [o.x, ground + h / 2, -o.y] }),
+    piece(box(o.w + 0.05, 0.4, o.h + 0.05), '#5a5853', { position: [o.x, ground + h - 0.2, -o.y] }),
+    piece(box(o.w, 0.06, o.h), '#3a3a38', { position: [o.x, ground + h + 0.35, -o.y] }),
+  ];
+}
+
 const BUILDERS = {
+  gulagwall: gulagWallPieces,
   bus: busPieces, stand: standPieces, stall: stallPieces, cliff: cliffPieces, silo: siloPieces, antenna: antennaPieces, dam: damPieces, tomb: tombPieces, logs: logPieces,
 };
 const RING_ITEMS = OBSTACLES.filter((o) => BUILDERS[o.kind]);

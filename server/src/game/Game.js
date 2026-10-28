@@ -8,7 +8,8 @@ import {
   answerCrate, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates, pickMatchCrates,
 } from './crates.js';
 import { encodeAirdrop, startMatch, stopMatch, updateMatch } from './match.js';
-import { answerTransmission, encodeBombing, onPlayerDeath, resetRadio, startRadio, updateRadio, voteSector } from './radio.js';
+import { answerTransmission, onPlayerDeath, resetRadio, startRadio, updateRadio } from './radio.js';
+import { chooseGulagWeapon, encodeGulag, resetGulag, updateGulag } from './gulag.js';
 import { onLeaderDeath, updateLeader, windOf } from './epic.js';
 import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
 import { driveBots } from './bots.js';
@@ -88,6 +89,8 @@ export class Game {
   }
 
   handleInput(player, input) {
+    // Gulag: congelado en su esquina mientras responde y en la cuenta regresiva (solo apunta)
+    if (player.frozen) return;
     // En el bus o cayendo: solo se puede saltar
     if (player.deploying) {
       if (input.buttons & BUTTONS.JUMP) jump(this, player);
@@ -150,11 +153,18 @@ export class Game {
     this.recorder.reset();
     startMatch(this);
     startRadio(this);
+    resetGulag(this);
   }
 
   stopMatch() {
     stopMatch(this);
     resetRadio(this);
+    // Fuera del Gulag: sin arenas ni guardias
+    for (const p of [...this.room.players.values()]) {
+      if (p.gulagBot) this.room.players.delete(p.id);
+      Object.assign(p, { arena: null, frozen: false, gulag: null });
+    }
+    this.gulag = null;
   }
 
   onPlayerDeath(player) {
@@ -170,8 +180,8 @@ export class Game {
     answerTransmission(this, player, id, index);
   }
 
-  voteSector(player, sector) {
-    voteSector(this, player, sector);
+  chooseGulagWeapon(player, weapon) {
+    chooseGulagWeapon(this, player, weapon);
   }
 
   answerCrate(player, crateId, index) {
@@ -180,7 +190,7 @@ export class Game {
   }
 
   requestAmmo(player) {
-    if (!player.deploying) requestAmmo(this, player);
+    if (!player.deploying && player.arena == null) requestAmmo(this, player);
   }
 
   // Cajas y botín del suelo de esta partida (lo pide la sala; en las pruebas están todas las cajas)
@@ -235,7 +245,7 @@ export class Game {
         (input) => this.handleInput(p, input),
         (pl, input, dt) => {
           // En el bus (o eligiendo punto) no se mueve por su cuenta: solo apunta
-          if (pl.deploy && !pl.air) pl.aim = input.aim;
+          if ((pl.deploy && !pl.air) || pl.frozen) pl.aim = input.aim;
           else if (pl.vehicleId !== null) driveInput(this, pl, input, dt);
           else applyInput(pl, input, dt);
         },
@@ -248,6 +258,7 @@ export class Game {
     updateCrates(this);
     updateMatch(this, DT);
     updateRadio(this);
+    updateGulag(this, DT);
     updateVehicles(this, DT);
     updateLeader(this);
     checkDuel(this);
@@ -295,7 +306,7 @@ export class Game {
       this.alarms.map((a) => [a.x, a.y]),
       this.zone && this.room.phase === 'playing' ? this.zone.encode(this.now) : [],
       encodeAirdrop(this),
-      encodeBombing(this),
+      encodeGulag(this),
       encodeVehicles(this),
       encodeBus(this),
     ];

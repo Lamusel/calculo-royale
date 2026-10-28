@@ -30,7 +30,8 @@ import { DuelIntro } from '../ui/Cinema.jsx';
 import TacticalMap, { minimapSize } from '../ui/TacticalMap.jsx';
 import HostPanel from '../ui/HostPanel.jsx';
 import QuickPhrases from '../ui/QuickPhrases.jsx';
-import { InterceptCard, OperatorPanel, TransmissionToast } from '../ui/Operator.jsx';
+import { OperatorPanel, TransmissionToast } from '../ui/Operator.jsx';
+import { GulagPanel } from '../ui/Gulag.jsx';
 import RotateDevice, { canFullscreen, enterLandscape } from '../ui/RotateDevice.jsx';
 import { useClientView } from '../ui/useClientView.js';
 import Lobby from './Lobby.jsx';
@@ -99,20 +100,12 @@ function SkinDebugOverlay({ roster }) {
 }
 
 // Aviso para quien está dentro del sector que van a bombardear
-function BombingWarning({ bombing, me, alive }) {
-  if (!bombing?.length || !me || !alive || sectorOf(me.x, me.y) !== bombing[0]) return null;
-  return (
-    <div className="pointer-events-none absolute left-1/2 top-1/3 z-30 -translate-x-1/2 animate-pulse rounded bg-red-700/90 px-4 py-2 text-center font-black uppercase tracking-wider text-white">
-      ¡Bombardeo en {bombing[0]} en {Math.ceil(bombing[1] / 1000)} s! Sal del sector
-    </div>
-  );
-}
-
 function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying }) {
   const view = useClientView(client, frameRef, room.phase);
   const isHost = room.hostId === myId;
   const [panel, setPanel] = useState(false);
-  const operating = room.phase === 'playing' && view.self && !view.self.alive;
+  // Espectador (caído sin Gulag o que ya lo perdió): preguntas de práctica
+  const operating = room.phase === 'playing' && view.self && !view.self.alive && !view.self.gulag;
   const followName = room.players.find((p) => p.id === client.followId)?.name;
   return (
     <>
@@ -133,7 +126,6 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         radar={view.radarLeft > 0}
         radio={client.radio}
         isTouch={isTouch}
-        intel={view.self?.intel}
         night={room.phase === 'playing' && room.weather === 'noche'}
         lastShot={client.heardShot}
         deployRoute={client.deploying === 'bus' && client.deployInfo?.route ? client.deployInfo.route : null}
@@ -141,11 +133,10 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       {room.phase === 'playing' && <WeatherChip weather={room.weather} windAngle={room.windAngle} />}
       <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
       <RadioFeed radio={client.radio} />
-      <BombingWarning bombing={frameRef.current.bombing} me={view.me} alive={view.self?.alive} />
-      {!operating && <InterceptCard client={client} />}
+      {room.phase === 'playing' && <GulagPanel client={client} self={view.self} roster={room.players} frameRef={frameRef} />}
       <TransmissionToast result={client.transmissionResult} />
       {operating && (
-        <OperatorPanel client={client} self={view.self} roster={room.players} others={view.others} followName={followName} />
+        <OperatorPanel client={client} self={view.self} roster={room.players} followName={followName} gulagFights={frameRef.current.gulag?.[1]?.length ?? 0} />
       )}
       {panel && <HostPanel stats={client.classStats} code={room.code} onClose={() => setPanel(false)} />}
       <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} client={client} />

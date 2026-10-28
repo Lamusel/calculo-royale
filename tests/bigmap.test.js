@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEPLOY, MAP_HALF, TICK_MS, ZONE_PHASES, ZONE_START } from '@calculo-royale/shared/constants';
 import { BRIDGES, FORD, onDam, riverY, waterAt } from '@calculo-royale/shared/mapPlan';
-import { AREAS } from '@calculo-royale/shared/mapLayout';
 import { applyInput } from '@calculo-royale/shared/movement';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { sectorOf } from '@calculo-royale/shared/zone';
@@ -73,7 +72,9 @@ test('8 bots saltando al azar del bus no caen todos en la misma zona', () => {
   }
   assert.ok(players.every((p) => !p.deploy), 'todos aterrizaron');
   const sectors = new Set(players.map((p) => sectorOf(p.x, p.y)));
-  const areas = new Set(players.map((p) => Object.keys(AREAS).find((k) => AREAS[k].w && Math.abs(p.x - AREAS[k].x) < AREAS[k].w / 2 && Math.abs(p.y - AREAS[k].y) < AREAS[k].h / 2) ?? 'campo'));
   assert.ok(sectors.size >= 4, `sectores: ${[...sectors]}`);
-  assert.ok(areas.size >= 2, `zonas: ${[...areas]}`);
+  // Repartidos: los dos más lejanos a más de 250 m
+  let spread = 0;
+  for (const a of players) for (const b of players) spread = Math.max(spread, Math.hypot(a.x - b.x, a.y - b.y));
+  assert.ok(spread > 250, `separación máxima ${spread.toFixed(0)} m`);
 });

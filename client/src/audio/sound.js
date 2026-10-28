@@ -3,14 +3,13 @@ import { onSettings, settings } from '../settings.js';
 import MANIFEST from './audio-manifest.json' with { type: 'json' };
 import { allowVoice, channelLevel, duckLevel, SHOT_VOICES, spatial } from './mix.js';
 import { createMusic } from './music.js';
-import { radioToSpeech, Speaker } from './speech.js';
 
 // Audio del juego con Web Audio. El contexto se crea con el primer toque o tecla (los navegadores
 // no dejan sonar antes). Tres canales con su volumen (Música, Efectos y Voz) bajo el general y
 // "Silenciar todo" (Opciones). Los efectos son sintetizados; si existe un archivo propio
 // (client/public/assets/audio/sfx/<nombre>.mp3, ver audio-manifest.json) se usa ese.
 // Todo lo que suena en el mapa usa la posición del oyente para el volumen y el paneo.
-// Mientras habla el Mando (speechSynthesis), la música y los efectos bajan (ducking).
+// (La voz del Mando se retiró en la fase 30: la radio es texto con beep y estática.)
 
 let ctx = null;
 let sfxBus = null; // canal de efectos (volumen del canal × ducking)
@@ -18,26 +17,14 @@ let musicBus = null;
 let noise = null;
 let music = null;
 let voices = 0;
-let speaking = false;
+const speaking = false; // sin voz del Mando no hay ducking
 const listener = { x: 0, y: 0 };
 const buffers = new Map(); // ruta → Promise<AudioBuffer | null>
 
-const speaker = new Speaker({
-  onStart: () => setSpeaking(true),
-  onEnd: () => setSpeaking(false),
-});
-
 function applyLevels(s = settings) {
-  speaker.volume = channelLevel(s, 'voice');
   if (!ctx) return;
   sfxBus.gain.setTargetAtTime(channelLevel(s, 'sfx') * duckLevel('sfx', speaking), ctx.currentTime, 0.08);
   musicBus.gain.setTargetAtTime(channelLevel(s, 'music') * duckLevel('music', speaking), ctx.currentTime, 0.2);
-  if (s.muted) speaker.stop();
-}
-
-function setSpeaking(on) {
-  speaking = on;
-  applyLevels();
 }
 
 export function unlockAudio() {
@@ -312,12 +299,6 @@ let pendingMoment = null;
 export function setMusicMoment(moment) {
   pendingMoment = moment;
   music?.setMoment(moment);
-}
-
-// Voz del Mando: título y texto (las fórmulas se leen en palabras)
-export function speak(title, text) {
-  if (settings.muted) return;
-  speaker.say(`${title}. ${radioToSpeech(text)}`);
 }
 
 // Motores continuos: el jeep más cercano que se mueve y el bus mientras vas en él

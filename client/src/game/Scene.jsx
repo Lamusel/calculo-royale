@@ -10,7 +10,7 @@ import { isTouchDevice } from '../input/TouchControls.jsx';
 import { exposureFor, onSettings, settings } from '../settings.js';
 import { mousePointer } from '../input/KeyboardMouse.js';
 import AimPreview from './AimPreview.jsx';
-import BombingMesh from './BombingMesh.jsx';
+import GulagArenas from './GulagArenas.jsx';
 import Buildings from './Buildings.jsx';
 import Bus from './Bus.jsx';
 import MapProps from './MapProps.jsx';
@@ -306,7 +306,7 @@ export default function Scene({
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
       <ZoneMesh frameRef={frameRef} />
-      <BombingMesh frameRef={frameRef} />
+      <GulagArenas frameRef={frameRef} />
       <Vehicles client={client} frameRef={frameRef} quality={quality} />
       <Bus frameRef={frameRef} />
       <LandingMarker frameRef={frameRef} />

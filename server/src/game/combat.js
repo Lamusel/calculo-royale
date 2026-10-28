@@ -10,6 +10,7 @@ import { hasLineOfSight, overlapsObstacle, raycastObstacles, rayCircle } from '@
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
 import { waterAt } from '@calculo-royale/shared/mapPlan';
+import { worldLimits } from '@calculo-royale/shared/mapLayout';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
 
@@ -64,10 +65,13 @@ export function switchWeapon(game, p, slot) {
   p.nextFireAt = Math.max(p.nextFireAt, game.now + 250);
 }
 
-// Jugadores vivos (y conectados) en la partida: decide la posición final y la victoria
+// ¿Sigue en la partida principal? (vivo, conectado y no peleando en el Gulag)
+export const inMatch = (p) => p.alive && p.connected && p.arena == null;
+
+// Jugadores vivos en la partida principal: decide la posición final y la victoria
 export function aliveCount(game) {
   let n = 0;
-  for (const p of game.room.players.values()) if (p.alive && p.connected) n++;
+  for (const p of game.room.players.values()) if (inMatch(p)) n++;
   return n;
 }
 
@@ -97,7 +101,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   target.killedWith = weaponIndex;
   target.reloadUntil = 0;
   // Posición final: los que siguen vivos + 1
-  if (game.room.phase === 'playing') target.place = aliveCount(game) + 1;
+  // En el Gulag ya tenía su puesto de la primera caída
+  if (game.room.phase === 'playing' && target.arena == null) target.place = aliveCount(game) + 1;
   game.onPlayerDeath?.(target);
   const attacker = game.room.players.get(attackerId);
   if (attacker && attacker !== target) {
@@ -240,7 +245,6 @@ function explode(game, g) {
 
 // Mueve las granadas (rebotan en obstáculos) y detona las que cumplieron su tiempo
 export function updateGrenades(game, dt) {
-  const limit = MAP_HALF - GRENADE_RADIUS;
   game.grenades = game.grenades.filter((g) => {
     const speed = Math.hypot(g.vx, g.vy);
     // Tormenta de arena: el viento empuja las granadas mientras vuelan
@@ -252,11 +256,13 @@ export function updateGrenades(game, dt) {
       const next = Math.max(0, speed - g.decel * dt);
       g.vx *= next / speed;
       g.vy *= next / speed;
+      // El borde del mapa o, en el Gulag, el de la arena
+      const box = worldLimits(g.x, g.y, GRENADE_RADIUS);
       const nx = g.x + g.vx * dt;
-      if (Math.abs(nx) > limit || overlapsObstacle(nx, g.y, GRENADE_RADIUS)) g.vx *= -0.5;
+      if (nx < box.minX || nx > box.maxX || overlapsObstacle(nx, g.y, GRENADE_RADIUS)) g.vx *= -0.5;
       else g.x = nx;
       const ny = g.y + g.vy * dt;
-      if (Math.abs(ny) > limit || overlapsObstacle(g.x, ny, GRENADE_RADIUS)) g.vy *= -0.5;
+      if (ny < box.minY || ny > box.maxY || overlapsObstacle(g.x, ny, GRENADE_RADIUS)) g.vy *= -0.5;
       else g.y = ny;
     }
     if (game.now < g.explodeAt) return true;

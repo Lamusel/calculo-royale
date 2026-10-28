@@ -2,7 +2,7 @@ import { AIRDROP, DURATIONS, MAP_HALF, WEAPON_IDS, ZONE_PHASES } from '@calculo-
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { insideZone, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
-import { aliveCount, damagePlayer } from './combat.js';
+import { aliveCount, damagePlayer, inMatch } from './combat.js';
 import { headingName, Zone } from './Zone.js';
 
 // La partida en sí: zona segura, transmisiones del mando, lanzamiento aéreo y victoria.
@@ -92,7 +92,7 @@ export function encodeAirdrop(game) {
 
 function checkVictory(game) {
   if (game.finished || game.startingPlayers < 2) return;
-  const alive = [...game.room.players.values()].filter((p) => p.alive && p.connected);
+  const alive = [...game.room.players.values()].filter(inMatch);
   if (alive.length > 1) return;
   game.finished = true;
   // Si murieron todos a la vez, gana el último en caer (posición 1)
@@ -108,7 +108,7 @@ export function updateMatch(game, dt) {
   const frozen = game.duel && game.now < game.duel.introEndsAt;
   if (dps > 0 && !frozen) {
     for (const p of game.room.players.values()) {
-      if (p.alive && !p.deploying && !insideZone(game.zone.current, p.x, p.y)) {
+      if (inMatch(p) && !p.deploying && !insideZone(game.zone.current, p.x, p.y)) {
         damagePlayer(game, p, dps * dt, null, ZONE_INDEX, { ignoreArmor: true });
       }
     }

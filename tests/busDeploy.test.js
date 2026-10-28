@@ -132,21 +132,6 @@ test('movimiento compartido en el aire: más rápido en caída libre que con par
   assert.ok(Math.abs(chute.x - DEPLOY.chuteAirSpeed) < 1e-9);
 });
 
-test('reanimación de operador: vuelve en paracaídas', async () => {
-  const { OPERATOR } = await import('@calculo-royale/shared/constants');
-  const room = makeRoom(4);
-  const [p] = room.players.values();
-  damagePlayer(room.game, p, 500, null, 0);
-  for (let i = 0; i < OPERATOR.reviveStreak; i++) {
-    advance(room, OPERATOR.gapMs + OPERATOR.firstDelayMs + TICK_MS);
-    const t = p.transmission;
-    room.game.answerTransmission(p, t.id, t.q.correcta);
-  }
-  assert.equal(p.alive, true);
-  assert.equal(p.deploy?.phase, 'chute');
-  assert.equal(p.deploy.z, DEPLOY.reviveAltitude);
-});
-
 test('elegir punto: 10 s para tocar el mapa; caen en paracaídas donde eligieron (o al azar)', () => {
   const room = makeRoom();
   room.game.startDeploy('punto');

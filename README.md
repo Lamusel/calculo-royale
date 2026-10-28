@@ -35,21 +35,17 @@ Primero es un battle royale de verdad; **el cálculo es la llave del poder**: la
 | **Fallar** | La caja se bloquea 15 s y suena una alarma visible en el minimapa de todos durante 3 s. |
 | **Transmisiones del centro de mando** | La zona segura se anuncia por radio como desigualdad: *"Aquí Mando. Zona segura: (x − 12)² + (y + 5)² ≤ 400. Tienen 60 s."* También los lanzamientos aéreos. |
 | **Mapa táctico** | Minimapa y mapa grande con ejes y coordenadas, y GPS en el HUD (`POS 12, −4`). Ahí se leen las desigualdades del mando; el piso es natural. |
-| **Interceptar transmisión enemiga** | Cada 2 min llega a todos un mensaje cifrado (pregunta rápida que se responde sin detenerse). Los 5 primeros en acertar conocen el centro de la próxima zona 15 s antes. |
+| **Gulag** | Al caer por primera vez en las fases 1 a 3 de la zona peleas contra otros 2 caídos en una arena privada. Antes del combate, 3 preguntas (dificultad 1, 2 y 3): tu equipo depende de los aciertos. El ganador vuelve a la partida en paracaídas. |
 | **Racha** | 3 aciertos seguidos en cajas = radar de 10 s (ves a todos en el minimapa). |
 | **Todo o nada** | Cajas doradas: pregunta legendaria; si aciertas, botín doble; si fallas, pierdes tu chaleco. |
 | **Preguntas paramétricas** | Mismo tipo de ejercicio con números distintos por jugador, opciones barajadas. Nadie puede soplar "es la C". |
 | **Campo de entrenamiento** | El lobby es jugable: mientras esperan, todos se mueven, prueban las armas de los armeros y disparan a blancos de práctica. Es el tutorial sin tutorial. |
 
-### Operadores de radio (los caídos siguen jugando)
+### Gulag y espectadores (los caídos siguen jugando)
 
-Al morir pasas a vista espectador y recibes **transmisiones** (preguntas):
-
-- **Si caíste en las fases 1 o 2 de la zona y no has usado tu reanimación:** 3 aciertos seguidos = te reaniman **una vez**, con pistola y venda, en paracaídas a un punto al azar dentro de la zona.
-- **Si caíste después o ya usaste tu reanimación:** cada acierto da **un voto** para un sector del mapa (cuadrícula militar 8×8, de A1 a H8, sectores de 35 m). Cada 60 s el sector más votado recibe un **bombardeo** (5 s de aviso con marca roja y sirena, luego daño en área).
-  - No se puede bombardear el mismo sector dos veces seguidas (gana el siguiente más votado).
-  - Los bombardeos se desactivan cuando quedan 5 vivos o menos.
-- **Siempre:** los aciertos como operador suman al ranking final.
+- **Gulag (una vez por partida):** al caer mientras la zona está en las fases 1 a 3 entras a la cola. Se pelea de a 3 (o de a 2 si en 10 s no llega un tercero; contra un bot si llevas 45 s solo; en equipos, nunca contra compañeros) en un patio de prisión fuera del mapa. Antes, 3 preguntas (dificultad 1, 2 y 3, 30 s cada una) congelado en tu esquina: 0 aciertos = puños; 1 = pistola con un cargador; 2 = pistola, casco y una venda; 3 = además rifle o escopeta a elección. Cuenta regresiva de 3 s, 60 s de combate y después un círculo que se cierra. El ganador vuelve en paracaídas dentro de la zona con su equipo. Desde la fase 4 el Gulag cierra.
+- **Espectador:** si no vas al Gulag o lo perdiste, sigues a otros (y puedes cambiar entre el Gulag y la partida) y respondes preguntas de práctica que suman puntos al ranking.
+- *Retirados en la fase 30:* el bombardeo por votos, la intercepción de transmisiones, la voz del Mando y la reanimación por 3 aciertos.
 
 ### Rarezas y botín
 
@@ -138,7 +134,8 @@ calculo-royale/
 │       │   ├── crates.js      # cajas de suministro, botín, racha y radar
 │       │   ├── Zone.js        # fases de la zona (elipses), cierre y daño
 │       │   ├── match.js       # transmisiones del mando, lanzamiento aéreo y victoria
-│       │   ├── radio.js       # operadores de radio, votos, bombardeos e intercepciones
+│       │   ├── radio.js       # preguntas de práctica de los espectadores y del Gulag
+│       │   ├── gulag.js       # cola, arenas, preguntas, equipo y combates del Gulag
 │       ├── storage.js         # resultados: Supabase si hay variables, si no JSON local
 │       │   └── loot.js
 │       └── questions/
@@ -244,7 +241,7 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 | **3. Arte base** (alcance mínimo) ✅ | Soldado procedural completo con animaciones, terreno natural, cámara 3/4, sol con sombras, niebla, efectos, paredes semitransparentes, calidad automática. Solo dos zonas: **pueblo** y **patio de contenedores** | El juego ya "se ve" final en PC y celular |
 | **4. Cajas de suministro** ✅ | Banco JSON, modal de candado con KaTeX, validación en servidor, rarezas, botín, racha y radar, Todo o nada | Abrir caja, responder y recibir botín |
 | **5. Zona y victoria** ✅ | Transmisiones del mando con la desigualdad, mapa táctico con coordenadas, daño fuera de zona, lanzamientos aéreos, último en pie gana, resultados con tus errores resueltos. *Opcional: #3* | Partida completa de principio a fin |
-| **6. Operadores de radio y clase** ✅ | Vista espectador, reanimación, votos y bombardeo por sector, interceptar transmisión, ranking, panel del profe con mapa de calor, reporte (Supabase) | El profe ve estadísticas al final |
+| **6. Operadores de radio y clase** ✅ (bombardeo, intercepción y reanimación retirados en la fase 30) | Vista espectador, reanimación, votos y bombardeo por sector, interceptar transmisión, ranking, panel del profe con mapa de calor, reporte (Supabase) | El profe ve estadísticas al final |
 | **7. Despliegue** ✅ | Servidor en Render (gratis) y cliente en Vercel desde el monorepo, CORS por variable, `/health` para UptimeRobot, "Despertando el servidor…", guía paso a paso, `npm run stop` | Jugar desde internet con la URL de Vercel |
 | **8. Skins propias** ✅ | Skins 100 % procedurales en colecciones (Leyendas de las Matemáticas, Santander, Fantasía, Locuras, De honor por logros de cálculo), selector 3D en el lobby, color del jugador como acento | Elegir skin y verla en partida sin perder rendimiento |
 | **9. Mecánicas épicas** ✅ | Recompensa al líder (corona y botín épico), clima por partida (lluvia, niebla, tormenta de arena, atardecer/noche con linternas), jeeps con "código del motor" | Partida con líder, clima y vehículos |
@@ -474,6 +471,11 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 - Temas solo: `derivadas_direccionales`, `lagrange`, `integrales_dobles`, `maximos_minimos`; fuera triples, cilíndricas y esféricas, jacobiano y los temas sueltos (el gradiente entra en derivadas direccionales; cambio de orden y polares, en integrales dobles).
 - 25 preguntas por tema (7/7/6/5), escritas en `scripts/build-bank.js` con su `verifica`; 2 generadores por tema; balas y reanimación con 4 preguntas rápidas de los mismos temas (filtradas por los temas de la sala).
 - Prueba: cada pregunta se recalcula (Simpson, gradiente y hessiano numéricos, muestreo de la restricción) y ningún distractor puede dar lo mismo; generadores y rápidas con 50 semillas; opciones por dificultad.
+
+#### Fase 30: Gulag y limpieza (plan)
+- Quitar bombardeo por votos, intercepción, voz del Mando (`speechSynthesis`) y la reanimación por 3 aciertos.
+- `server/src/game/gulag.js`: cola, emparejamiento (3, o 2 a los 10 s, o un bot a los 45 s; sin compañeros), 4 arenas en `mapLayout` al este del mapa, 3 preguntas por radio (`kind: 'gulag'`), equipo por aciertos, cuenta regresiva, 60 s y muerte súbita, regreso en paracaídas. Los del Gulag no cuentan como vivos de la partida.
+- Cliente: panel del Gulag, espectador con preguntas de práctica y botón Gulag/partida, arenas en 3D, tablero en el proyector.
 
 #### Fase 31: ritmo de partida y salto desde muy arriba (plan)
 - **Zona de 6 fases (~19 min en Normal):** primera zona a los 3:30 de partida (≈3 min tras aterrizar) con aviso de 90 s; primeras fases largas, últimas cortas. **Duración** elegible por el anfitrión: Corta ~12, Normal ~19, Larga ~24 min (escala zona y lanzamiento aéreo).
@@ -786,6 +788,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 27 | ✅ Completa | Cuadrícula A1–H8 en mapa, GPS, votos, bombardeo, voz y proyector; modo jefe quitado; lobby, ayuda y barra de armas que no se enciman |
 | 34 | ✅ Completa | Mapa de 1 km (A1–J10) con río, represa, 4 puentes, vado, montaña con antena, 28 zonas y carreteras; plano en `docs/mapa.png`; terreno y objetos por bloques. Falta revisar el plano y el rendimiento en celular |
 | 28 | ✅ Completa | Banco con los 4 temas reales: 100 preguntas verificadas, 8 generadores y 4 preguntas rápidas probados con 50 semillas |
+| 30 | ✅ Completa | Gulag en arenas privadas (cola, 3 preguntas, equipo por aciertos, muerte súbita, regreso en paracaídas); fuera bombardeo, intercepción, voz del Mando y reanimación por aciertos |
 | 31 | ✅ Completa | Zona de 6 fases (~19 min) que arranca 3 min tras aterrizar, duración elegible, tiempos de preguntas nuevos, bus a 112 m con planeo y paracaídas a mano, zona final que se desplaza |
 
 ### Bitácora
@@ -989,4 +992,6 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - 2026-10-28: **correcciones 6.1.** *Agua café:* la cinta del río tenía las caras hacia abajo (se veía el fondo del cauce). Ahora mira al cielo y es azul verdoso: más clara y transparente en la orilla (color con alfa por vértice), brillo del sol que respira (Phong); en calidad baja, azul sólido sin transparencia. El fondo del cauce pasa a azul oscuro. *Carreteras:* cinta de asfalto de 8,5 m (caben dos vehículos) que sigue el terreno (`Roads.jsx`), con textura en canvas: grano, parches suaves, bordes blancos y línea central amarilla discontinua; bermas de tierra pintadas en el terreno. Los caminos de tierra no cambian. `docs/mapa.png` regenerado con el agua y las carreteras nuevas. El mapa se queda en 1 km y 10×10.
 
 - 2026-10-28: **fase 28 completa (banco con los temas reales).** `TOPICS` queda en los 4 temas del corte; los JSON viejos (triples, cilíndricas y esféricas, jacobiano, polares, cambio de orden, gradiente) se reemplazan por 4 archivos de 25 preguntas generados desde `scripts/build-bank.js` (lo útil de antes se conservó: `lag-02`, el cambio de orden con `e^{x^2}`, polares con `e^{-r^2}`, etc.). Opciones: 3 por pregunta escritas de más a menos plausibles (errores típicos: no normalizar, olvidar el radio o el 1/2, confundir máximo con mínimo, signos del punto crítico); el juego deja 2 en dificultad 1–2 y 3 en 3–4. Cada pregunta describe su problema en `verifica` y `tests/questions.test.js` lo resuelve sin mirar la respuesta; los conceptos se verifican por texto (y ningún distractor puede contenerlo). Generadores: gradiente en un punto y derivada direccional (no unitario), máximo lineal sobre circunferencia y mínimo sobre una recta, integral sobre rectángulo y región tipo I, punto crítico y clasificación con $D$. Las preguntas rápidas de balas y reanimación (derivada parcial, componente del gradiente, integral de una constante, punto crítico de una cuadrática) ahora son de estos temas y siguen los de la sala; se quitó el tema aparte "Derivadas y límites (balas)". El modo fácil no cambia. Panel del anfitrión, reporte por tema y CSV salen de `TOPICS`/`TOPIC_NAMES`, así que ya muestran los 4. Pruebas: 100 preguntas, 8 generadores × 50 semillas y 4 rápidas × 50.
+
+- 2026-10-28: **fase 30 completa (Gulag y limpieza).** *Descartado:* bombardeo por votos (votos, cuadrícula de votos, sirena en la radio, aviso y su malla 3D), intercepción de transmisión enemiga (tarjeta, lógica e intel en el mapa), voz del Mando (`speech.js` y su volumen en Opciones; la radio queda en texto con beep y estática) y la reanimación por 3 aciertos; sus pruebas se reemplazaron. `WEAPON_IDS` conserva 'bomb' para no correr los índices de la red. *Gulag* (`gulag.js`): al caer en las fases 1 a 3 (también antes de la primera zona) se entra a la cola; emparejamiento con el más antiguo y hasta dos rivales de otro equipo (`team`, listo para dúos y escuadras); con 2 se espera 10 s desde que llegó el segundo; solo 45 s, contra el "Guardia del Gulag" (un bot temporal que se borra al terminar). 4 arenas de 28 m (`GULAG_ARENAS` en `mapLayout`, x 700–790, fuera del mapa: muros `gulagwall`, cajas y sacos simétricos); `worldLimits` limita el movimiento y las granadas al mapa o a la arena (servidor y predicción usan la misma regla). Preguntas por el canal de radio (`kind: 'gulag'`, dificultad 1, 2 y 3, 30 s, con 2 o 3 opciones); congelados (`player.frozen`: solo apuntan). Equipo: puños (arma nueva `fists`, al final de `WEAPON_IDS`, 2,2 m de alcance), pistola con un cargador, + casco y venda, + rifle o escopeta (rifle si no elige). Cuenta regresiva 3 s, 60 s y muerte súbita (círculo de 20 m a 1,5 m en 20 s, 12 de daño por segundo). El ganador vuelve en paracaídas a un punto libre de la zona con su equipo y su puesto se borra; los demás, espectadores. Desde la fase 4 la cola pasa a espectador y los combates en curso terminan normal. Morir en el Gulag no cambia el puesto de la primera caída. Los del Gulag no cuentan como vivos (`inMatch`): ni victoria, ni duelo final, ni líder, ni daño de zona. *Espectador:* preguntas de práctica (2 opciones) que suman al puntaje; sigue primero a quien lo eliminó y cambia entre el Gulag y la partida. *Proyector:* tablero con la cola y cada combate (estado, tiempo y aciertos de cada uno); un clic lo sigue (no hay una segunda vista 3D en ventana: sería pesado). El Mando anuncia por texto quién gana y vuelve. *Coherencia:* los bots normales también van al Gulag (pelean con pistola, como con un acierto). Pruebas: 5 nuevas del Gulag y del espectador.
 

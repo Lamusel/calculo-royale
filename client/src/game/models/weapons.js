@@ -12,6 +12,8 @@ const barrel = (length, radius, x, y) =>
   piece(cylinder(radius, radius, length, 6), STEEL, { position: [x, y, 0], rotation: [0, 0, Math.PI / 2] });
 
 const BUILDERS = {
+  // Puños (Gulag sin aciertos): solo una venda en la mano
+  fists: () => [piece(box(0.1, 0.09, 0.12), '#d8cfb8', { position: [0.02, 0, 0] })],
   pistol: () => [
     piece(box(0.34, 0.08, 0.06), STEEL, { position: [0.12, 0.07, 0] }),
     piece(box(0.08, 0.17, 0.06), DARK, { position: [0, -0.02, 0], rotation: [0, 0, 0.2] }),

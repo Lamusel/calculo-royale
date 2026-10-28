@@ -14,7 +14,7 @@ export function updateLeader(game) {
   game.nextLeaderCheck = game.now + LEADER.checkMs;
   let best = null;
   for (const p of game.room.players.values()) {
-    if (p.alive && p.connected && liveScore(p) > 0 && (!best || liveScore(p) > liveScore(best))) best = p;
+    if (p.alive && p.connected && p.arena == null && liveScore(p) > 0 && (!best || liveScore(p) > liveScore(best))) best = p;
   }
   const id = best?.id ?? null;
   if (id === game.leaderId) return;

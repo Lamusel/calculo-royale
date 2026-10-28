@@ -1,4 +1,4 @@
-import { GRENADE, LOOT, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { GRENADE, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { weaponWith } from '@calculo-royale/shared/inventory';
 import { RECOIL } from '@calculo-royale/shared/constants';
 import { GEAR_INFO } from '@calculo-royale/shared/gear';
@@ -13,7 +13,7 @@ import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 import { LootStore } from './lootStore.js';
 import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
-import { setListener, sound, speak, updateBusHum, updateEngine } from '../audio/sound.js';
+import { setListener, sound, updateBusHum, updateEngine } from '../audio/sound.js';
 import { insideZone } from '@calculo-royale/shared/zone';
 
 // Contador global: si se recrea el cliente sin recargar, las secuencias siguen creciendo
@@ -64,8 +64,8 @@ export class EffectViews {
   }
 }
 
-export const selfWeaponId = (self) => (self?.slot === 2 && self.primary ? self.primary.id : 'pistol');
-const selfMag = (self) => (selfWeaponId(self) === 'pistol' ? self.pistolMag : self.primary.mag);
+export const selfWeaponId = (self) => (self?.slot === 2 && self.primary ? self.primary.id : self?.sidearm ?? 'pistol');
+const selfMag = (self) => (self.slot === 2 && self.primary ? self.primary.mag : self.pistolMag);
 
 // Conecta la red con la escena: envía inputs a 20 Hz, guarda snapshots, predice al
 // jugador propio (movimiento y disparos) y deja efectos en cola para la escena.
@@ -76,8 +76,7 @@ export class GameClient {
     this.myId = myId;
     this.spectator = myId === null;
     this.followId = null; // a quién sigue la cámara cuando estás caído (o en el proyector)
-    this.transmission = null; // pregunta de operador de radio pendiente
-    this.intercept = null; // pregunta de intercepción pendiente
+    this.transmission = null; // pregunta de práctica (espectador) o del Gulag pendiente
     this.transmissionResult = null;
     this.classStats = null;
     this.unlocks = []; // skins de honor recién desbloqueadas: [{ id, at }]
@@ -123,10 +122,10 @@ export class GameClient {
     this.effectViews = new EffectViews();
 
     this.handlers = {
-      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, bombing, vehicles = [], bus = []]) => {
+      [EVENTS.STATE]: ([tick, players, grenades, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles = [], bus = []]) => {
         // Cajas: llegan solo cuando cambian ('' = igual que antes)
         if (crates) this.lastCrates = crates;
-        this.buffer.push(tick, players, grenades, dummies, shots, explosions, this.lastCrates ?? '', alarms, zone, airdrop, bombing, vehicles, bus);
+        this.buffer.push(tick, players, grenades, dummies, shots, explosions, this.lastCrates ?? '', alarms, zone, airdrop, gulag, vehicles, bus);
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
         const riding = vehicles.find((v) => v[7] === this.myId);
@@ -187,23 +186,19 @@ export class GameClient {
       },
       [EVENTS.RADIO_MESSAGE]: (message) => {
         this.radio.push({ ...message, at: performance.now() });
-        if (message.kind === 'bombing') sound.siren();
-        else sound.radio();
+        sound.radio();
         if (message.kind === 'airdrop') sound.plane();
-        if (!this.spectator) speak(message.title, message.text);
         if (this.radio.length > 6) this.radio.shift();
         vibrate(25);
       },
       [EVENTS.TRANSMISSION]: (t) => {
         const entry = { ...t, receivedAt: performance.now() };
         sound.question();
-        if (t.kind === 'operator') this.transmission = entry;
-        else this.intercept = entry;
+        this.transmission = entry;
         vibrate(15);
       },
       [EVENTS.TRANSMISSION_RESULT]: (r) => {
-        if (r.kind === 'operator' && this.transmission?.id === r.id) this.transmission = null;
-        if (r.kind === 'intercept' && this.intercept?.id === r.id) this.intercept = null;
+        if (this.transmission?.id === r.id) this.transmission = null;
         this.transmissionResult = { ...r, at: performance.now() };
         if (r.correct) this.achieve('correct');
         if (r.kind === 'operator') {
@@ -514,7 +509,7 @@ export class GameClient {
       const pickLeft = this.deployInfo?.pickUntil && this.deploying === 'bus' ? Math.ceil((this.deployInfo.pickUntil - now) / 1000) : 0;
       if (pickLeft > 0 && pickLeft <= 3) sound.countdown(pickLeft === 1);
       // Pregunta con el tiempo acabándose (últimos 5 s)
-      for (const q of [this.question, this.ammoQuestion, this.transmission, this.intercept]) {
+      for (const q of [this.question, this.ammoQuestion, this.transmission]) {
         if (!q?.timeLimitMs) continue;
         const left = (q.receivedAt + q.timeLimitMs - now) / 1000;
         if (left > 0 && left <= 5) sound.timeWarning();
@@ -550,19 +545,36 @@ export class GameClient {
     this.socket.emit(EVENTS.TRANSMISSION_ANSWER, { id, index });
   }
 
-  voteSector(sector) {
-    this.socket.emit(EVENTS.VOTE_SECTOR, sector);
+  // Gulag con 3 aciertos: rifle o escopeta
+  chooseGulagWeapon(weapon) {
+    this.socket.emit(EVENTS.GULAG_CHOICE, weapon);
   }
 
   // Jugadores vivos que se pueden seguir con la cámara
-  followable(frame = this.lastFrame) {
+  // Vivos para seguir con la cámara. gulag: true solo los que pelean en el Gulag (fuera del mapa),
+  // false solo los de la partida, null todos
+  followable(frame = this.lastFrame, gulag = null) {
     if (!frame) return [];
-    return [...frame.others].filter(([id, p]) => id !== this.myId && !(p.flags & PLAYER_FLAGS.DEAD)).map(([id]) => id);
+    return [...frame.others]
+      .filter(([id, p]) => id !== this.myId && !(p.flags & PLAYER_FLAGS.DEAD) && (gulag === null || (Math.abs(p.x) > MAP_HALF) === gulag))
+      .map(([id]) => id);
   }
 
-  // Cambia a quién sigue la cámara (+1 siguiente, −1 anterior)
+  // ¿La cámara está siguiendo un combate del Gulag?
+  get watchingGulag() {
+    const p = this.lastFrame?.others.get(this.followId);
+    return Boolean(p && Math.abs(p.x) > MAP_HALF);
+  }
+
+  // Cambia entre ver el Gulag y ver la partida
+  watchGulag(on) {
+    const ids = this.followable(this.lastFrame, on);
+    if (ids.length) this.followId = ids[0];
+  }
+
+  // Cambia a quién sigue la cámara (+1 siguiente, −1 anterior), sin salir de la vista actual
   cycleFollow(step) {
-    const ids = this.followable();
+    const ids = this.followable(this.lastFrame, this.watchingGulag);
     if (ids.length === 0) return;
     const i = ids.indexOf(this.followId);
     this.followId = ids[(i + step + ids.length) % ids.length];

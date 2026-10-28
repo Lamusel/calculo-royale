@@ -1,6 +1,7 @@
 import { AIM_MOVE_FACTOR, DEPLOY, MAP_HALF, PLAYER_RADIUS, PLAYER_SPEED, SLOPE_SPEED } from './constants.js';
 import { resolveCircle } from './collision.js';
 import { BUTTONS } from './protocol.js';
+import { worldLimits } from './mapLayout.js';
 import { waterAt } from './mapPlan.js';
 import { terrainGradient } from './terrain.js';
 
@@ -40,7 +41,9 @@ export function applyInput(player, input, dt) {
   const aiming = input.buttons & BUTTONS.AIM ? AIM_MOVE_FACTOR : 1;
   const water = WATER_SPEED[waterAt(player.x, player.y)];
   const step = PLAYER_SPEED * (player.speedFactor ?? 1) * Math.min(len, 1) * aiming * water * slopeFactor(player.x, player.y, ux, uy) * dt;
-  player.x = clamp(player.x + ux * step, -LIMIT, LIMIT);
-  player.y = clamp(player.y + uy * step, -LIMIT, LIMIT);
+  // Dentro del mapa, o dentro de la arena del Gulag si está en una
+  const box = worldLimits(player.x, player.y, PLAYER_RADIUS);
+  player.x = clamp(player.x + ux * step, box.minX, box.maxX);
+  player.y = clamp(player.y + uy * step, box.minY, box.maxY);
   resolveCircle(player, PLAYER_RADIUS);
 }

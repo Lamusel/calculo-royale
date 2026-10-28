@@ -12,6 +12,7 @@ import Results from '../ui/Results.jsx';
 import Replay from '../ui/Replay.jsx';
 import { DuelIntro } from '../ui/Cinema.jsx';
 import { direct } from '../game/director.js';
+import { GulagBoard } from '../ui/Gulag.jsx';
 
 // En el proyector se ve todo el mapa: sin sombras (la caja de sombras sigue a un jugador)
 // y sin niebla
@@ -141,6 +142,9 @@ export default function Spectator() {
         {client && room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}
         {client && <Killfeed killfeed={client.killfeed} roster={room.players} myId={null} />}
         {client && <RadioFeed radio={client.radio} />}
+        {client && room.phase === 'playing' && (
+          <GulagBoard frameRef={frameRef} roster={room.players} onWatch={(id) => { setDirector(false); client.followId = id; }} />
+        )}
         {client && room.phase === 'results' && !replaying && <Results results={client.results} mine={null} myId={null} isHost={false} onReset={() => {}} classStats={client.classStats} csv={client.csv} />}
       </div>
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-khaki-dark/50 bg-olive-950/95 p-4">

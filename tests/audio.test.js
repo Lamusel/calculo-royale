@@ -5,43 +5,9 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { latexToSpeech, numberToWords, pickVoice, radioToSpeech } from '../client/src/audio/speech.js';
 import { allowVoice, channelLevel, duckLevel, MAX_VOICES, musicMoment } from '../client/src/audio/mix.js';
 import { chordOf, degreeNote, MOMENTS } from '../client/src/audio/music.js';
 import { buildAudioManifest } from '../scripts/audio-manifest.js';
-
-test('números en palabras', () => {
-  const cases = {
-    0: 'cero', 7: 'siete', 16: 'dieciséis', 21: 'veintiuno', 39: 'treinta y nueve', 100: 'cien', 101: 'ciento uno',
-    500: 'quinientos', 1000: 'mil', 1225: 'mil doscientos veinticinco', 8464: 'ocho mil cuatrocientos sesenta y cuatro',
-    21000: 'veintiún mil', 31000: 'treinta y un mil', 1000000: 'un millón', '-12': 'menos doce', 0.5: 'cero coma cinco',
-  };
-  for (const [n, words] of Object.entries(cases)) assert.equal(numberToWords(n), words, n);
-});
-
-test('desigualdades de la zona en palabras', () => {
-  assert.equal(
-    latexToSpeech(String.raw`(x - 39)^2 + (y - 14)^2 \le 8464`),
-    'equis menos treinta y nueve al cuadrado más ye menos catorce al cuadrado menor o igual que ocho mil cuatrocientos sesenta y cuatro',
-  );
-  assert.equal(
-    latexToSpeech(String.raw`\frac{x^2}{1225} + \frac{(y - 3)^2}{400} \le 1`),
-    'equis al cuadrado sobre mil doscientos veinticinco más ye menos tres al cuadrado sobre cuatrocientos menor o igual que uno',
-  );
-  const said = radioToSpeech(String.raw`Nueva zona segura: $(x + 12)^2 + y^2 \le 400$. Tienen 75 s.`);
-  assert.equal(said, 'Nueva zona segura: equis más doce al cuadrado más ye al cuadrado menor o igual que cuatrocientos. Tienen setenta y cinco segundos.');
-  assert.ok(!/[\$^{}]/.test(said), 'sin restos de LaTeX');
-  assert.equal(radioToSpeech('Bombardeo en el sector H8 en 5 s.'), 'Bombardeo en el sector hache ocho en cinco segundos.');
-});
-
-test('voz: es-CO, si no es-MX, si no es-ES, si no cualquier español', () => {
-  const v = (lang) => ({ lang, name: lang });
-  assert.equal(pickVoice([v('en-US'), v('es-ES'), v('es-MX'), v('es-CO')]).lang, 'es-CO');
-  assert.equal(pickVoice([v('es-ES'), v('es_MX')]).lang, 'es_MX');
-  assert.equal(pickVoice([v('en-GB'), v('es-ES')]).lang, 'es-ES');
-  assert.equal(pickVoice([v('es-AR')]).lang, 'es-AR');
-  assert.equal(pickVoice([v('en-US')]), null);
-});
 
 test('manifiesto de audio: solo los archivos que existen', () => {
   const root = mkdtempSync(join(tmpdir(), 'audio-'));

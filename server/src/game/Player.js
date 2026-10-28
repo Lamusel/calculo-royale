@@ -39,7 +39,7 @@ export class Player {
     this.stats = { byTopic: {}, failed: [], correct: 0, answered: 0 };
     this.seenQuestions = new Set();
     this.place = null; // posición final (1 = ganador)
-    this.revived = false; // ya usó su reanimación de operador
+    this.gulagUsed = false; // ya tuvo su oportunidad en el Gulag (una por partida)
     // Para las medallas (fase 20)
     this.pickups = 0;
     this.longestKill = 0;
@@ -55,6 +55,7 @@ export class Player {
     this.pistolMag = WEAPONS.pistol.magazine;
     this.pistolReserve = WEAPONS.pistol.reserve;
     this.primary = null; // { id, mag, reserve }
+    this.sidearm = 'pistol'; // arma del puesto 1: 'pistol' o 'fists' (Gulag sin aciertos)
     this.slot = 1;
     this.grenades = 0;
     this.nextFireAt = 0;
@@ -66,10 +67,10 @@ export class Player {
     this.question = null; // { crateId, q, expiresAt } mientras abre una caja
     this.streak = 0;
     this.radarUntil = 0;
-    this.operator = null; // { mode: 'revive'|'votes', streak, sector, nextAt } mientras está caído
-    this.transmission = null; // pregunta de operador en curso
-    this.intercept = null; // pregunta de intercepción en curso
-    this.intel = null; // centro de la próxima zona, si ganó una intercepción
+    this.operator = null; // { nextAt } mientras es espectador (preguntas de práctica)
+    this.transmission = null; // pregunta de práctica o del Gulag en curso
+    this.arena = null; // índice de la arena del Gulag donde pelea (null: en la partida)
+    this.gulag = null; // { state: 'queue'|'fight', since, fightId } mientras está en el Gulag
     this.vehicleId = null; // jeep en el que va
     this.seat = null; // 'driver' | 'passenger'
     this.engineQuestion = null; // código del motor pendiente
@@ -102,25 +103,25 @@ export class Player {
   }
 
   get weaponId() {
-    return this.slot === 2 && this.primary ? this.primary.id : 'pistol';
+    return this.slot === 2 && this.primary ? this.primary.id : this.sidearm;
   }
 
   get mag() {
-    return this.weaponId === 'pistol' ? this.pistolMag : this.primary.mag;
+    return this.slot === 2 && this.primary ? this.primary.mag : this.pistolMag;
   }
 
   set mag(value) {
-    if (this.weaponId === 'pistol') this.pistolMag = value;
-    else this.primary.mag = value;
+    if (this.slot === 2 && this.primary) this.primary.mag = value;
+    else this.pistolMag = value;
   }
 
   get reserve() {
-    return this.weaponId === 'pistol' ? this.pistolReserve : this.primary.reserve;
+    return this.slot === 2 && this.primary ? this.primary.reserve : this.pistolReserve;
   }
 
   set reserve(value) {
-    if (this.weaponId === 'pistol') this.pistolReserve = value;
-    else this.primary.reserve = value;
+    if (this.slot === 2 && this.primary) this.primary.reserve = value;
+    else this.pistolReserve = value;
   }
 
   // Un cargador de reserva para el arma en mano (cajas y "Obtener balas"); devuelve su id
@@ -210,6 +211,7 @@ export class Player {
       armorLevel: this.armorLevel,
       armor: Math.ceil(this.armor),
       slot: this.slot,
+      sidearm: this.sidearm,
       pistolMag: this.pistolMag,
       pistolReserve: this.pistolReserve,
       ammoCooldownLeft: Math.max(0, this.ammoCooldownUntil - now),
@@ -228,9 +230,9 @@ export class Player {
       streak: this.streak,
       radar: this.radarUntil > now,
       answering: this.question ? this.question.crateId : null,
-      operator: this.operator && { mode: this.operator.mode, streak: this.operator.streak, sector: this.operator.sector },
-      revived: this.revived,
-      intel: this.intel && { cx: this.intel.cx, cy: this.intel.cy },
+      spectating: Boolean(this.operator),
+      gulag: this.gulag && { state: this.gulag.state, since: this.gulag.since, fightId: this.gulag.fightId ?? null, choose: Boolean(this.gulag.choose) },
+      gulagUsed: this.gulagUsed,
       vehicle: this.vehicleId !== null ? { id: this.vehicleId, seat: this.seat } : null,
       killedBy: this.killedBy,
       killedWith: this.killedWith,

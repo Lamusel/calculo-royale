@@ -38,7 +38,7 @@ export default function HostPanel({ stats, code, onClose }) {
         </div>
         {stats && (
           <p className="mb-3 text-sm text-stone-300">
-            Vivos: <b>{stats.alive}</b> de {stats.total} · operadores de radio: <b>{stats.operators}</b>
+            Vivos: <b>{stats.alive}</b> de {stats.total} · espectadores: <b>{stats.spectators ?? 0}</b> · en el Gulag: <b>{stats.gulag ?? 0}</b>
           </p>
         )}
         <p className="mb-1 text-xs uppercase tracking-wider text-stone-400">Acierto por tema (de menor a mayor)</p>

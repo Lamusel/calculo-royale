@@ -61,7 +61,8 @@ export const PLAYER_COLORS = [
 // --- Armas ---
 // Índice de cada arma en snapshots y killfeed (el orden no debe cambiar).
 // 'zone', 'bomb' y 'jeep' solo aparecen en el killfeed (zona, bombardeo y atropello o explosión).
-export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'zone', 'bomb', 'jeep'];
+// No cambiar el orden (va en la red): solo agregar al final. 'bomb' quedó del bombardeo retirado.
+export const WEAPON_IDS = ['pistol', 'shotgun', 'rifle', 'sniper', 'grenade', 'zone', 'bomb', 'jeep', 'fists'];
 
 // intervalMs: tiempo entre disparos · spread: desviación máxima (rad) por bala
 // o apertura total del abanico en la escopeta · range: alcance en unidades
@@ -83,6 +84,11 @@ export const WEAPONS = {
   sniper: {
     name: 'Francotirador', damage: 80, intervalMs: 1400, magazine: 5, reserve: 10,
     reloadMs: 2600, spread: 0, pellets: 1, range: 55, auto: false, releaseToFire: true,
+  },
+  // Gulag sin aciertos: golpe cuerpo a cuerpo (alcance corto, sin munición)
+  fists: {
+    name: 'Puños', damage: 24, intervalMs: 450, magazine: 999, reserve: 0,
+    reloadMs: 0, spread: 0.2, pellets: 1, range: 2.2, auto: false,
   },
 };
 
@@ -184,20 +190,28 @@ export const AIRDROP = { atMs: 620_000, fallMs: 25_000, rarity: 3 };
 export const SECTORS = 10; // cuadrícula militar A1–J10 (sectores de 100 m)
 
 // --- Operadores de radio (los caídos siguen jugando) ---
+// Espectadores (caídos sin Gulag o que ya lo perdieron): preguntas de práctica que suman puntos
 export const OPERATOR = {
-  firstDelayMs: 2_000, // tras caer, primera transmisión
-  questionMs: 30_000, // también es el tiempo del Gulag
-  gapMs: 2_500, // entre una transmisión y la siguiente
-  reviveStreak: 3, // aciertos seguidos para reanimar
-  revivePhases: 2, // solo si caíste en las fases 1 y 2 de la zona
-  reviveHp: 75, // 50 de vida + la venda
+  firstDelayMs: 2_000, // tras caer, primera pregunta
+  questionMs: 30_000,
+  gapMs: 2_500, // entre una pregunta y la siguiente
 };
-// Sector de 35 m (8×8): más chico que antes (46,7 m), así que pega un poco más fuerte
 // Reanimación en equipo (dúos y escuadras): tiempo de la pregunta
 export const TEAM_REVIVE = { questionMs: 20_000 };
-export const BOMBING = { everyMs: 60_000, warningMs: 5_000, damage: 80, disabledAtAlive: 5 };
-export const INTERCEPT = { everyMs: 120_000, questionMs: 20_000, winners: 5 };
-// Puntaje final: puestos superados, bajas y aciertos (también de operador e intercepción)
+// Gulag (fase 30): combates de 2 o 3 en arenas privadas fuera del mapa
+export const GULAG = {
+  untilPhase: 3, // se entra al caer mientras la zona esté en las fases 1 a 3 (índices 0 a 2)
+  pairWaitMs: 10_000, // con 2 en cola, se pelea si en 10 s no llega un tercero
+  botWaitMs: 45_000, // solo en cola 45 s: contra un bot del Gulag
+  questionMs: 30_000, // 3 preguntas (dificultad 1, 2 y 3) antes del combate
+  countdownMs: 3_000,
+  fightMs: 60_000, // después, muerte súbita
+  suddenMs: 20_000, // el círculo se cierra hasta el centro
+  suddenDps: 12,
+  suddenStartRadius: 20,
+  returnAltitude: 24, // el ganador vuelve en paracaídas
+};
+// Puntaje final: puestos superados, bajas y aciertos (también de espectador y Gulag)
 export const SCORE = { place: 10, kill: 15, correct: 5 };
 export const CLASS_STATS_MS = 2_000;
 
@@ -277,7 +291,7 @@ export const DEPLOY = {
 
 // Cola de mensajes del Mando (cliente): el de mayor prioridad interrumpe al que se está mostrando;
 // los demás esperan su turno (hasta RADIO_MAX_WAIT_MS) en lugar de pisarse
-export const RADIO_PRIORITY = { bombing: 3, closing: 2, final: 2, zone: 2, duel: 2, airdrop: 1, intercept: 1, leader: 1, revive: 0 };
+export const RADIO_PRIORITY = { closing: 2, final: 2, zone: 2, duel: 2, airdrop: 1, leader: 1, gulag: 1 };
 export const RADIO_MAX_WAIT_MS = 15000;
 export const RADIO_MIN_SHOW_MS = 2500; // si lo interrumpen antes, vuelve a la cola con lo que le faltaba
 

@@ -1,12 +1,13 @@
-// Operadores de radio, bombardeo, intercepción, puntaje y guardado (npm test)
+// Gulag, espectadores, puntaje y guardado (npm test). Fase 30: ya no hay bombardeo, intercepción ni reanimación por aciertos.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BOMBING, INTERCEPT, MAX_HP, OPERATOR, SCORE, TICK_MS, ZONE_PHASES } from '@calculo-royale/shared/constants';
+import { GULAG, OPERATOR, SCORE, TICK_MS, WEAPONS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
-import { insideZone, sectorBounds } from '@calculo-royale/shared/zone';
+import { GULAG_ARENAS, GULAG_HALF } from '@calculo-royale/shared/mapLayout';
+import { insideZone } from '@calculo-royale/shared/zone';
 import { damagePlayer } from '../server/src/game/combat.js';
 import { classStats } from '../server/src/game/radio.js';
 import { Game } from '../server/src/game/Game.js';
@@ -64,131 +65,127 @@ const kill = (room, p) => damagePlayer(room.game, p, 500, null, 0);
 
 // Responde la transmisión pendiente del jugador (bien o mal)
 function answer(room, p, right) {
-  const t = p.transmission ?? p.intercept;
-  room.game.answerTransmission(p, t.id, right ? t.q.correcta : (t.q.correcta + 1) % 4);
+  const t = p.transmission;
+  room.game.answerTransmission(p, t.id, right ? t.q.correcta : (t.q.correcta + 1) % t.q.opciones.length);
 }
 
-test('al caer en la fase 1 de la zona: operador que puede reanimar; la transmisión no trae la respuesta', () => {
+const inArena = (p) => GULAG_ARENAS.some((a) => Math.abs(p.x - a.x) <= GULAG_HALF && Math.abs(p.y - a.y) <= GULAG_HALF);
+
+test('al caer en las fases 1 a 3 se entra a la cola del Gulag; desde la fase 4, espectador con preguntas de práctica', () => {
   const room = makeRoom();
-  const [p] = addPlayers(room, 3);
+  const [a, b] = addPlayers(room, 4);
   start(room);
-  kill(room, p);
-  assert.equal(p.operator.mode, 'revive');
+  kill(room, a);
+  assert.equal(a.gulag.state, 'queue');
+  assert.equal(a.operator, null);
+  room.game.zone.phase = GULAG.untilPhase;
+  kill(room, b);
+  assert.equal(b.gulag, null);
+  assert.ok(b.operator, 'espectador');
   advance(room, OPERATOR.firstDelayMs + TICK_MS);
-  const t = last(room, p.id, EVENTS.TRANSMISSION);
+  const t = last(room, b.id, EVENTS.TRANSMISSION);
   assert.equal(t.kind, 'operator');
   assert.ok(!JSON.stringify(t).includes('correcta'));
+  const before = b.stats.correct;
+  answer(room, b, true);
+  assert.equal(b.stats.correct, before + 1, 'la práctica suma puntos');
+  // Al pasar a la fase 4, la cola también pasa a espectador
+  advance(room, TICK_MS);
+  assert.equal(a.gulag, null);
+  assert.ok(a.operator);
 });
 
-test('3 aciertos seguidos reaniman una vez dentro de la zona con pistola y 75 de vida; un fallo reinicia la cuenta', () => {
+test('Gulag de 3: arena aparte, 3 preguntas (dificultad 1, 2 y 3) congelados y equipo según aciertos', () => {
   const room = makeRoom();
-  const [p] = addPlayers(room, 3);
+  const [a, b, c] = addPlayers(room, 6);
   start(room);
-  kill(room, p);
-  const next = () => advance(room, OPERATOR.gapMs + OPERATOR.firstDelayMs + TICK_MS);
-  next();
-  answer(room, p, true);
-  next();
-  answer(room, p, true);
-  next();
-  answer(room, p, false);
-  assert.equal(p.operator.streak, 0, 'el fallo reinicia');
-  for (let i = 0; i < OPERATOR.reviveStreak; i++) {
-    next();
-    answer(room, p, true);
+  for (const p of [a, b, c]) kill(room, p);
+  advance(room, TICK_MS);
+  for (const p of [a, b, c]) {
+    assert.equal(p.alive, true);
+    assert.ok(inArena(p), 'en la arena');
+    assert.ok(p.frozen);
   }
-  assert.equal(p.alive, true);
-  assert.equal(p.hp, OPERATOR.reviveHp);
-  assert.equal(p.weaponId, 'pistol');
-  assert.equal(p.revived, true);
-  assert.ok(insideZone(room.game.zone.current, p.x, p.y));
-  assert.equal(last(room, p.id, EVENTS.TRANSMISSION_RESULT).revived, true);
-  // Las respuestas de operador cuentan para el ranking
-  assert.equal(p.stats.answered, 6);
-  // Si vuelve a caer, ya no puede reanimar: vota
-  kill(room, p);
-  assert.equal(p.operator.mode, 'votes');
-});
-
-test('al caer después de la fase 2 se vota; el bombardeo cae en el sector más votado', () => {
-  const room = makeRoom();
-  const players = addPlayers(room, 10);
-  start(room);
-  room.game.zone.phase = 2;
-  const [voter, target] = players;
-  kill(room, voter);
-  assert.equal(voter.operator.mode, 'votes');
-  const sector = 'C3';
-  room.game.voteSector(voter, 'K1'); // fuera de la cuadrícula A1–J10
-  assert.notEqual(voter.operator.sector, 'K1');
-  room.game.voteSector(voter, 'H8');
-  assert.equal(voter.operator.sector, 'H8');
-  room.game.voteSector(voter, sector);
-  advance(room, OPERATOR.firstDelayMs + TICK_MS);
-  answer(room, voter, true);
-  assert.equal(room.game.votes.get(sector), 1);
-  // Alguien queda dentro del sector
-  const b = sectorBounds(sector);
-  target.teleport(b.cx, b.cy);
-  target.armor = 0;
-  target.armorLevel = 0;
-  room.game.nextBombAt = room.game.now;
+  assert.equal(room.game.gulag.fights.length, 1);
+  // a acierta las 3 (elige escopeta), b 1, c ninguna
+  const plan = { [a.id]: [true, true, true], [b.id]: [true, false, false], [c.id]: [false, false, false] };
+  for (let k = 0; k < 3; k++) {
+    for (const p of [a, b, c]) {
+      assert.equal(p.transmission.q.dificultad, k + 1);
+      answer(room, p, plan[p.id][k]);
+    }
+  }
+  room.game.chooseGulagWeapon(a, 'shotgun');
   advance(room, TICK_MS);
-  assert.equal(room.game.bombing.sector, sector);
-  assert.ok(room.broadcasts.some((x) => x.event === EVENTS.RADIO_MESSAGE && x.data.kind === 'bombing'));
-  advance(room, BOMBING.warningMs + TICK_MS);
-  assert.ok(target.hp <= MAX_HP - BOMBING.damage, `vida ${target.hp}`);
-  assert.equal(room.game.lastBombed, sector);
+  assert.equal(a.primary?.id, 'shotgun');
+  assert.equal(a.helmetLevel, 1);
+  assert.equal(b.weaponId, 'pistol');
+  assert.equal(b.pistolMag, WEAPONS.pistol.magazine);
+  assert.equal(b.pistolReserve, 0);
+  assert.equal(c.weaponId, 'fists');
+  // Cuenta regresiva y combate: ya no están congelados
+  advance(room, GULAG.countdownMs + TICK_MS);
+  assert.ok(!a.frozen && !b.frozen && !c.frozen);
+  // Los del Gulag no cuentan como vivos en la partida
+  assert.equal(classStats(room.game).alive, 3);
 });
 
-test('nunca el mismo sector dos veces seguidas', () => {
+test('el ganador vuelve en paracaídas dentro de la zona; los perdedores quedan de espectadores', () => {
   const room = makeRoom();
-  const players = addPlayers(room, 10);
+  const [a, b] = addPlayers(room, 5);
   start(room);
-  room.game.lastBombed = 'C3';
-  room.game.votes.set('C3', 5);
-  room.game.votes.set('A1', 1);
-  room.game.nextBombAt = room.game.now;
+  kill(room, a);
+  kill(room, b);
+  advance(room, GULAG.pairWaitMs + TICK_MS);
+  assert.equal(room.game.gulag.fights.length, 1, 'con 2, a los 10 s');
+  for (let k = 0; k < 3; k++) for (const p of [a, b]) answer(room, p, true);
+  advance(room, GULAG.countdownMs + 2 * TICK_MS);
+  kill(room, b);
   advance(room, TICK_MS);
-  assert.equal(room.game.bombing.sector, 'A1');
-  assert.ok(players.length);
+  assert.equal(a.alive, true);
+  assert.equal(a.arena, null);
+  assert.equal(a.deploy?.phase, 'chute');
+  assert.ok(insideZone(room.game.zone.current, a.x, a.y));
+  assert.equal(a.primary?.id, 'rifle', 'vuelve con su equipo (rifle por defecto)');
+  assert.ok(b.operator, 'el perdedor es espectador');
+  assert.ok(room.broadcasts.some((m) => m.event === EVENTS.RADIO_MESSAGE && m.data.text.includes('ganó en el Gulag')));
+  // Una oportunidad por partida
+  kill(room, a);
+  assert.equal(a.gulag, null);
+  assert.ok(a.operator);
 });
 
-test('con 5 vivos o menos no hay bombardeo', () => {
+test('solo 45 s en cola: pelea contra un bot del Gulag; muerte súbita después de 60 s', () => {
   const room = makeRoom();
-  const players = addPlayers(room, 7);
+  const [a] = addPlayers(room, 4);
   start(room);
-  kill(room, players[0]);
-  kill(room, players[1]);
-  room.game.votes.set('B2', 9);
-  room.game.nextBombAt = room.game.now;
-  advance(room, TICK_MS);
-  assert.equal(room.game.bombing, null);
+  kill(room, a);
+  advance(room, GULAG.botWaitMs + TICK_MS);
+  const bot = [...room.players.values()].find((p) => p.gulagBot);
+  assert.ok(bot, 'hay guardia');
+  assert.ok(inArena(bot));
+  for (let k = 0; k < 3; k++) answer(room, a, false);
+  advance(room, GULAG.countdownMs + GULAG.fightMs + 2 * TICK_MS);
+  const [fight] = room.game.gulag.fights;
+  if (fight) assert.ok(fight.radius < GULAG.suddenStartRadius, 'el círculo se cierra');
+  // Pase lo que pase, al final el bot desaparece
+  advance(room, GULAG.suddenMs + 30_000);
+  assert.equal([...room.players.values()].some((p) => p.gulagBot), false);
 });
 
-test('interceptar: los 5 primeros reciben el centro de la zona que después se anuncia', () => {
+test('en equipos nunca pelean compañeros', () => {
   const room = makeRoom();
-  const players = addPlayers(room, 8);
-  // Nadie debe morir por la zona en esta prueba (si no, la partida termina y la zona se congela)
-  for (const p of players) p.hp = 1e9;
+  const [a, b, c] = addPlayers(room, 6);
+  a.team = 1;
+  b.team = 1;
+  c.team = 2;
   start(room);
-  advance(room, INTERCEPT.everyMs + TICK_MS);
-  // Si el próximo anuncio de zona está muy cerca, la intercepción se reprograma unos segundos
-  for (let i = 0; i < 60 && !players[0].intercept; i++) advance(room, 1000);
-  assert.ok(players.every((p) => p.intercept), 'a todos los vivos les llega');
-  for (const p of players) answer(room, p, true);
-  const winners = players.filter((p) => p.intel);
-  assert.equal(winners.length, INTERCEPT.winners);
-  assert.equal(last(room, players[7].id, EVENTS.TRANSMISSION_RESULT).late, true);
-  const intel = winners[0].intel;
-  // Cuando se anuncia la zona siguiente, es la misma que recibieron los ganadores
-  const phase = room.game.zone.phase;
-  advance(room, room.game.zone.msToNextAnnounce(room.game.now) + TICK_MS);
-  assert.equal(room.game.zone.phase, phase + 1);
-  assert.equal(room.game.zone.target.cx, intel.cx);
-  assert.equal(room.game.zone.target.cy, intel.cy);
-  assert.equal(winners[0].intel, null, 'la pista desaparece al anunciarse');
-  assert.ok(ZONE_PHASES[phase + 1]);
+  for (const p of [a, b, c]) kill(room, p);
+  advance(room, GULAG.pairWaitMs + TICK_MS);
+  for (const f of room.game.gulag.fights) {
+    const teams = f.ids.map((id) => room.players.get(id).team);
+    assert.equal(new Set(teams).size, teams.length);
+  }
 });
 
 test('puntaje: puestos superados, bajas y aciertos', () => {
@@ -204,6 +201,7 @@ test('estadísticas de clase: suma los aciertos por tema de todos', () => {
   const s = classStats(room.game);
   assert.deepEqual(s.byTopic, { polares: { ok: 3, total: 4 }, lagrange: { ok: 0, total: 2 } });
   assert.equal(s.alive, 2);
+  assert.equal('votes' in s, false);
 });
 
 test('sin Supabase los resultados se guardan en un JSON local', async () => {

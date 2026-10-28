@@ -234,9 +234,10 @@ export class RoomManager {
     if (player) this.roomOf(socket).game.answerTransmission(player, data?.id, data?.index);
   }
 
-  vote(socket, sector) {
+  // Gulag con 3 aciertos: rifle o escopeta
+  gulagChoice(socket, weapon) {
     const player = this.playerOf(socket);
-    if (player) this.roomOf(socket).game.voteSector(player, String(sector));
+    if (player) this.roomOf(socket).game.chooseGulagWeapon(player, String(weapon));
   }
 
   requestSelf(socket) {
