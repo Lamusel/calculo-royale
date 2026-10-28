@@ -7,36 +7,55 @@ import { terrainHeight, WATER_LEVEL } from '@calculo-royale/shared/terrain';
 import { box, limb, merge, modelMaterial, piece } from './models/build.js';
 import { Chunked } from './chunks.js';
 
-// Agua sencilla (un plano con color que respira, sin reflejos), puentes, paso de la represa,
-// muelles y la vía del tren. Todo construido por código desde el plano del mapa.
+// Agua (azul verdoso, más clara y transparente cerca de la orilla, con brillo del sol; en calidad
+// baja un azul sólido), puentes, paso de la represa, muelles y la vía del tren.
 
-const water = new THREE.MeshLambertMaterial({ color: '#3f7fb0', transparent: true, opacity: 0.86, depthWrite: false });
-const DEEP = new THREE.Color('#3f7fb0');
-const LIGHT = new THREE.Color('#4f93c2');
+const SHORE = new THREE.Color('#5fc2c4');
+const MID = new THREE.Color('#2a8bb5');
+const DEEP = new THREE.Color('#1d6f9f');
 
-// Cinta del río: de la represa al borde este, un poco más ancha que el cauce
+// Colores con transparencia por vértice: [r, g, b, a]
+const rgba = (c, a) => [c.r, c.g, c.b, a];
+
+// Cinta del río de la represa al borde este: tres filas (orilla, centro, orilla), mirando hacia arriba
 function riverGeometry() {
-  const pts = [];
+  const pos = [];
+  const col = [];
   const half = RIVER.halfWidth + 1.5;
   for (let x = DAM.x; x <= MAP_HALF + 30; x += 4) {
     const y = riverY(x);
-    pts.push(x, WATER_LEVEL, -(y + half), x, WATER_LEVEL, -(y - half));
+    for (const [dy, c, a] of [[half, SHORE, 0.55], [0, DEEP, 0.9], [-half, SHORE, 0.55]]) {
+      pos.push(x, WATER_LEVEL, -(y + dy));
+      col.push(...rgba(c, a));
+    }
+  }
+  const index = [];
+  for (let i = 0; i < pos.length / 9 - 1; i++) {
+    const a = i * 3;
+    const b = a + 3;
+    // Orden antihorario visto desde arriba (+y): la cara mira al cielo
+    index.push(a, a + 1, b, a + 1, b + 1, b, a + 1, a + 2, b + 1, a + 2, b + 2, b + 1);
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  const index = [];
-  for (let i = 0; i < pts.length / 6 - 1; i++) {
-    const a = i * 2;
-    index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-  }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
   g.setIndex(index);
   g.computeVertexNormals();
   return g;
 }
 
+// Embalse: elipse con el centro hondo y el borde claro
 function reservoirGeometry() {
   const g = new THREE.CircleGeometry(1, 40);
   g.rotateX(-Math.PI / 2);
+  const col = [];
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const rim = Math.hypot(p.getX(i), p.getZ(i));
+    const c = DEEP.clone().lerp(SHORE, rim);
+    col.push(...rgba(c, 0.92 - rim * 0.35));
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
   g.scale(RESERVOIR.rx + 2, 1, RESERVOIR.ry + 2);
   g.translate(RESERVOIR.x, WATER_LEVEL, -RESERVOIR.y);
   return g;
@@ -47,7 +66,7 @@ function structuresGeometry() {
   const parts = [];
   for (const b of BRIDGES) {
     parts.push(piece(box(b.w + 0.6, 0.6, b.h), '#9d9a90', { position: [b.x, 0.3 + 0.12, -b.y] }));
-    parts.push(piece(box(b.w - 1.2, 0.05, b.h - 0.4), '#55564f', { position: [b.x, 0.75, -b.y] }));
+    parts.push(piece(box(b.w - 1.2, 0.05, b.h - 0.4), '#3a3b38', { position: [b.x, 0.75, -b.y] }));
     // Pilares en el agua
     for (const k of [-1, 1]) parts.push(piece(box(b.w, 3, 1.2), '#8a877d', { position: [b.x, -1.2, -(riverY(b.x) + k * (RIVER.halfWidth - 3))] }));
   }
@@ -83,12 +102,24 @@ function RailChunk({ items }) {
   return <mesh geometry={geometry} material={modelMaterial} receiveShadow />;
 }
 
-export default function Waterworks() {
+export default function Waterworks({ quality }) {
   const river = useMemo(riverGeometry, []);
   const reservoir = useMemo(reservoirGeometry, []);
   const structures = useMemo(structuresGeometry, []);
+  const simple = quality?.name === 'baja';
+  // Calidad baja: azul sólido (sin transparencia ni brillo). Si no, brillo del sol que respira.
+  const water = useMemo(
+    () =>
+      simple
+        ? new THREE.MeshLambertMaterial({ color: '#2a7fb0' })
+        : new THREE.MeshPhongMaterial({ vertexColors: true, transparent: true, depthWrite: false, shininess: 90, specular: '#d8f4ff', side: THREE.DoubleSide }),
+    [simple],
+  );
   useFrame(({ clock }) => {
-    water.color.copy(DEEP).lerp(LIGHT, (Math.sin(clock.elapsedTime * 0.8) + 1) * 0.25);
+    if (simple) return;
+    const t = clock.elapsedTime;
+    water.emissive.setRGB(0.02, 0.06 + Math.sin(t * 0.9) * 0.025, 0.08 + Math.sin(t * 0.6 + 1) * 0.03);
+    water.shininess = 80 + Math.sin(t * 1.3) * 25;
   });
   return (
     <>

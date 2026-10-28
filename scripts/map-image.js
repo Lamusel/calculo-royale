@@ -27,13 +27,15 @@ for (const f of FIELDS) out.push(rect(f, '#b3a35a', 'opacity="0.8"'));
 // Río y embalse
 const riverPts = [];
 for (let x = DAM.x; x <= MAP_HALF; x += 5) riverPts.push([x, riverY(x)]);
-out.push(`<path d="${line(riverPts)}" stroke="#3f7fb0" stroke-width="${(RIVER.halfWidth * 2 * PX).toFixed(1)}" fill="none"/>`);
-out.push(`<ellipse cx="${X(RESERVOIR.x)}" cy="${Y(RESERVOIR.y)}" rx="${RESERVOIR.rx * PX}" ry="${RESERVOIR.ry * PX}" fill="#3f7fb0"/>`);
-out.push(rect(FORD, '#79b4d6'));
+out.push(`<path d="${line(riverPts)}" stroke="#2a8bb5" stroke-width="${(RIVER.halfWidth * 2 * PX).toFixed(1)}" fill="none"/>`);
+out.push(`<ellipse cx="${X(RESERVOIR.x)}" cy="${Y(RESERVOIR.y)}" rx="${RESERVOIR.rx * PX}" ry="${RESERVOIR.ry * PX}" fill="#2a8bb5"/>`);
+out.push(rect(FORD, '#5fc2c4'));
 // Vía del tren, carreteras y caminos
 out.push(`<path d="${line([[RAILWAY.x0, RAILWAY.y], [RAILWAY.x1, RAILWAY.y]])}" stroke="#4a3b2c" stroke-width="4" stroke-dasharray="2 3" fill="none"/>`);
 for (const p of PATHS) out.push(`<path d="${line(p)}" stroke="#b39466" stroke-width="2.5" fill="none"/>`);
-for (const r of ROADS) out.push(`<path d="${line(r)}" stroke="#4d4e48" stroke-width="${7 * PX}" fill="none" stroke-linejoin="round"/>`);
+for (const r of ROADS) out.push(`<path d="${line(r)}" stroke="#9b8357" stroke-width="${12 * PX}" fill="none" stroke-linejoin="round"/>`);
+for (const r of ROADS) out.push(`<path d="${line(r)}" stroke="#3b3c39" stroke-width="${8.5 * PX}" fill="none" stroke-linejoin="round"/>`);
+for (const r of ROADS) out.push(`<path d="${line(r)}" stroke="#e2b53a" stroke-width="1" stroke-dasharray="4 4" fill="none"/>`);
 out.push(rect(RUNWAY, '#44453f'));
 for (const b of BRIDGES) out.push(rect(b, '#c9c2b0', 'stroke="#222" stroke-width="1"'));
 out.push(rect(DAM, '#d8d5cc', 'stroke="#222" stroke-width="1"'));

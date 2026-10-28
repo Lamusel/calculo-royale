@@ -979,3 +979,5 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | `docs/mapa.png` generado | PASS (falta revisión del usuario) |
 | Vista en el juego (terreno por baldosas, agua, puentes, pisos, rendimiento en celular) | Pendiente (prueba del usuario) |
 
+
+- 2026-10-28: **correcciones 6.1.** *Agua café:* la cinta del río tenía las caras hacia abajo (se veía el fondo del cauce). Ahora mira al cielo y es azul verdoso: más clara y transparente en la orilla (color con alfa por vértice), brillo del sol que respira (Phong); en calidad baja, azul sólido sin transparencia. El fondo del cauce pasa a azul oscuro. *Carreteras:* cinta de asfalto de 8,5 m (caben dos vehículos) que sigue el terreno (`Roads.jsx`), con textura en canvas: grano, parches suaves, bordes blancos y línea central amarilla discontinua; bermas de tierra pintadas en el terreno. Los caminos de tierra no cambian. `docs/mapa.png` regenerado con el agua y las carreteras nuevas. El mapa se queda en 1 km y 10×10.

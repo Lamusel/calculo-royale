@@ -33,7 +33,7 @@ const PITCH_GREEN = new THREE.Color('#5f9a3c');
 const ROCKY = new THREE.Color('#9b7a5a');
 const STONE = new THREE.Color('#8f8c84');
 const SAND = new THREE.Color('#b9a67a');
-const RIVERBED = new THREE.Color('#5e5a44');
+const RIVERBED = new THREE.Color('#2f5f6e');
 const CROP_A = new THREE.Color('#7d8f3a');
 const CROP_B = new THREE.Color('#8f7444');
 const BALLAST = new THREE.Color('#6b5d4c');
@@ -124,7 +124,12 @@ function groundColor(x, y, h, near, out) {
   // Caminos de tierra con borde irregular y carreteras de asfalto
   const wobble = (noise(x / 3, y / 3) - 0.5) * 1.2;
   if (near.paths.length) out.lerp(PATH, (1 - smooth(1.1, 2.6, distanceToSegments(x, y, near.paths) + wobble)) * 0.9);
-  if (near.roads.length) out.lerp(ASPHALT, (1 - smooth(3.2, 4.2, distanceToSegments(x, y, near.roads) + wobble * 0.3)) * 0.95);
+  // Carreteras: la cinta de asfalto va encima (Roads.jsx); aquí, asfalto debajo y bermas de tierra a los lados
+  if (near.roads.length) {
+    const d = distanceToSegments(x, y, near.roads) + wobble * 0.3;
+    out.lerp(PATH, (1 - smooth(5.4, 7, d)) * 0.8);
+    out.lerp(ASPHALT, 1 - smooth(3.9, 4.5, d));
+  }
 
   // Fuera del área jugable: más oscuro
   const outside = smooth(0, 4, Math.max(Math.abs(x), Math.abs(y)) - MAP_HALF);
