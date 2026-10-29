@@ -80,6 +80,10 @@ export function attachKeyboardMouse() {
     else if (isKey(e, 'E')) actions.interact(inputState.actionKind ?? null);
     else if (isKey(e, 'F')) actions.cycleAction();
     else if (isKey(e, 'T')) actions.phraseMenu();
+    else if (e.code === 'Enter') {
+      e.preventDefault();
+      actions.chatOpen();
+    }
     else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);
     else if (e.code === 'Digit2' || e.key === '2') actions.switchWeapon(2);
     else if (e.code === 'Digit3' || e.key === '3') actions.switchWeapon(3);

@@ -112,16 +112,16 @@ export const isSniper = (id) => WEAPONS[id]?.category === 'sniper';
 export const START_WEAPON = 'm1911';
 export const START_BULLETS = 3; // fase 29: se arranca con la pistola y solo 3 balas en total
 
-// Tipos de munición: nombre y cuánto trae un paquete del suelo (correcciones 6.3: pocas balas; la forma
-// normal de llenar la reserva es "Obtener balas")
+// Tipos de munición: nombre y cuánto trae un paquete del suelo (6.5: mínima; la forma principal de
+// llenar la reserva es "Obtener balas")
 export const AMMO_TYPES = {
-  '9mm': { name: '9 mm', pack: 6 },
-  556: { name: '5,56', pack: 8 },
-  762: { name: '7,62', pack: 5 },
-  '12g': { name: 'Calibre 12', pack: 2 },
-  300: { name: '.300', pack: 2 },
+  '9mm': { name: '9 mm', pack: 3 },
+  556: { name: '5,56', pack: 4 },
+  762: { name: '7,62', pack: 3 },
+  '12g': { name: 'Calibre 12', pack: 1 },
+  300: { name: '.300', pack: 1 },
   rocket: { name: 'Cohetes', pack: 1 },
-  bolt: { name: 'Flechas', pack: 3 },
+  bolt: { name: 'Flechas', pack: 2 },
 };
 
 // Lanzables y equipo táctico (fase 29): máximo por tipo en la mochila (además del límite de la mochila)
@@ -246,6 +246,15 @@ export const OPERATOR = {
   gapMs: 2_500, // entre una pregunta y la siguiente
 };
 // Modos de equipo (fase 33): el anfitrión elige; cada uno se une a un equipo o se mezclan al azar
+// Colores de equipo (20 bien distinguibles: hasta 20 dúos o 10 escuadras). Equipo n → TEAM_COLORS[n - 1]
+export const TEAM_COLORS = [
+  ['Rojo', '#e6194b'], ['Verde', '#3cb44b'], ['Amarillo', '#ffe119'], ['Azul', '#4363d8'], ['Naranja', '#f58231'],
+  ['Morado', '#911eb4'], ['Cian', '#42d4f4'], ['Magenta', '#f032e6'], ['Lima', '#bfef45'], ['Rosa', '#fabed4'],
+  ['Turquesa', '#469990'], ['Lavanda', '#dcbeff'], ['Café', '#9a6324'], ['Crema', '#fffac8'], ['Granate', '#800000'],
+  ['Menta', '#aaffc3'], ['Oliva', '#808000'], ['Durazno', '#ffd8b1'], ['Marino', '#1e3a8a'], ['Gris', '#a9a9a9'],
+];
+export const teamName = (n) => `Equipo ${TEAM_COLORS[(n - 1) % TEAM_COLORS.length]?.[0] ?? n}`;
+export const teamColor = (n) => TEAM_COLORS[(n - 1) % TEAM_COLORS.length]?.[1] ?? '#ffffff';
 export const TEAM_MODES = { solo: { name: 'Solitario', size: 1 }, duos: { name: 'Dúos', size: 2 }, squads: { name: 'Escuadras', size: 4 } };
 // Reanimación en equipo (dúos y escuadras): tiempo de la pregunta
 export const TEAM_REVIVE = { questionMs: 20_000 };
@@ -311,14 +320,15 @@ export const JEEP = {
 // minimapa (el camión lleva música a todo volumen y se oye lejos).
 export const VEHICLE_TYPES = {
   jeep: { name: 'Jeep', ...JEEP, seats: 2, seatLift: 0.95 },
-  moto: { name: 'Moto', ...JEEP, radius: 0.9, maxSpeed: 20, accel: 16, brake: 26, turnRate: 3.1, hp: 120, seats: 2, seatLift: 0.85, explosionDamage: 70 },
+  moto: { name: 'Moto', ...JEEP, radius: 0.9, maxSpeed: 20, accel: 16, brake: 26, turnRate: 3.1, hp: 120, seats: 2, seatLift: 0.8, explosionDamage: 70 },
   truck: { name: 'Camión', ...JEEP, radius: 2.3, maxSpeed: 10, accel: 6, brake: 14, turnRate: 1.5, hp: 750, seats: 6, seatLift: 1.55, noiseRadius: 160, runOverDamagePerSpeed: 9, enterRadius: 3.6 },
   boat: { name: 'Lancha', ...JEEP, radius: 1.6, maxSpeed: 14, accel: 9, brake: 12, turnRate: 1.9, hp: 220, seats: 2, seatLift: 0.55, water: true },
 };
 export const VEHICLE_TYPE_IDS = Object.keys(VEHICLE_TYPES);
 export const vehicleType = (v) => VEHICLE_TYPES[v?.type ?? 'jeep'];
 // Plataformas de salto y tirolinas (fase 35)
-export const PLATFORM = { radius: 1.6, altitude: 42, rearmDistance: 4 };
+// Plataforma (6.5): impulso hacia arriba (sube ~70 m) y al llegar arriba abre el paracaídas (planeo largo)
+export const PLATFORM = { radius: 1.6, launchSpeed: 38, gravity: 10, rearmDistance: 4 };
 export const ZIPLINE = { speed: 13, height: 7, grabRadius: 2.6 };
 
 // Duelo final: al quedar 2 vivos, presentación congelada y un último círculo
@@ -411,7 +421,7 @@ export const LOOT = {
   // Armas de cajas o del botín: salen con esta fracción del cargador
   weaponMagFraction: 1 / 3,
   // Peso de cada objeto al sortear (los que no figuran pesan 1): la munición es escasa
-  weights: { ammo_9mm: 1.5, ammo_556: 1, ammo_762: 0.7, ammo_12g: 0.7, ammo_300: 0.4, bandage: 4, helmet1: 1.5 },
+  weights: { ammo_9mm: 0.6, ammo_556: 0.4, ammo_762: 0.3, ammo_12g: 0.3, ammo_300: 0.15, bandage: 4, helmet1: 1.5 },
 };
 
 // Curación con tiempo. Mientras cura se camina más lento; disparar o cambiar de arma la cancela.
@@ -450,6 +460,8 @@ export const SCOPES = { none: 0, reddot: 3, scope2x: 8, scope4x: 14 };
 export const BOTS = { max: 39, range: 16, aimError: 0.3, fireChance: 0.45, ammoRefillMs: 8_000, nameBase: 'Bot' };
 // Frases rápidas (índice fijo) y antispam: una cada 2,5 s y como mucho 4 cada 20 s
 export const QUICK_PHRASES = ['¡Aquí!', '¡Cuidado!', 'Necesito balas', '¡Bien hecho!', 'Vamos a la zona', '¡Gracias!'];
+// Chat de texto (6.5): mensajes cortos, uno cada 2 s, filtro básico; el anfitrión lo puede apagar
+export const CHAT = { maxLength: 80, gapMs: 2_000, showMs: 6_000 };
 export const PHRASE_LIMIT = { gapMs: 2_500, windowMs: 20_000, max: 4, showMs: 3_500 };
 // Director de cámara del proyector: cuánto se queda en cada toma (mín. y máx.)
 export const DIRECTOR = { minShotMs: 6_000, maxShotMs: 14_000, fightRadius: 18 };

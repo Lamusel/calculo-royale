@@ -1,4 +1,4 @@
-import { VEHICLE_TYPES, vehicleType } from '@calculo-royale/shared/constants';
+import { VEHICLE_TYPES, vehicleType, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -88,10 +88,10 @@ function SoldierAvatar({ player, isMe, mate = false, register, blobShadow }) {
   const label = useMemo(
     () =>
       textTexture(player.connected ? `${mate ? '◆ ' : ''}${player.name}` : `${player.name} 💤`, {
-        color: isMe ? '#fde047' : mate ? '#4ade80' : '#ffffff',
+        color: isMe ? '#fde047' : player.team != null ? player.color : '#ffffff',
         size: 40,
       }),
-    [player.name, player.connected, isMe, mate],
+    [player.name, player.connected, isMe, mate, player.team, player.color],
   );
 
   return (
@@ -131,12 +131,16 @@ function SoldierAvatar({ player, isMe, mate = false, register, blobShadow }) {
   );
 }
 
+const TRUCK_BED = 1.05; // altura del piso del platón (Vehicles.jsx)
 // Asiento y rumbo del jeep en el que va (para sentarlo mirando al frente del jeep)
 function seatOf(id, frame) {
   for (const v of frame.vehicles?.values() ?? []) {
-    if (v.driver === id || (v.passengers ?? [v.passenger]).includes(id)) {
+    const index = v.driver === id ? 0 : (v.passengers ?? [v.passenger]).indexOf(id) + 1;
+    if (index >= 0 && (index > 0 || v.driver === id)) {
       const own = frame.mySeat === 'driver' && frame.myVehicleId === v.id && frame.me?.jeep;
-      return { seat: v.driver === id ? 'driver' : 'passenger', heading: own ? own.heading : v.heading, lift: vehicleType(v).seatLift - VEHICLE_TYPES.jeep.seatLift };
+      // En el platón del camión (puestos 2 en adelante) van de pie sobre el piso
+      if (v.type === 'truck' && index >= 2) return { seat: 'stand', heading: own ? own.heading : v.heading, lift: TRUCK_BED };
+      return { seat: index === 0 ? 'driver' : 'passenger', heading: own ? own.heading : v.heading, lift: vehicleType(v).seatLift - VEHICLE_TYPES.jeep.seatLift };
     }
   }
   return null;
@@ -203,7 +207,8 @@ export default function Players({ client, roster, myId, frameRef, quality, night
       ch.setVest(info.armorLevel);
       const gear = decodeGear(info.gear);
       ch.setGear(gear);
-      ch.setWeapon(info.weapon < 4 ? info.weapon : -1);
+      // Cualquier arma del arsenal en la mano (los puños y los lanzables no tienen modelo)
+      ch.setWeapon(WEAPON_IDS[info.weapon] === 'fists' ? -1 : info.weapon);
       const external = Boolean(ch.external);
       const lod = lodFor(focus ? Math.hypot(pos.x - focus.x, pos.y - focus.y) : 0, quality, night);
       if (ch.lod !== lod) ch.setLod(lod);

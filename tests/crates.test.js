@@ -229,10 +229,10 @@ test('botín de cajas: curaciones al inventario, munición, armas y lo que no ca
   for (const combo of LOOT_TABLES[3]) if (WEAPONS[combo[0]]) assert.equal(combo[1], `ammo_${WEAPONS[combo[0]].ammo}`);
 });
 
-test('correcciones 6.3: el arma de una caja trae un tercio del cargador y solo un cargador de munición', async () => {
+test('correcciones 6.3: el arma de una caja trae un tercio del cargador y medio cargador de munición (6.5)', async () => {
   const { bundleState } = await import('../server/src/game/crates.js');
   const bundle = ['m4a1', 'ammo_556'];
   assert.equal(bundleState(bundle, 'm4a1').mag, Math.ceil(WEAPONS.m4a1.magazine / 3));
-  assert.equal(bundleState(bundle, 'ammo_556').n, WEAPONS.m4a1.magazine);
+  assert.equal(bundleState(bundle, 'ammo_556').n, Math.ceil(WEAPONS.m4a1.magazine / 2));
   assert.equal(bundleState(['armor2', 'helmet1'], 'armor2'), null);
 });

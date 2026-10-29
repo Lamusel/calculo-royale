@@ -59,11 +59,11 @@ export function applyLoot(player, item, game = null, owner = null, state = null)
 }
 
 // Estado de un objeto dentro de un paquete: el arma sale con un tercio del cargador y su munición es
-// UN cargador (correcciones 6.3: las cajas no dan reservas grandes)
+// medio cargador (6.5: munición mínima; la reserva se llena con "Obtener balas")
 export function bundleState(bundle, item) {
   const weapon = bundle.find((i) => WEAPONS[i]);
   if (item === weapon) return { mag: Math.max(1, Math.ceil(WEAPONS[weapon].magazine * LOOT.weaponMagFraction)) };
-  if (weapon && item === `ammo_${WEAPONS[weapon].ammo}`) return { n: WEAPONS[weapon].magazine };
+  if (weapon && item === `ammo_${WEAPONS[weapon].ammo}`) return { n: Math.max(1, Math.ceil(WEAPONS[weapon].magazine / 2)) };
   return null;
 }
 

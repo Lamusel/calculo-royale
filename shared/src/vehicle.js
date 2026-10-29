@@ -65,9 +65,9 @@ export function applyVehicleInput(v, input, dt) {
 // Asiento i (0 = conductor) según el tipo: [adelante, al costado] respecto del centro
 const SEATS = {
   jeep: [[0.15, -0.45], [-0.75, 0.35]],
-  moto: [[0.1, 0], [-0.55, 0]],
-  truck: [[1.4, -0.5], [1.4, 0.5], [-0.4, -0.6], [-0.4, 0.6], [-1.6, -0.6], [-1.6, 0.6]],
-  boat: [[-0.7, 0], [0.6, 0]],
+  moto: [[-0.08, 0], [-0.48, 0]],
+  truck: [[1.4, -0.5], [1.4, 0.5], [-0.2, -0.6], [-0.2, 0.6], [-1.7, -0.6], [-1.7, 0.6]],
+  boat: [[-0.75, -0.35], [-0.75, 0.4]],
 };
 export function seatPosition(v, seat) {
   const list = SEATS[v.type ?? 'jeep'];

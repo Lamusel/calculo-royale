@@ -148,6 +148,11 @@ export function updateDeploy(game, dt) {
       p.y = clamp(d.y);
       // Quien no saltó sale expulsado al final de la ruta
       if (d.done) p.deploy = { phase: 'fall', z: s.z, since: game.now };
+    } else if (s.phase === 'fall' && s.vz > 0) {
+      // Impulso de la plataforma: sube frenando y arriba abre el paracaídas
+      s.z += s.vz * dt;
+      s.vz -= PLATFORM.gravity * dt;
+      if (s.vz <= 0) s.phase = 'chute';
     } else if (s.phase === 'fall') {
       s.z -= fallSpeed(p.lean ?? 0) * dt;
       if (s.z <= DEPLOY.chuteAltitude) s.phase = 'chute';
@@ -178,7 +183,7 @@ export function updatePads(game) {
     if (!pad) continue;
     p.padAt = pad;
     p.healing = null;
-    p.deploy = { phase: 'fall', z: PLATFORM.altitude, since: game.now };
+    p.deploy = { phase: 'fall', z: 1, vz: PLATFORM.launchSpeed, since: game.now };
   }
 }
 

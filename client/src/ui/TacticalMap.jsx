@@ -247,10 +247,22 @@ export function draw(ctx, size, data, detailed, view = FULL) {
 
   // Compañeros de equipo (siempre) y sus marcadores (30 s)
   if (data.mates?.size) {
-    ctx.fillStyle = '#4ade80';
     for (const id of data.mates) {
       const p = data.others?.get(id);
       if (!p || p.flags & PLAYER_FLAGS.DEAD) continue;
+      // Derribado: cruz roja; vivo: punto con el color del equipo
+      if (p.flags & PLAYER_FLAGS.DOWNED) {
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(X(p.x) - 5, Y(p.y) - 5);
+        ctx.lineTo(X(p.x) + 5, Y(p.y) + 5);
+        ctx.moveTo(X(p.x) + 5, Y(p.y) - 5);
+        ctx.lineTo(X(p.x) - 5, Y(p.y) + 5);
+        ctx.stroke();
+        continue;
+      }
+      ctx.fillStyle = data.teamColor ?? '#4ade80';
       ctx.beginPath();
       ctx.arc(X(p.x), Y(p.y), 4, 0, Math.PI * 2);
       ctx.fill();
@@ -416,7 +428,7 @@ function useMapCanvas(frameRef, extra, size, detailed) {
       last = t;
       const f = frameRef.current;
       const x = extra.current;
-      draw(ctx, size, { ...f, ...x, mates: x.client?.mates, pings: x.client?.pings }, detailed, detailed ? FULL : minimapView(f.follow ?? f.me));
+      draw(ctx, size, { ...f, ...x, mates: x.client?.mates, pings: x.client?.pings, teamColor: x.client?.teamColor }, detailed, detailed ? FULL : minimapView(f.follow ?? f.me));
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);

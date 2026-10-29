@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TEAM_MODES, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TEAM_MODES, TOPICS, WEATHERS, teamName } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -155,7 +155,7 @@ function TeamPicker({ room, isHost, myId }) {
               const count = room.players.filter((p) => p.teamChoice === n).length;
               return (
                 <option key={n} value={n} disabled={count >= size && me?.teamChoice !== n} className="bg-olive-900">
-                  Equipo {n} ({count}/{size})
+                  {teamName(n)} ({count}/{size})
                 </option>
               );
             })}
@@ -211,6 +211,9 @@ function PresentationPicker({ room, isHost }) {
         title="Preguntas de aritmética para probar el juego (no cuenta para logros; el CSV lo marca)"
       >
         {room.easy ? '✓ Modo fácil' : 'Modo fácil'}
+      </button>
+      <button onClick={() => socket.emit(EVENTS.ROOM_CHAT, Boolean(room.chatOff))} className={`rounded px-2 py-1 text-xs ${room.chatOff ? 'bg-white/10 text-stone-400 line-through' : 'bg-white/10 text-stone-200'}`} title="Chat de texto de la sala">
+        💬 Chat
       </button>
       <select
         value=""

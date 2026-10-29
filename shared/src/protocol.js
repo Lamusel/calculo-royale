@@ -24,6 +24,9 @@ export const EVENTS = {
   ROOM_BOTS: 'room:bots', // C → S (solo host, en el lobby): completar con bots hasta N jugadores (0 = quitarlos)
   QUICK_PHRASE: 'phrase:say', // C → S: índice en QUICK_PHRASES
   PHRASE: 'phrase', // S → C: { id, index }
+  CHAT_SEND: 'chat:send', // C → S: { text, team } (team: solo a mi equipo)
+  CHAT: 'chat', // S → C: { id, text, team }
+  ROOM_CHAT: 'room:chat', // C → S (solo host): true | false — chat encendido
   RESULTS_CSV: 'results:csv', // S → C (host y proyector): { filename, csv }
   // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby
   PLAYER_SKIN: 'player:skin',

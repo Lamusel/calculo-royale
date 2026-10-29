@@ -1,4 +1,4 @@
-import { TEAM_MODES, TEAM_REVIVE, TOPIC_NAMES, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { TEAM_MODES, TEAM_REVIVE, TICK_MS, TOPIC_NAMES, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { drawQuickQuestion } from '../questions/QuestionBank.js';
 import { damagePlayer, inMatch } from './combat.js';
@@ -6,13 +6,15 @@ import { recordStats } from './crates.js';
 
 // Dúos y escuadras (fase 33): equipos, sin fuego amigo, derribado y reanimación, marcador de equipo.
 // Derribado: se arrastra sin disparar; un compañero lo levanta con "Reanimar" (5 s y una pregunta
-// rápida). Si nadie lo levanta en 30 s, o no le queda ningún compañero en pie, muere (y va al Gulag).
+// rápida). Tiene su barra de derribo: se gasta sola en 30 s y los enemigos la bajan disparando (rematar).
+// En cero, o si no le queda ningún compañero en pie, muere (y va al Gulag).
 
 const ZONE_INDEX = WEAPON_IDS.indexOf('zone');
 const DOWN_MS = 30_000;
 const REVIVE_HOLD_MS = 5_000;
 const REVIVE_RADIUS = 2.6;
 const REVIVE_HP = 30;
+export const DOWN_HP = 100;
 let nextReviveId = 1;
 
 export const teamSize = (room) => TEAM_MODES[room.teamMode ?? 'solo']?.size ?? 1;
@@ -56,7 +58,7 @@ export function tryDown(game, target, attackerId) {
   if (game.room.phase !== 'playing' || teamSize(game.room) === 1 || target.downed || target.arena != null) return false;
   const mate = [...game.room.players.values()].some((q) => sameTeam(q, target) && standing(q));
   if (!mate) return false;
-  target.downed = { until: game.now + DOWN_MS, by: attackerId };
+  target.downed = { until: game.now + DOWN_MS, by: attackerId, hp: DOWN_HP };
   target.hp = 1;
   target.healing = null;
   target.reloadUntil = 0;
@@ -99,7 +101,7 @@ export function updateTeams(game) {
     // Reanimando: moverse o que el otro muera lo cancela; a los 5 s, la pregunta
     if (p.reviving) {
       const target = game.room.players.get(p.reviving.targetId);
-      if (!p.alive || p.downed || !target?.downed || Math.hypot(p.x - p.reviving.x, p.y - p.reviving.y) > 1) p.reviving = null;
+      if (!p.alive || p.downed || !target?.downed || !target.alive || Math.hypot(p.x - p.reviving.x, p.y - p.reviving.y) > 1) p.reviving = null;
       else if (!p.reviving.asked && game.now >= p.reviving.until) askRevive(game, p);
       else if (p.transmission?.kind === 'revive' && game.now > p.transmission.expiresAt) {
         const t = p.transmission;
@@ -108,13 +110,10 @@ export function updateTeams(game) {
       }
     }
     if (!p.downed || !p.alive) continue;
-    // Se desangra, o ya no le queda ningún compañero en pie
+    // Se desangra (la barra baja sola en 30 s), o ya no le queda ningún compañero en pie
+    p.downed.hp -= (DOWN_HP * TICK_MS) / DOWN_MS;
     const mate = players.some((q) => sameTeam(q, p) && standing(q));
-    if (game.now >= p.downed.until || !mate) {
-      const by = p.downed.by;
-      p.downed = null;
-      damagePlayer(game, p, 1e6, by ?? null, ZONE_INDEX, { ignoreArmor: true });
-    }
+    if (p.downed.hp <= 0 || !mate) damagePlayer(game, p, 1e6, p.downed.by ?? null, ZONE_INDEX, { ignoreArmor: true });
   }
 }
 

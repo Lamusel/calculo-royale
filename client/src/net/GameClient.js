@@ -260,6 +260,11 @@ export class GameClient {
         const answered = Object.values(mine.byTopic ?? {}).reduce((n, t) => n + t.total, 0);
         if (this.results?.winnerId === this.myId && answered > 0 && mine.failed.length === 0) this.achieve('flawlessWin');
       },
+      // Chat de texto: va a la misma lista que las frases rápidas
+      [EVENTS.CHAT]: ({ id, text, team }) => {
+        this.phrases.push({ id, text, team, at: performance.now() });
+        if (this.phrases.length > 6) this.phrases.shift();
+      },
       [EVENTS.PHRASE]: ({ id, index }) => {
         this.phrases.push({ id, index, at: performance.now() });
         if (this.phrases.length > 6) this.phrases.shift();
@@ -317,6 +322,7 @@ export class GameClient {
     actions.requestAmmo = () => this.requestAmmo();
     actions.useItem = (item) => this.useItem(item);
     actions.phrase = (index) => this.socket.emit(EVENTS.QUICK_PHRASE, index);
+    actions.chat = (text, team) => this.socket.emit(EVENTS.CHAT_SEND, { text, team });
     // En el bus salta; cayendo, abre el paracaídas antes
     actions.jump = () => (this.deploying === 'bus' || this.deploying === 'fall') && press(BUTTONS.JUMP);
 
@@ -489,7 +495,7 @@ export class GameClient {
     frame.meInfo = frame.others.get(this.myId) ?? null;
     // De pasajero voy sentado en el jeep tal como se ve (interpolado)
     const ride = this.seat === 'passenger' ? frame.vehicles.get(this.vehicleId) : null;
-    if (ride && frame.me) Object.assign(frame.me, seatPosition(ride, 'passenger'));
+    if (ride && frame.me) Object.assign(frame.me, seatPosition(ride, Math.max(1, (ride.passengers ?? [ride.passenger]).indexOf(this.myId) + 1)));
     frame.myVehicleId = this.vehicleId;
     frame.mySeat = this.seat;
     // En el bus voy donde va el bus (interpolado)
@@ -734,6 +740,7 @@ export class GameClient {
     actions.interact = () => {};
     actions.useItem = () => {};
     actions.phrase = () => {};
+    actions.chat = () => {};
     actions.requestAmmo = () => {};
     actions.jump = () => {};
   }

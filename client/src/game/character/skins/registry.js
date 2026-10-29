@@ -37,7 +37,8 @@ export function registerSkin(entry) {
 }
 
 export function registerExternalSkin(entry) {
-  registerSkin({ type: 'external', rarity: 'legendario', renderer: 'pbr', collection: 'Personajes especiales', ...entry });
+  // Tiesas: el arma va en la mano del rig, un poco hacia el cuerpo (modelos más delgados)
+  registerSkin({ type: 'external', rarity: 'legendario', renderer: 'pbr', collection: 'Personajes especiales', weaponOffset: { position: [-0.14, -0.08, -0.06], rotation: [0, 0, 0] }, ...entry });
 }
 
 // Procedurales de la fase 8 (catálogo compartido)
@@ -47,7 +48,7 @@ for (const s of SKINS) if (s.type !== 'external') registerSkin({ ...s });
 // weaponOffset: son modelos más delgados que el rig, el arma se acerca al cuerpo (revisado en /skins)
 export const EXTERNAL_OVERRIDES = {
   '2b': { name: '2B', scale: 1, rotation: [0, 0, 0], offset: [0, 0, 0], weaponOffset: { position: [-0.16, -0.08, -0.07], rotation: [0, 0, 0] } },
-  furina: { name: 'Furina', scale: 1, rotation: [0, 0, 0], offset: [0, 0, 0], weaponOffset: { position: [0, 0, 0], rotation: [0, 0, 0] } }, // modo C: el arma ya va en su mano
+  furina: { name: 'Furina', scale: 1, rotation: [0, 0, 0], offset: [0, 0, 0], weaponOffset: { position: [-0.14, -0.08, -0.06], rotation: [0, 0, 0] } },
   ghost: { name: 'Ghost', scale: 1, rotation: [0, 0, 0], offset: [0, 0, 0], weaponOffset: { position: [-0.12, -0.06, -0.04], rotation: [0, 0, 0] } },
   luffy: { name: 'Luffy', scale: 1, rotation: [0, 0, 0], offset: [0, 0, 0], weaponOffset: { position: [-0.16, -0.1, -0.07], rotation: [0, 0, 0] } },
 };

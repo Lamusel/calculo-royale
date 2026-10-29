@@ -1,4 +1,4 @@
-import { TOPIC_NAMES } from '@calculo-royale/shared/constants';
+import { TOPIC_NAMES, teamColor, teamName } from '@calculo-royale/shared/constants';
 import { ClassTopics } from './HostPanel.jsx';
 import MathText from './MathText.jsx';
 
@@ -91,7 +91,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
       <div className="mx-auto flex max-w-4xl flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-2xl font-black uppercase tracking-wider text-khaki sm:text-3xl">
-            {winner ? `🏆 Gana ${winner.team ? `el equipo ${winner.team} (${winner.name})` : winner.name}` : 'Fin de la partida'}
+            {winner ? `🏆 Gana ${winner.team ? `el ${teamName(winner.team)} (${winner.name})` : winner.name}` : 'Fin de la partida'}
           </p>
           {me && <p className="rounded bg-white/10 px-3 py-1 font-mono">Tu puesto: {me.place}° · {me.score} pts</p>}
           {results.easy && <p className="rounded bg-amber-800/70 px-2 py-1 text-xs text-amber-100">Modo fácil · no cuenta para logros</p>}
@@ -133,7 +133,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                     <td className="py-0.5">{i + 1}</td>
                     <td className="py-0.5" style={{ color: r.id === myId ? undefined : r.color }}>
                       {r.name}
-                      {r.team && <span className="ml-1 text-[10px] text-green-300">equipo {r.team}</span>}
+                      {r.team && <span className="ml-1 text-[10px]" style={{ color: teamColor(r.team) }}>{teamName(r.team)}</span>}
                       {r.bot && <span className="ml-1 text-[10px] text-stone-500">bot</span>}
                     </td>
                     <td className="py-0.5 text-right">{r.place}°</td>

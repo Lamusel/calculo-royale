@@ -1,5 +1,5 @@
 import { PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
-import { MAP_HALF } from '@calculo-royale/shared/constants';
+import { MAP_HALF, teamColor } from '@calculo-royale/shared/constants';
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
@@ -129,6 +129,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
   const followName = room.players.find((p) => p.id === client.followId)?.name;
   // Compañeros de equipo (minimapa, Reanimar, seguir primero a ellos al caer)
   const myTeam = room.players.find((p) => p.id === myId)?.team;
+  client.teamColor = myTeam != null ? teamColor(myTeam) : null;
   client.mates = new Set(myTeam != null ? room.players.filter((p) => p.id !== myId && p.team === myTeam).map((p) => p.id) : []);
   return (
     <>
@@ -142,7 +143,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         onPanel={() => setPanel(true)}
       />
       <Killfeed killfeed={view.killfeed} roster={room.players} myId={myId} />
-      {!replaying && <QuickPhrases client={client} roster={room.players} isTouch={isTouch} />}
+      {!replaying && <QuickPhrases client={client} roster={room.players} isTouch={isTouch} teams={room.players.some((p) => p.team != null)} chatOff={Boolean(room.chatOff)} />}
       <TacticalMap
         frameRef={frameRef}
         client={client}
@@ -252,7 +253,9 @@ export default function Game(props) {
   );
 }
 
-function GameScreen({ room, myId, sessionKey, onLeave }) {
+function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
+  // En equipos, cada jugador toma el color de su equipo (anillo, nombre, minimapa, killfeed)
+  const room = useMemo(() => (rawRoom.players.some((p) => p.team != null) ? { ...rawRoom, players: rawRoom.players.map((p) => (p.team != null ? { ...p, color: teamColor(p.team) } : p)) } : rawRoom), [rawRoom]);
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
   const [replayDone, setReplayDone] = useState(false);

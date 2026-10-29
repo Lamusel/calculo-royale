@@ -349,7 +349,10 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
       {self.alive && self.downedLeft > 0 && (
         <div className="pointer-events-none absolute left-1/2 top-[30%] z-30 -translate-x-1/2 rounded-lg bg-red-950/85 px-4 py-2 text-center text-red-100">
           <p className="font-black uppercase tracking-widest">Derribado</p>
-          <p className="text-xs">Arrástrate hacia un compañero: te puede reanimar · {Math.ceil(self.downedLeft / 1000)} s</p>
+          <p className="text-xs">Arrástrate hacia un compañero: te puede reanimar</p>
+          <div className="mx-auto mt-1 h-2 w-48 overflow-hidden rounded bg-black/60">
+            <div className="h-full bg-red-500 transition-[width]" style={{ width: `${self.downedHp ?? 0}%` }} />
+          </div>
         </div>
       )}
       {self.reviving && self.reviving.left > 0 && (

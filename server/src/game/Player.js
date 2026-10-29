@@ -255,6 +255,7 @@ export class Player {
       gulagUsed: this.gulagUsed,
       kills: this.kills,
       downedLeft: this.downed ? Math.max(0, this.downed.until - now) : 0,
+      downedHp: this.downed ? Math.max(0, Math.round(this.downed.hp)) : 0,
       reviving: this.reviving ? { targetId: this.reviving.targetId, left: Math.max(0, this.reviving.until - now) } : null,
       place: this.place,
       vehicle: this.vehicleId !== null ? { id: this.vehicleId, seat: this.seat } : null,

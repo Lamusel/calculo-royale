@@ -1,13 +1,11 @@
 import * as THREE from 'three';
 import { findAnimationBySemantic } from '../animation/clips.js';
-import { createExternalAnimator, isRigCompatible, mapBones } from './bones.js';
+import { createExternalAnimator, mapBones } from './bones.js';
 import { normalizeExternalSkin } from './normalize.js';
 
 // Una instancia de skin externa (clon del modelo cargado). Modos:
-//   A: sin esqueleto → se monta entero, mira a la mira y se inclina y rebota al caminar
-//   B: esqueleto propio sin alias conocidos → clips del archivo por significado (o pose neutra)
-//   C: esqueleto con alias (Mixamo y otros) → las mismas animaciones del Master Rig sobre sus
-//      huesos; los clips del archivo solo se usan para la victoria
+//   A: tiesa → se monta entera, mira a la mira y se inclina y rebota al caminar (6.5: todas)
+//   B y C (ya no se usan): clips del archivo o animaciones del Master Rig sobre sus huesos
 const LOD_NAME = /(^|[_\s.-])LOD([0-2])$/i;
 const SECONDARY_RATIO = 0.15; // piezas con menos del 15 % de los triángulos de la principal
 
@@ -40,11 +38,9 @@ export class ExternalSkin {
     const { holder } = normalizeExternalSkin(model, entry);
     this.object = holder;
     this.mapping = mapBones(model);
-    let skinned = false;
-    model.traverse((o) => {
-      if (o.isSkinnedMesh) skinned = true;
-    });
-    this.mode = isRigCompatible(this.mapping) ? 'C' : skinned ? 'B' : 'A';
+    // 6.5: todas las externas van tiesas (modo A): sin huesos ni clips, que deformaban a varias.
+    // Solo giran, rebotan al moverse y caen al morir; el arma va en la mano del rig (weaponOffset)
+    this.mode = 'A';
     this.animator = this.mode === 'C' ? createExternalAnimator(holder, this.mapping) : null;
     // ¿Los huesos están donde van? (algunos exportadores dejan todo el esqueleto en el origen):
     // si no, casco y mochila se muestran como iconos (fase 25)
@@ -54,7 +50,7 @@ export class ExternalSkin {
 
     const clips = asset.animations ?? [];
     this.clips = clips;
-    this.mixer = clips.length ? new THREE.AnimationMixer(model) : null;
+    this.mixer = null;
     this.action = null;
     this.victoryClip = (entry.victoryAnimation && clips.find((c) => c.name === entry.victoryAnimation)) || findAnimationBySemantic(clips, 'victory');
     this.setupLod();

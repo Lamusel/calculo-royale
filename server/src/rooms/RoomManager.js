@@ -3,7 +3,7 @@ import { DEPLOY_MODES, DURATIONS, NAME_MAX_LENGTH, TEAM_MODES, ROOM_CODE_ALPHABE
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { canUseSkin } from '@calculo-royale/shared/skins';
-import { sayPhrase } from '../game/phrases.js';
+import { sayChat, sayPhrase } from '../game/phrases.js';
 import { Room } from './Room.js';
 
 const fail = (error) => ({ ok: false, error });
@@ -181,6 +181,20 @@ export class RoomManager {
   }
 
   // Modo fácil (solo el host, en el lobby)
+  chat(socket, data) {
+    const room = this.roomOf(socket);
+    const player = this.playerOf(socket);
+    if (room && player) sayChat(room, player, data, Date.now());
+  }
+
+  // Chat encendido o apagado (solo el host, en cualquier momento)
+  setChat(socket, on) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId) return;
+    room.chatOff = !on;
+    room.broadcastInfo();
+  }
+
   setEasy(socket, easy) {
     const room = this.roomOf(socket);
     if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby') return;

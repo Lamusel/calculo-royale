@@ -253,6 +253,7 @@ export class Room {
       duration: this.duration,
       teamMode: this.teamMode,
       easy: this.easy,
+      chatOff: this.chatOff || undefined,
       windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),
     };

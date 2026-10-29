@@ -270,3 +270,50 @@ test('equipos: sin fuego amigo; derribado se levanta con Reanimar (5 s y pregunt
   assert.equal(b.alive, false);
   assert.equal(room.phase, 'results', 'gana el equipo de c y d');
 });
+
+test('6.5: derribado con barra propia (se gasta sola y los enemigos lo rematan); si muere, quien reanimaba queda libre', async () => {
+  const { assignTeams, DOWN_HP } = await import('../server/src/game/teams.js');
+  const room = makeRoom();
+  room.teamMode = 'duos';
+  const [a, b, c, d] = addPlayers(room, 4);
+  a.teamChoice = 1;
+  b.teamChoice = 1;
+  assignTeams(room);
+  start(room);
+  damagePlayer(room.game, a, 500, c.id, 0, { ignoreArmor: true });
+  assert.equal(a.downed.hp, DOWN_HP);
+  // Se gasta sola: en 10 s pierde un tercio
+  advance(room, 10_000);
+  assert.ok(a.downed.hp < DOWN_HP * 0.7 && a.downed.hp > DOWN_HP * 0.6, `${a.downed.hp}`);
+  // b empieza a reanimar y c lo remata disparándole: b queda libre
+  b.teleport(a.x + 1, a.y);
+  room.game.interact(b, 'revive');
+  assert.ok(b.reviving);
+  damagePlayer(room.game, a, 30, c.id, 0);
+  assert.ok(a.alive && a.downed, 'un disparo baja la barra pero no lo mata');
+  damagePlayer(room.game, a, 100, c.id, 0);
+  assert.equal(a.alive, false);
+  assert.equal(a.downed, null);
+  assert.equal(c.kills, 1);
+  advance(room, TICK_MS * 2);
+  assert.equal(b.reviving, null, 'ya no queda atascado reanimando');
+  void d;
+});
+
+test('6.5: chat corto con antispam, filtro, solo-equipo y apagado por el anfitrión', async () => {
+  const { sayChat, cleanChat } = await import('../server/src/game/phrases.js');
+  const room = makeRoom();
+  const [a, b, c] = addPlayers(room, 3);
+  a.team = 1;
+  b.team = 1;
+  c.team = 2;
+  assert.equal(cleanChat('eres un idiota'), 'eres un ******');
+  assert.equal(cleanChat('x'.repeat(200)).length, 80);
+  assert.ok(sayChat(room, a, { text: 'hola', team: true }, 0));
+  assert.deepEqual(room.emitted.filter((e) => e.event === EVENTS.CHAT).map((e) => e.to), [a.id, b.id]);
+  assert.equal(sayChat(room, a, { text: 'otra' }, 1000), false, 'uno cada 2 s');
+  assert.ok(sayChat(room, a, { text: 'otra' }, 2100));
+  assert.equal(room.broadcasts.at(-1).event, EVENTS.CHAT);
+  room.chatOff = true;
+  assert.equal(sayChat(room, c, { text: 'hola' }, 9000), false);
+});

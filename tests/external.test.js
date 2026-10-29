@@ -162,31 +162,21 @@ test('alias: reconoce Mixamo y nombres comunes', () => {
   assert.equal(isRigCompatible(m), false, 'faltan huesos: no es modo C');
 });
 
-test('modo C: las animaciones del Master Rig mueven los huesos del modelo igual que los del rig', async () => {
+test('6.5: toda skin externa va tiesa (sin huesos ni clips) y el arma se ve en la mano del rig', async () => {
   setLoaderDeps(fakeLoader(mixamoModel()));
   const ch = new Character({ skin: 'prueba_1', color: '#f00' });
   assert.equal(ch.status, 'loading');
   assert.ok(ch.procedural, 'mientras carga se ve el soldado base');
   await until(() => ch.status !== 'loading');
   assert.equal(ch.status, 'ready');
-  assert.equal(ch.external.mode, 'C');
-  assert.equal(ch.procedural, null);
+  assert.equal(ch.external.mode, 'A', 'aunque el esqueleto sea compatible');
+  assert.equal(ch.external.mixer, null);
   const ext = ch.external.mapping;
-  const rig = ch.rig.bones;
-  // Apuntando, con la mira girada respecto a las piernas, y caminando
-  for (let i = 0; i < 30; i++) ch.update({ x: i * 0.2, y: 0, aim: 0.8, dead: false, aiming: true, shotAgo: 1e9, weapon: 2, seat: null }, i * 50, 0.05);
-  ch.visualRoot.updateMatrixWorld(true);
-  for (const [a, b] of [['upperArmR', 'lowerArmR'], ['lowerArmR', 'handR'], ['upperArmL', 'lowerArmL'], ['lowerArmL', 'handL']]) {
-    const angle = worldDir(rig[a], rig[b]).angleTo(worldDir(ext[a], ext[b]));
-    assert.ok(angle < 1e-3, `${a}: ${angle}`);
-  }
-  // Piernas: misma dirección que las del rig (zancada)
-  const legRig = new THREE.Vector3(0, -1, 0).applyQuaternion(rig.upperLegL.getWorldQuaternion(new THREE.Quaternion()));
-  const legExt = worldDir(ext.upperLegL, ext.lowerLegL);
-  assert.ok(legRig.angleTo(legExt) < 1e-3);
-  // El arma sigue en el socket del rig, llevado a la mano del modelo
-  const socket = ch.rig.sockets.WeaponSocket_R.getWorldPosition(new THREE.Vector3());
-  assert.ok(socket.distanceTo(ext.handR.getWorldPosition(new THREE.Vector3())) < 1e-6);
+  const before = ext.upperArmR.quaternion.clone();
+  ch.setWeapon(7);
+  for (let i = 0; i < 30; i++) ch.update({ x: i * 0.2, y: 0, aim: 0.8, dead: false, aiming: true, shotAgo: 1e9, weapon: 7, seat: null }, i * 50, 0.05);
+  assert.ok(ext.upperArmR.quaternion.equals(before), 'los huesos del modelo no se mueven');
+  assert.ok(ch.weapons[7].visible && ch.rig.sockets.WeaponSocket_R.visible, 'el AK-47 se ve en la mano');
   ch.dispose();
 });
 

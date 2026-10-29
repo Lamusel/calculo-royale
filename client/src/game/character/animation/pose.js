@@ -122,7 +122,7 @@ export function poseDeltas(st, out = createDeltas()) {
     const legs = st.air === 'fall' ? -0.35 : 0.15 + Math.sin(st.airT * 2) * 0.12;
     q.upperLegR.setFromAxisAngle(Z, legs);
     q.upperLegL.setFromAxisAngle(Z, st.air === 'fall' ? legs : legs * 0.4);
-  } else if (st.seat) {
+  } else if (st.seat && st.seat !== 'stand') {
     q.upperLegR.setFromAxisAngle(Z, SEATED_LEG);
     q.upperLegL.setFromAxisAngle(Z, SEATED_LEG);
     q.lowerLegR.setFromAxisAngle(Z, -SEATED_LEG);
@@ -137,7 +137,7 @@ export function poseDeltas(st, out = createDeltas()) {
   q.root.setFromAxisAngle(fallAxis, st.fall * Math.PI * 0.48);
   // Caída libre: boca abajo hacia donde mira (el eje es el de la caída, con el signo al revés)
   if (st.air === 'fall') q.root.setFromAxisAngle(fallAxis.set(Math.sin(st.aimYaw), 0, Math.cos(st.aimYaw)), -1.15);
-  out.rootY = st.fall * 0.22 + (st.seat && !dead ? 0.12 : 0) + (st.victory ? Math.abs(Math.sin(st.victoryT * 6)) * 0.22 : 0);
+  out.rootY = st.fall * 0.22 + (st.seat && st.seat !== 'stand' && !dead ? 0.12 : 0) + (st.victory ? Math.abs(Math.sin(st.victoryT * 6)) * 0.22 : 0);
   out.spineY = st.bob;
   out.shoulderX = -st.recoil * 0.1;
   return out;
