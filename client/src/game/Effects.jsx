@@ -1,3 +1,4 @@
+import { WATER_LEVEL } from '@calculo-royale/shared/terrain';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -31,6 +32,8 @@ const PARTICLES = {
   blood: { max: 40, geometry: new THREE.BoxGeometry(0.08, 0.08, 0.08), material: lambert('#7f1d1d') },
   dust: { max: 60, geometry: new THREE.IcosahedronGeometry(0.25, 0), material: lambert('#a08a63') },
   smoke: { max: 40, geometry: new THREE.IcosahedronGeometry(0.5, 0), material: lambert('#5d5c55') },
+  blacksmoke: { max: 50, geometry: new THREE.IcosahedronGeometry(0.45, 0), material: lambert('#1f1f1f') },
+  splash: { max: 70, geometry: new THREE.BoxGeometry(0.12, 0.12, 0.12), material: lambert('#dbeafe') },
   debris: { max: 48, geometry: new THREE.BoxGeometry(0.32, 0.12, 0.22), material: lambert('#7a5a32') },
 };
 
@@ -156,6 +159,28 @@ export default function Effects({ client, quality }) {
           life: rand(1600, 2400),
         }));
         client.trauma = Math.min(1, client.trauma + 0.25);
+      } else if (e.type === 'vsmoke') {
+        spawn('blacksmoke', 1, () => ({
+          pos: point(e.x, e.y, 1.2),
+          v: new THREE.Vector3(rand(-0.2, 0.2), rand(1, 1.6), rand(-0.2, 0.2)),
+          born: now,
+          life: 1800,
+        }));
+      } else if (e.type === 'splash') {
+        // Estela: gotas hacia los lados y un poco hacia atrás
+        spawn('splash', 3, () => {
+          const side = Math.random() < 0.5 ? -1 : 1;
+          const h = e.heading + side * (Math.PI / 2) + rand(-0.4, 0.4);
+          return { pos: new THREE.Vector3(e.x, WATER_LEVEL + 0.1, -e.y), v: new THREE.Vector3(Math.cos(h) * rand(1, 2.5), rand(1.5, 3), -Math.sin(h) * rand(1, 2.5)), gravity: -9, born: now, life: 700 };
+        });
+      } else if (e.type === 'sparks') {
+        spawn('spark', 6, () => ({
+          pos: point(e.x, e.y, 0.6),
+          v: new THREE.Vector3(rand(-3, 3), rand(1, 3), rand(-3, 3)),
+          gravity: -12,
+          born: now,
+          life: 350,
+        }));
       } else if (e.type === 'debris') {
         spawn('debris', 4, () => ({
           pos: point(e.x + rand(-0.3, 0.3), e.y + rand(-0.3, 0.3), 0.6),

@@ -369,6 +369,13 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
 
   return (
     <>
+      {/* Letrero "Entrando a…" (7A): corto, arriba al centro, sin tapar nada */}
+      {client?.areaSign && performance.now() - client.areaSign.at < 2000 && (
+        <div key={client.areaSign.at} className="pointer-events-none absolute left-1/2 top-[18%] z-20 -translate-x-1/2 animate-[areasign_2s_ease-in-out_forwards] text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.45em] text-khaki-light drop-shadow">Entrando a</p>
+          <p className="border-y border-khaki/50 px-4 py-0.5 text-lg font-black uppercase tracking-[0.2em] text-stone-50 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] sm:text-2xl">{client.areaSign.name}</p>
+        </div>
+      )}
       {/* Marcador propio (7A): flecha en el borde con la distancia (la cámara mira al norte) */}
       {client?.myMarker && me && self.alive && (() => {
         const dx = client.myMarker.x - me.x;

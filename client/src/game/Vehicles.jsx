@@ -1,3 +1,4 @@
+import { distanceToRoads } from '@calculo-royale/shared/mapLayout';
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -175,11 +176,25 @@ export default function Vehicles({ client, frameRef, quality }) {
         w.rotation.z = a.st.spin;
         w.material = a.mesh.material;
       }
-      // Humo si está dañado o quemado
+      // Humo negro si está muy dañado o quemado
       if ((destroyed || v.hp < T.hp * 0.35) && now - a.st.smokeAt > (destroyed ? 260 : 180) / quality.particles) {
         a.st.smokeAt = now;
-        client.effects.push({ type: 'dust', x: pose.x + (Math.random() - 0.5), y: pose.y + (Math.random() - 0.5) });
+        client.effects.push({ type: 'vsmoke', x: pose.x + (Math.random() - 0.5), y: pose.y + (Math.random() - 0.5) });
       }
+      // 7A: polvo detrás de las ruedas en tierra y pasto; salpicaduras y estela en el agua; chispas al raspar
+      const speed = Math.abs(pose.speed ?? 0);
+      if (!destroyed && quality.particles > 0 && speed > (T.water ? 2 : 4) && now - (a.st.trailAt ?? 0) > 90 / quality.particles) {
+        a.st.trailAt = now;
+        const back = T.water ? 1.9 : 1.3;
+        const bx = pose.x - Math.cos(pose.heading) * back;
+        const by = pose.y - Math.sin(pose.heading) * back;
+        if (T.water) client.effects.push({ type: 'splash', x: bx, y: by, heading: pose.heading });
+        else if (distanceToRoads(bx, by) > 4) client.effects.push({ type: 'dust', x: bx, y: by });
+      }
+      if (!destroyed && (a.st.lastSpeed ?? 0) > 4 && (a.st.lastSpeed ?? 0) - speed > 3) {
+        client.effects.push({ type: 'sparks', x: pose.x + Math.cos(pose.heading) * 1.4, y: pose.y + Math.sin(pose.heading) * 1.4 });
+      }
+      a.st.lastSpeed = speed;
       const ratio = Math.max(0, v.hp / T.hp);
       a.bg.visible = !destroyed && ratio < 1;
       a.hp.visible = a.bg.visible;

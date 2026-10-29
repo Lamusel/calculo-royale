@@ -9,7 +9,7 @@ import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/cod
 import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
-import { waterAt } from '@calculo-royale/shared/mapPlan';
+import { AREAS, waterAt } from '@calculo-royale/shared/mapPlan';
 import { seatPosition } from '@calculo-royale/shared/vehicle';
 import { applyBroken } from '../game/destruction.js';
 import { actions, currentAim, inputState, press, readInput, resetInput } from '../input/inputState.js';
@@ -25,6 +25,9 @@ import { insideZone } from '@calculo-royale/shared/zone';
 let seq = 0;
 
 const KILLFEED_MS = 6000;
+// Zona con nombre en la que está (o null)
+const AREA_LIST = Object.entries(AREAS).filter(([, a]) => a.name && a.w).map(([id, a]) => ({ id, ...a }));
+export const areaAt = (x, y) => AREA_LIST.find((a) => Math.abs(x - a.x) < a.w / 2 && Math.abs(y - a.y) < a.h / 2) ?? null;
 const vibrate = (pattern) => navigator.vibrate?.(pattern);
 
 // Trazadoras, fogonazos y explosiones de un snapshot (también los usa la repetición)
@@ -117,6 +120,8 @@ export class GameClient {
     this.heardEffects = new Set(); // lanzables que ya sonaron
     this.vehicleStates = new Map(); // para oír cuando un vehículo explota
     this.truckRadioOff = false; // botón de la radio del camión (7A)
+    this.areaShown = new Map(); // zona → cuándo se mostró su letrero
+    this.areaSign = null;
     this.weather = 'despejado';
     this.results = null; // ranking al terminar la partida
     this.privateResults = null; // aciertos por tema y preguntas falladas (solo mías)
@@ -664,6 +669,7 @@ export class GameClient {
     this.lastSpeed = mine ? Math.abs(mine.speed) : 0;
     if (second !== this.ambienceSecond) {
       this.ambienceSecond = second;
+      this.checkArea(frame.me, now);
       this.ambience = this.phase === 'lobby' ? { campo: 1 } : ambienceMix(at.x, at.y);
     }
     const z = frame.zone;
@@ -823,6 +829,21 @@ export class GameClient {
 
   cancelQuestion() {
     this.socket.emit(EVENTS.CRATE_CANCEL);
+  }
+
+  // Letrero "Entrando a…" (7A): al entrar a una zona con nombre, 2 s y su voz si existe; no se repite
+  // si vuelves a entrar en menos de 60 s
+  checkArea(me, now) {
+    const area = me && this.phase === 'playing' && this.alive && !this.deploying ? areaAt(me.x, me.y) : null;
+    if (area?.id !== this.areaId && area) {
+      const last = this.areaShown.get(area.id) ?? -Infinity;
+      if (now - last > 60_000) {
+        this.areaSign = { name: area.name, at: now };
+        playVoice(`entrando-${area.id}`);
+      }
+      this.areaShown.set(area.id, now);
+    }
+    this.areaId = area?.id ?? null;
   }
 
   // Marcador propio (7A, también en solitario): tocar el mapa táctico lo pone; tocarlo cerca otra vez lo quita.
