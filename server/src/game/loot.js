@@ -215,6 +215,14 @@ export function pickUp(game, player, entry, opts = {}) {
 
 // Caja de botín con todo el inventario del caído (solo en partida). Si cayó al agua o fuera del mapa,
 // aparece en el punto válido más cercano.
+// Caja dorada de las hormigas culonas (7A): una caja de botín con lo que se le pase
+export function goldenBox(game, x, y, items) {
+  if (!game.loot || !items.length) return null;
+  const box = add(game, { box: items, ...validSpot(x, y) });
+  game.room.broadcast?.(EVENTS.LOOT_ADD, [encode(box)]);
+  return box;
+}
+
 export function deathBox(game, player) {
   if (!LOOT.deathBox || !game.loot) return null;
   const contents = inventoryItems(player);

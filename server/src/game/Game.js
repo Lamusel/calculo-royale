@@ -6,6 +6,7 @@ import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 import { inventoryOp } from './inventoryOps.js';
 import { resetProps } from './destruction.js';
+import { resetAnts, startAnts, updateAnts } from './ants.js';
 import { startRevive, tryDown, updateTeams } from './teams.js';
 import { meleeAttack } from './melee.js';
 import { encodeEffects, resetThrowables, updateThrowables } from './throwables.js';
@@ -89,6 +90,7 @@ export class Game {
     for (const p of this.room.players.values()) p.question = null;
     resetCrates(this);
     resetProps(this);
+    resetAnts(this);
     if (this.loot?.size) {
       clearLoot(this);
       this.room.broadcast?.(EVENTS.LOOT_SYNC, []);
@@ -182,6 +184,7 @@ export class Game {
     this.killTimes.clear();
     this.recorder.reset();
     startMatch(this);
+    startAnts(this);
     startRadio(this);
     resetGulag(this);
   }
@@ -311,6 +314,7 @@ export class Game {
     updateRadio(this);
     updateGulag(this, DT);
     updateTeams(this);
+    updateAnts(this);
     updateVehicles(this, DT);
     updateLeader(this);
     checkDuel(this);

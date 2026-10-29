@@ -483,3 +483,25 @@ test('7A: kill cam a la víctima, tipo de impacto para el color y reenvío de la
   assert.equal(sent[0].e, EVENTS.AMMO_QUESTION);
   assert.equal(sent[0].d.timeLimitMs, 12_000);
 });
+
+test('7A: hormigas culonas: 20 por partida, se toman al pasar, 5 puntos cada una y caja dorada con 3', async () => {
+  const { ANT, startAnts } = await import('../server/src/game/ants.js');
+  const { score } = await import('../server/src/rooms/Room.js');
+  const room = makeRoom();
+  const [a] = addPlayers(room, 2);
+  start(room);
+  room.game.loot ??= new Map();
+  room.game.nextLootId ??= 1;
+  startAnts(room.game, () => 0.5);
+  assert.equal(room.game.ants.length, ANT.count);
+  assert.equal(new Set(room.game.ants.map((x) => `${x.x},${x.y}`)).size, ANT.count, 'en lugares distintos');
+  a.deploy = null;
+  const lootBefore = room.game.loot.size;
+  for (const ant of room.game.ants.slice(0, 3)) {
+    a.teleport(ant.x, ant.y);
+    advance(room, 300);
+  }
+  assert.equal(a.ants, 3);
+  assert.ok(room.game.loot.size > lootBefore, 'caja dorada cerca');
+  assert.equal(score(1, 2, 0, 0, 3) - score(1, 2, 0, 0, 0), 15);
+});

@@ -197,6 +197,11 @@ export class GameClient {
       [EVENTS.CRATE_FIFTY]: ({ crateId, removed }) => {
         if (this.question?.crateId === crateId) this.question = { ...this.question, removed, fifty: false };
       },
+      // Hormigas culonas que quedan en el mapa
+      [EVENTS.ANTS]: (list) => {
+        if (this.ants && list.length < this.ants.length && this.self?.alive) sound.pickup();
+        this.ants = list;
+      },
       // Kill cam: los últimos segundos desde quien me eliminó
       [EVENTS.KILL_CAM]: (cam) => {
         this.killCam = cam;

@@ -37,6 +37,7 @@ export class Player {
   resetStats() {
     this.kills = 0;
     this.meleeKills = 0;
+    this.ants = 0; // hormigas culonas (7A)
     this.stats = { byTopic: {}, byLevel: {}, failed: [], history: [], adjusted: {}, correct: 0, answered: 0 };
     this.fiftyUsed = false; // comodín 50/50 (una vez por partida)
     this.fps = null;
@@ -253,6 +254,7 @@ export class Player {
       reloadLeft: this.reloadUntil ? Math.max(0, this.reloadUntil - now) : 0,
       streak: this.streak,
       fiftyUsed: this.fiftyUsed,
+      ants: this.ants ?? 0,
       hurtFrom: this.hurtFrom ?? null,
       radar: this.radarUntil > now,
       answering: this.question ? this.question.crateId : null,

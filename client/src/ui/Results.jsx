@@ -25,8 +25,9 @@ export function playerCard(byTopic = {}) {
   return { strong: strong.slug, weak: weak?.slug ?? null, nickname };
 }
 
-function PlayerCard({ me, mine }) {
+function PlayerCard({ me, mine, medals = [] }) {
   const card = playerCard(mine?.byTopic);
+  const ants = medals.find((m) => m.id === 'hormigas' && m.playerId === me.id);
   return (
     <div className="flex items-center gap-3 rounded border border-khaki-dark bg-black/40 p-2">
       <SkinPortrait skin={getSkinEntry(loadSkin())} className="aspect-[3/4] w-20 shrink-0 rounded" />
@@ -38,6 +39,7 @@ function PlayerCard({ me, mine }) {
         </p>
         {card.strong && <p className="text-xs text-green-300">Más fuerte: {TOPIC_NAMES[card.strong] ?? card.strong}</p>}
         {card.weak && <p className="text-xs text-orange-300">Para repasar: {TOPIC_NAMES[card.weak] ?? card.weak}</p>}
+        {me.ants > 0 && <p className="text-xs text-orange-200">🐜 {me.ants} hormigas culonas{ants ? ' · medalla Comehormigas' : ''}</p>}
       </div>
     </div>
   );
@@ -189,7 +191,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
         </div>
 
         {won && <p className="text-center text-3xl font-black uppercase tracking-wider text-yellow-300 drop-shadow sm:text-5xl">¡Victoria! Una integral para cenar</p>}
-        {me && <PlayerCard me={me} mine={mine} />}
+        {me && <PlayerCard me={me} mine={mine} medals={results.medals} />}
 
         <Medals medals={results.medals} myId={myId} />
 

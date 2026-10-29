@@ -1,4 +1,5 @@
 import { assignTeams } from '../game/teams.js';
+import { ANT, sendAnts } from '../game/ants.js';
 import { randomUUID } from 'node:crypto';
 import { BOTS, MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS, SCORE } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
@@ -10,8 +11,9 @@ import { resetBot } from '../game/bots.js';
 import { pickWeather } from '../game/epic.js';
 
 // Puntaje final: puestos superados + bajas + aciertos (también de operador e intercepción)
-export function score(place, total, kills, correct) {
-  return (total - place) * SCORE.place + kills * SCORE.kill + correct * SCORE.correct;
+// (7A) cada hormiga culona suma 5
+export function score(place, total, kills, correct, ants = 0) {
+  return (total - place) * SCORE.place + kills * SCORE.kill + correct * SCORE.correct + ants * ANT.points;
 }
 import { Game } from '../game/Game.js';
 import { Player } from '../game/Player.js';
@@ -110,7 +112,10 @@ export class Room {
     player.resetInputs();
     this.game.resendSelf(player.id);
     socket.data.roomCode = this.code;
-    if (this.phase === 'playing') this.resendAsks(player);
+    if (this.phase === 'playing') {
+      this.resendAsks(player);
+      sendAnts(this.game, player);
+    }
     socket.data.playerId = player.id;
     socket.join(this.code);
     this.broadcastInfo();
@@ -186,7 +191,8 @@ export class Room {
           kills: p.kills,
           correct: p.stats.correct,
           answered: p.stats.answered,
-          score: score(place, players.length, p.kills, p.stats.correct),
+          score: score(place, players.length, p.kills, p.stats.correct, p.ants ?? 0),
+          ants: p.ants || undefined,
           bot: p.bot || undefined,
           team: p.team ?? undefined,
         };

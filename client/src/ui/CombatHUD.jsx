@@ -369,6 +369,11 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
 
   return (
     <>
+      {self.ants > 0 && (
+        <p className="pointer-events-none absolute right-3 top-[45%] z-20 rounded bg-black/60 px-2 py-0.5 text-sm font-bold text-orange-200" title="Hormigas culonas (5 puntos cada una; con 3 y con 6, caja dorada)">
+          🐜 {self.ants}
+        </p>
+      )}
       {/* Letrero "Entrando a…" (7A): corto, arriba al centro, sin tapar nada */}
       {client?.areaSign && performance.now() - client.areaSign.at < 2000 && (
         <div key={client.areaSign.at} className="pointer-events-none absolute left-1/2 top-[18%] z-20 -translate-x-1/2 animate-[areasign_2s_ease-in-out_forwards] text-center">

@@ -76,6 +76,7 @@ export function buildRecord(room, classStats) {
       bot: Boolean(p.bot),
       puesto: p.place,
       bajas: p.kills,
+      hormigas: p.ants ?? 0,
       aciertos: p.stats.correct,
       respuestas: p.stats.answered,
       por_tema: p.stats.byTopic,
