@@ -118,7 +118,7 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
       {[0, 1, 2].map((slot) => {
         const w = self.weapons?.[slot];
         const def = w && WEAPONS[w.id];
-        const active = self.active === slot;
+        const active = self.active === slot && !inputState.meleeMode;
         return (
           <TouchButton
             key={slot}
@@ -143,14 +143,18 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
           </TouchButton>
         );
       })}
-      {/* Ranura de arma blanca (7A): solo se muestra; se usa con V o con "Golpear" */}
-      <div className="pointer-events-none flex flex-col items-center rounded border border-white/10 bg-stone-900/90 px-1.5 py-1 text-[10px] leading-tight text-stone-300">
-        {!isTouch && <span className="self-start font-mono text-[9px] opacity-60">V</span>}
+      {/* Ranura de arma blanca (7B): tocarla (o la tecla 4) deja el modo cuerpo a cuerpo y el disparo golpea;
+          V golpea siempre. Sin arma blanca, "Puños" */}
+      <TouchButton
+        onPress={() => actions.meleeMode()}
+        className={`flex flex-col items-center rounded border px-1.5 py-1 text-[10px] leading-tight ${inputState.meleeMode ? 'border-orange-400 bg-stone-950/95 text-khaki-light' : 'border-white/10 bg-stone-900/90 text-stone-300'}`}
+      >
+        {!isTouch && <span className="self-start font-mono text-[9px] opacity-60">4 · V</span>}
         <WeaponIcon weapon={self.melee ?? 'fists'} className="h-4 w-10" />
         <span className="max-w-[4.5rem] truncate" style={{ color: self.melee ? TIER_COLORS[WEAPONS[self.melee].rarity] : undefined }}>
           {WEAPONS[self.melee ?? 'fists'].name}
         </span>
-      </div>
+      </TouchButton>
       {reloadProgress !== null && (
         <div className="absolute -top-5 left-1/2 w-40 -translate-x-1/2">
           <p className="text-center text-[10px] uppercase tracking-widest text-khaki-light">Recargando</p>
@@ -457,7 +461,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
       {self.alive && (
         <div className="absolute bottom-3 left-3 z-20 flex flex-col items-start gap-1">
           <GearChips self={self} drinkLeft={drinkLeft} />
-          {!isTouch && <p className="pointer-events-none text-[0.6rem] text-stone-400">Tab inventario · G lanzar · 4–9 o rueda: lanzable · H venda · J botiquín · K bebida</p>}
+          {!isTouch && <p className="pointer-events-none text-[0.6rem] text-stone-400">Tab inventario · G lanzar · 5–0 o rueda: lanzable · 4 cuerpo a cuerpo · V golpe · H venda · J botiquín · K bebida</p>}
         </div>
       )}
 

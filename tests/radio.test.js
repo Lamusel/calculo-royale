@@ -541,3 +541,23 @@ test('7B: bocina (solo el conductor, una por segundo) y la radio del camión que
   assert.ok(toggleRadio(room.game, a));
   assert.equal(truck.radioOff, true);
 });
+
+test('7B: sin armas ni balas, el golpe a puños (botón MELEE del input) le baja vida al de 1,5 m', async () => {
+  const { BUTTONS } = await import('@calculo-royale/shared/protocol');
+  const { emptyInventory } = await import('@calculo-royale/shared/inventory');
+  const room = makeRoom();
+  const [a, b] = addPlayers(room, 2);
+  start(room);
+  for (const p of [a, b]) p.deploy = null;
+  emptyInventory(a);
+  a.teleport(0, 300);
+  b.teleport(1.5, 300);
+  b.aim = Math.PI; // de frente (por la espalda pega más)
+  room.game.handleInput(a, { mx: 0, my: 0, aim: 0, buttons: BUTTONS.MELEE, viewTick: room.game.tick });
+  assert.equal(b.hp, 100 - WEAPONS.fists.damage);
+  // Con toque rápido (AUTO) apunta solo al más cercano aunque mire para otro lado
+  advance(room, 600);
+  b.hp = 100;
+  room.game.handleInput(a, { mx: 0, my: 0, aim: Math.PI, buttons: BUTTONS.MELEE | BUTTONS.AUTO, viewTick: room.game.tick });
+  assert.equal(b.hp, 100 - WEAPONS.fists.damage);
+});

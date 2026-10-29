@@ -268,7 +268,7 @@ function ControlsHelp({ isTouch }) {
       ) : (
         <>
           WASD moverse · clic disparar
-          <br />R recargar · B balas · 1/2 armas · G granada · E tomar · 4/5/6 curar
+          <br />R recargar · B balas · 1/2/3 armas · 4 o V golpe · G granada · E tomar · H/J/K curar
         </>
       )}
     </div>

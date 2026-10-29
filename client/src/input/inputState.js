@@ -9,6 +9,7 @@ export const RETAIN_AIM_MS = 1000;
 export const inputState = {
   keyX: 0,
   driving: false, // conduce (la tecla B toca la bocina)
+  meleeMode: false, // ranura de arma blanca elegida: el disparo golpea (7B)
   keyY: 0,
   stickX: 0,
   stickY: 0,
@@ -49,6 +50,7 @@ export const actions = {
   chat: () => {},
   chatOpen: () => {},
   meleeLocal: () => {},
+  meleeMode: () => {},
   requestAmmo: () => {},
   jump: () => {},
 };
@@ -105,6 +107,8 @@ export function readInput(now = performance.now()) {
   const [mx, my] = movement();
   const aim = currentAim(now);
   let buttons = s.pressed | (s.fireHeld ? BUTTONS.FIRE : 0);
+  // En modo cuerpo a cuerpo el disparo es un golpe (con el arma blanca o a puños)
+  if (s.meleeMode && buttons & BUTTONS.FIRE) buttons = (buttons & ~BUTTONS.FIRE) | BUTTONS.MELEE;
   if (aimPreview() === 'sniper') buttons |= BUTTONS.AIM;
   const aimDist = s.pendingDist ?? s.mouseDist ?? 0;
   s.pressed = 0;

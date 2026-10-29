@@ -359,7 +359,15 @@ export class GameClient {
     };
     for (const [event, handler] of Object.entries(this.handlers)) socket.on(event, handler);
 
-    actions.switchWeapon = (slot) => socket.emit(EVENTS.WEAPON_SWITCH, slot);
+    actions.switchWeapon = (slot) => {
+      inputState.meleeMode = false;
+      socket.emit(EVENTS.WEAPON_SWITCH, slot);
+    };
+    // Ranura de arma blanca (tecla 4 o tocarla): entra o sale del modo cuerpo a cuerpo
+    actions.meleeMode = () => {
+      inputState.meleeMode = !inputState.meleeMode;
+      sound.weaponSwitch();
+    };
     // Con varias cosas cerca, la zona de acción elige cuál (kind); si no, la más cercana
     actions.interact = (kind = null) => socket.emit(EVENTS.INTERACT, kind);
     actions.selectThrowable = (item) => this.self?.throwables?.[item] > 0 && this.selectThrowable(item);
@@ -508,6 +516,8 @@ export class GameClient {
     if (sent.buttons & BUTTONS.GRENADE && this.self?.throwables?.[this.self.throwSel] > 0) sound.grenadeThrow();
     this.predictor.step(sent, now);
     this.predictFire(sent, now);
+    // Golpe (V, modo cuerpo a cuerpo o Golpear): animación y sonido al instante
+    if (sent.buttons & BUTTONS.MELEE) this.meleeLocal(now);
     this.lastSentAim = input.aim;
     this.socket.emit(EVENTS.INPUT, packet);
   }
@@ -914,6 +924,8 @@ export class GameClient {
     stopWorldAudio();
     for (const [event, handler] of Object.entries(this.handlers)) this.socket.off(event, handler);
     actions.switchWeapon = () => {};
+    actions.meleeMode = () => {};
+    inputState.meleeMode = false;
     actions.interact = () => {};
     actions.useItem = () => {};
     actions.phrase = () => {};

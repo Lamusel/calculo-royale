@@ -122,7 +122,7 @@ export class Game {
       if (input.mx !== 0 || input.my !== 0) cancelQuestion(this, player, 'Te moviste');
       return;
     }
-    if (input.buttons & BUTTONS.MELEE) meleeAttack(this, player, input.aim, input.viewTick);
+    if (input.buttons & BUTTONS.MELEE) meleeAttack(this, player, input.aim, input.viewTick, Boolean(input.buttons & BUTTONS.AUTO));
     if (input.buttons & BUTTONS.RELOAD) startReload(this, player);
     if (input.buttons & BUTTONS.GRENADE) throwGrenade(this, player, input);
     else if (input.buttons & BUTTONS.FIRE) fire(this, player, input);

@@ -2,8 +2,8 @@ import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { THROWABLE_IDS } from '@calculo-royale/shared/constants';
 import { actions, grenadeDistance, inputState, press } from './inputState.js';
 
-// Lanzables con las teclas 4 a 9 (en el orden de THROWABLE_IDS) o la rueda del mouse
-const THROW_KEYS = ['Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'];
+// Lanzables con las teclas 5 a 0 (en el orden de THROWABLE_IDS) o la rueda del mouse; 4 = cuerpo a cuerpo (7B)
+const THROW_KEYS = ['Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
 
 const MOVE_KEYS = {
   KeyW: [0, 1],
@@ -95,6 +95,7 @@ export function attachKeyboardMouse() {
       e.preventDefault();
       actions.chatOpen();
     }
+    else if (e.code === 'Digit4' || e.key === '4') actions.meleeMode();
     else if (e.code === 'Digit1' || e.key === '1') actions.switchWeapon(1);
     else if (e.code === 'Digit2' || e.key === '2') actions.switchWeapon(2);
     else if (e.code === 'Digit3' || e.key === '3') actions.switchWeapon(3);
