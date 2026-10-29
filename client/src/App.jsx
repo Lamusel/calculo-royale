@@ -4,6 +4,7 @@ import { socket } from './net/socket.js';
 import { clearSession, leaveRoom, loadSession, resumeRoom } from './net/session.js';
 import Game from './screens/Game.jsx';
 import Home from './screens/Home.jsx';
+import LoadingScreen from './ui/LoadingScreen.jsx';
 
 export default function App() {
   const [connected, setConnected] = useState(socket.connected);
@@ -12,9 +13,14 @@ export default function App() {
   const [room, setRoom] = useState(null);
   const [notice, setNotice] = useState('');
   const [resuming, setResuming] = useState(() => Boolean(loadSession()));
+  // Pantalla de carga: 'open' al abrir el juego, 'room' al entrar a una sala, null sin pantalla
+  const [loading, setLoading] = useState('open');
 
   useEffect(() => {
-    const enter = (res) => setSession({ code: res.code, playerId: res.playerId, key: Date.now() });
+    const enter = (res) => {
+      setSession({ code: res.code, playerId: res.playerId, key: Date.now() });
+      setLoading((l) => l ?? 'room');
+    };
     const exit = (message) => {
       setSession(null);
       setRoom(null);
@@ -56,6 +62,7 @@ export default function App() {
   function onEnter(res) {
     setNotice('');
     setSession({ code: res.code, playerId: res.playerId, key: Date.now() });
+    setLoading('room');
   }
 
   function onLeave() {
@@ -64,13 +71,37 @@ export default function App() {
     setRoom(null);
   }
 
+  const inRoom = session && room?.code === session.code;
+  // En plena partida (al volver tras recargar) la carga avanza sola para no retrasar a nadie
+  const playing = inRoom && room.phase === 'playing';
+  const screen = loading && (
+    <LoadingScreen
+      key={loading}
+      minMs={playing ? 5_000 : 8_000}
+      needClick={!playing}
+      ready={!resuming && (loading === 'open' || inRoom)}
+      title={loading === 'room' ? 'Entrando a la sala' : 'Cargando'}
+      onDone={() => setLoading(null)}
+    />
+  );
+
   if (resuming) {
-    return <div className="flex h-full items-center justify-center bg-slate-950 text-slate-400">Volviendo a la sala…</div>;
+    return screen || <div className="flex h-full items-center justify-center bg-slate-950 text-slate-400">Volviendo a la sala…</div>;
   }
 
-  if (session && room?.code === session.code) {
-    return <Game room={room} myId={session.playerId} sessionKey={session.key} onLeave={onLeave} />;
+  if (inRoom) {
+    return (
+      <>
+        <Game room={room} myId={session.playerId} sessionKey={session.key} onLeave={onLeave} />
+        {screen}
+      </>
+    );
   }
 
-  return <Home connected={connected} notice={notice} onEnter={onEnter} />;
+  return (
+    <>
+      <Home connected={connected} notice={notice} onEnter={onEnter} />
+      {screen}
+    </>
+  );
 }

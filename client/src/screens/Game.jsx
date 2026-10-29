@@ -1,6 +1,7 @@
 import { PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { MAP_HALF, teamColor } from '@calculo-royale/shared/constants';
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import LoadingScreen from '../ui/LoadingScreen.jsx';
 import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
 import { createQualityController, initialQuality } from '../game/quality.js';
@@ -261,6 +262,8 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
   const [replayDone, setReplayDone] = useState(false);
+  // Carga al entrar a la partida (skins de todos): { ready } o null
+  const [matchLoading, setMatchLoading] = useState(null);
   // Cambio de clima a mitad de partida: velo de 2 s para que no sea un corte brusco
   const [weatherFade, setWeatherFade] = useState(0);
   const roomPhase = useRef(rawRoom.phase);
@@ -344,7 +347,10 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   useEffect(() => {
     if (room.phase !== 'playing') return;
     const skins = room.players.map((p) => p.skin);
-    if (skins.some(isExternalSkin)) loadSkinSystem().then((m) => m.preloadMatchSkins(skins));
+    setMatchLoading({ ready: false });
+    const done = () => setMatchLoading((l) => l && { ready: true });
+    if (skins.some(isExternalSkin)) loadSkinSystem().then((m) => m.preloadMatchSkins(skins)).finally(done);
+    else done();
     // Solo al cambiar de fase
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.phase]);
@@ -381,6 +387,7 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
         {client && (
           <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} replaying={replaying} />
         )}
+        {matchLoading && <LoadingScreen minMs={5_000} needClick={false} ready={matchLoading.ready} title="Preparando la partida" onDone={() => setMatchLoading(null)} />}
         {weatherFade > 0 && <div key={weatherFade} className="pointer-events-none absolute inset-0 z-10 animate-[weatherfade_2s_ease-in-out_forwards] bg-stone-300" />}
         {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
         {banner && <StartBanner />}

@@ -55,11 +55,18 @@ await send('Page.enable');
 await send('Page.navigate', { url: URL_BASE });
 // La primera carga en desarrollo tarda: espera la portada, toca Jugar y espera el campo del nombre
 const steps = [];
+// Pantalla de carga: "Continuar" aparece a los 8 s
+const cont = async () => {
+  for (let i = 0; i < 40 && !(await click('Continuar')); i++) await sleep(500);
+};
+await cont();
 for (let i = 0; i < 60 && !(await click('Jugar')); i++) await sleep(500);
 for (let i = 0; i < 20 && !(await run("Boolean(document.querySelector('input'))")); i++) await sleep(250);
 steps.push(['nombre', await type('input', 'Humo')]);
 steps.push(['crear sala', await click('Crear sala')]);
-await sleep(4000);
+await sleep(1500);
+await cont();
+await sleep(1000);
 await click('temas');
 await sleep(300);
 steps.push(['bots', await run(`(() => { const s = [...document.querySelectorAll('select')].find((x) => [...x.options].some((o) => /bots/i.test(o.textContent))); if (!s) return false; const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, s.options[2].value); s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`)]);
