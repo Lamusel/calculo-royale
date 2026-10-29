@@ -522,3 +522,22 @@ test('7A: el accesorio de temporada viaja con la skin y el servidor solo acepta 
   assert.equal(p.hat, null, 'desconocido: sin accesorio');
   room.destroy();
 });
+
+test('7B: bocina (solo el conductor, una por segundo) y la radio del camión que el conductor apaga para todos', async () => {
+  const { honk, toggleRadio } = await import('../server/src/game/vehicles.js');
+  const room = makeRoom();
+  const [a, b] = addPlayers(room, 2);
+  start(room);
+  const truck = room.game.vehicles.find((v) => v.type === 'truck');
+  a.vehicleId = truck.id;
+  a.seat = 'driver';
+  b.vehicleId = truck.id;
+  b.seat = 'passenger';
+  assert.ok(honk(room.game, a));
+  assert.equal(honk(room.game, a), false, 'una por segundo');
+  assert.equal(honk(room.game, b), false, 'solo el conductor');
+  assert.ok(room.broadcasts.some((x) => x.event === EVENTS.HORN));
+  assert.equal(toggleRadio(room.game, b), false);
+  assert.ok(toggleRadio(room.game, a));
+  assert.equal(truck.radioOff, true);
+});

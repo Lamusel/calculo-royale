@@ -8,6 +8,7 @@ export const RETAIN_AIM_MS = 1000;
 // Estado de controles compartido: teclado/mouse y joysticks escriben aquí, el GameClient lee.
 export const inputState = {
   keyX: 0,
+  driving: false, // conduce (la tecla B toca la bocina)
   keyY: 0,
   stickX: 0,
   stickY: 0,

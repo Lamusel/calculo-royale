@@ -51,3 +51,19 @@ test('7A: ambiente por zona, superficie de los pasos y volumen por categoría', 
   assert.ok(['pasto', 'tierra', 'asfalto', 'madera'].includes(surfaceAt(300, 400)));
   assert.ok(categoryLevel('ambiente-bosque') < categoryLevel('disparo-rifle'));
 });
+
+test('7B: duraciones máximas por categoría y, con el cupo lleno, se corta el menos importante y más lejano', async () => {
+  const { maxDurationFor, voiceToDrop } = await import('../client/src/audio/mix.js');
+  assert.equal(maxDurationFor('disparo-rifle'), 1200);
+  assert.equal(maxDurationFor('disparo-francotirador'), 2500);
+  assert.equal(maxDurationFor('tajo'), 800);
+  assert.equal(maxDurationFor('explosion-lejana'), 3000);
+  assert.equal(maxDurationFor('casquillo'), 600);
+  assert.equal(maxDurationFor('motor-jeep'), null, 'los bucles no tienen tope');
+  const steps = { priority: 0, loud: 0.5 };
+  const far = { priority: 1, loud: 0.05 };
+  const shot = { priority: 2, loud: 0.9 };
+  assert.equal(voiceToDrop([shot, far, steps], { priority: 2, loud: 0.3 }), steps, 'primero el menos importante');
+  assert.equal(voiceToDrop([shot, far], { priority: 1, loud: 0.4 }), far, 'entre iguales, el más bajo');
+  assert.equal(voiceToDrop([shot], { priority: 1, loud: 1 }), null, 'nunca uno más importante');
+});

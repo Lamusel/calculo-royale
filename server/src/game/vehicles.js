@@ -245,9 +245,26 @@ export function updateVehicles(game, dt) {
 
 export function encodeVehicles(game) {
   if (!active(game)) return [];
-  // [id, x, y, rumbo, velocidad, vida, conductor, primer pasajero, estado, tipo, [todos los pasajeros]]
+  // [id, x, y, rumbo, velocidad, vida, conductor, primer pasajero, estado, tipo, [todos los pasajeros], radio apagada]
   return game.vehicles.map((v) => [
     v.id, r2(v.x), r2(v.y), r2(v.heading), r2(v.speed), Math.ceil(v.hp), v.seats[0] ?? 0, v.seats[1] ?? 0, v.state,
-    VEHICLE_TYPE_IDS.indexOf(v.type), v.seats.slice(1).map((id) => id ?? 0),
+    VEHICLE_TYPE_IDS.indexOf(v.type), v.seats.slice(1).map((id) => id ?? 0), v.radioOff ? 1 : 0,
   ]);
+}
+
+// Bocina (7B): solo el conductor, como mucho una vez por segundo; la oyen todos los que están cerca
+export function honk(game, player) {
+  const v = player.vehicleId !== null ? game.vehicles[player.vehicleId] : null;
+  if (!v || player.seat !== 'driver' || game.now - (v.hornAt ?? -1e9) < 1000) return false;
+  v.hornAt = game.now;
+  game.room.broadcast(EVENTS.HORN, [r2(v.x), r2(v.y)]);
+  return true;
+}
+
+// Radio del camión (7B): el conductor la apaga o la prende para todos los que van y los que oyen
+export function toggleRadio(game, player) {
+  const v = player.vehicleId !== null ? game.vehicles[player.vehicleId] : null;
+  if (!v || v.type !== 'truck' || player.seat !== 'driver') return false;
+  v.radioOff = !v.radioOff;
+  return true;
 }

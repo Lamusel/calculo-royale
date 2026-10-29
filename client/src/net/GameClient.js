@@ -41,7 +41,7 @@ export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null
       lastShot.set(shot.shooterId, now);
       continue;
     }
-    if (audible) sound.shot(shot.weaponIndex, shot.x, shot.y, shot.silent);
+    if (audible) sound.shot(shot.weaponIndex, shot.x, shot.y, shot.silent, shot.shooterId);
     if (!shot.silent) heardShot?.set(shot.shooterId, now);
     for (const { angle, dist } of shot.pellets) {
       effects.push({ type: 'tracer', x: shot.x, y: shot.y, angle, dist, weapon: shot.weaponIndex });
@@ -118,6 +118,8 @@ export class GameClient {
     this.radarEndsAt = 0;
     this.radio = []; // transmisiones del mando recientes
     this.heardEffects = new Set(); // lanzables que ya sonaron
+    this.tacticalVoices = new Map(); // humo y sensor sonando (se cortan al terminar)
+    this.grenadeTrack = new Map(); // para oír los rebotes
     this.vehicleStates = new Map(); // para oír cuando un vehículo explota
     this.truckRadioOff = false; // botón de la radio del camión (7A)
     this.areaShown = new Map(); // zona → cuándo se mostró su letrero
@@ -157,6 +159,7 @@ export class GameClient {
         const wasDriving = this.seat === 'driver';
         this.vehicleId = (driving ?? riding)?.[0] ?? null;
         this.seat = driving ? 'driver' : riding ? 'passenger' : null;
+        inputState.driving = this.seat === 'driver'; // la tecla B toca la bocina
         if (this.seat === 'driver' && !wasDriving) sound.jeepStart();
         const mine = driving ?? riding;
         if (mine && this.vehicleHp !== undefined && this.vehicleHp - mine[5] >= 25) sound.jeepCrash(mine[1], mine[2]);
@@ -197,6 +200,7 @@ export class GameClient {
       [EVENTS.CRATE_FIFTY]: ({ crateId, removed }) => {
         if (this.question?.crateId === crateId) this.question = { ...this.question, removed, fifty: false };
       },
+      [EVENTS.HORN]: ([x, y]) => sound.horn(x, y),
       // Hormigas culonas que quedan en el mapa
       [EVENTS.ANTS]: (list) => {
         if (this.ants && list.length < this.ants.length && this.self?.alive) sound.pickup();
@@ -411,7 +415,13 @@ export class GameClient {
     }
     if (prev && (self.active !== prev.active || selfWeaponId(self) !== selfWeaponId(prev))) sound.weaponSwitch();
     if (!self.radar) this.radarEndsAt = 0;
-    if (self.reloadLeft && !(prev?.reloadLeft > 0)) sound.reload(WEAPONS[selfWeaponId(self)]?.category === 'sniper');
+    if (self.reloadLeft && !(prev?.reloadLeft > 0)) this.reloadVoice = sound.reload(WEAPONS[selfWeaponId(self)]?.category === 'sniper');
+    if (!self.reloadLeft && prev?.reloadLeft > 0) this.reloadVoice?.stop();
+    if (self.flashLeft && !prev?.flashLeft) this.flashVoice = sound.tactical('flash');
+    if (!self.flashLeft && prev?.flashLeft) this.flashVoice?.stop();
+    const uav = self.marks?.kind === 'uav';
+    if (uav && prev?.marks?.kind !== 'uav') this.uavVoice = sound.tactical('uav');
+    if (!uav && prev?.marks?.kind === 'uav') this.uavVoice?.stop();
     this.self = self;
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
     this.ammoCooldownEndsAt = self.ammoCooldownLeft ? now + self.ammoCooldownLeft : 0;
@@ -552,7 +562,7 @@ export class GameClient {
     }
     this.effects.push({ type: 'muzzle', x: me.x, y: me.y, angle: input.aim, weapon });
     this.lastShot.set(this.myId, now);
-    sound.shot(weapon, me.x, me.y);
+    sound.shot(weapon, me.x, me.y, false, this.myId);
   }
 
   // Se llama una vez por cuadro; escribe en `frame` para no crear objetos nuevos
@@ -572,6 +582,7 @@ export class GameClient {
     const ride = this.seat === 'passenger' ? frame.vehicles.get(this.vehicleId) : null;
     if (ride && frame.me) Object.assign(frame.me, seatPosition(ride, Math.max(1, (ride.passengers ?? [ride.passenger]).indexOf(this.myId) + 1)));
     frame.myVehicleId = this.vehicleId;
+    this.frameVehicle = this.vehicleId !== null ? frame.vehicles.get(this.vehicleId) : null;
     frame.mySeat = this.seat;
     // En el bus voy donde va el bus (interpolado)
     frame.deploying = this.deploying;
@@ -650,19 +661,39 @@ export class GameClient {
     // Bucles del mundo (7A): motor, clima, zona, fuego, ambiente por zona, radio del camión, tirolina y nado
     const latest = this.buffer.latest;
     let fire = null;
+    const live = new Set();
     for (const e of latest?.effects ?? []) {
       if (e[0] === 1 && (!fire || Math.hypot(e[2] - at.x, e[3] - at.y) < Math.hypot(fire.x - at.x, fire.y - at.y))) fire = { x: e[2], y: e[3] };
       // Lanzable nuevo: su sonido al activarse
       const key = `${e[0]}:${e[1]}`;
+      live.add(key);
       if (!this.heardEffects.has(key)) {
         this.heardEffects.add(key);
-        sound.tactical(['smoke', 'fire', 'sensor', 'wall'][e[0]], e[2], e[3]);
+        const voice = e[0] === 1 ? null : sound.tactical(['smoke', 'fire', 'sensor', 'wall'][e[0]], e[2], e[3]);
+        if (voice) this.tacticalVoices.set(key, voice);
       }
     }
+    for (const [key, voice] of this.tacticalVoices) {
+      if (live.has(key)) continue;
+      voice.stop();
+      this.tacticalVoices.delete(key);
+    }
     if (this.heardEffects.size > 200) this.heardEffects.clear();
+    // Rebote de granada: cambia de dirección de golpe entre dos muestras
+    for (const [id, gr] of frame.grenades ?? []) {
+      const last = this.grenadeTrack.get(id);
+      if (last) {
+        const vx = gr.x - last.x;
+        const vy = gr.y - last.y;
+        const speed = Math.hypot(vx, vy);
+        if (last.vx !== undefined && speed > 0.02 && Math.hypot(last.vx, last.vy) > 0.02 && (vx * last.vx + vy * last.vy) / (speed * Math.hypot(last.vx, last.vy)) < 0.5) sound.grenadeBounce(gr.x, gr.y);
+        this.grenadeTrack.set(id, { x: gr.x, y: gr.y, vx, vy });
+      } else this.grenadeTrack.set(id, { x: gr.x, y: gr.y });
+    }
+    for (const id of this.grenadeTrack.keys()) if (!frame.grenades?.has(id)) this.grenadeTrack.delete(id);
     let radio = null;
     for (const v of frame.vehicles?.values() ?? []) {
-      if (v.type === 'truck' && v.driver && !this.truckRadioOff && Math.hypot(v.x - at.x, v.y - at.y) < 70) radio = v;
+      if (v.type === 'truck' && v.driver && !v.radioOff && !this.truckRadioOff && Math.hypot(v.x - at.x, v.y - at.y) < 70) radio = v;
       // Vehículo que explota
       const was = this.vehicleStates.get(v.id);
       if (was !== undefined && was !== v.state && v.state === VEHICLE_STATE.DESTROYED) sound.vehicleBoom(v.x, v.y);

@@ -14,17 +14,24 @@ test('manifiesto de audio: solo los que existen, mp3/ogg/wav, variantes agrupada
   for (const d of ['sfx', 'music', 'voz']) mkdirSync(join(root, d), { recursive: true });
   writeFileSync(join(root, 'sfx', 'explosion.mp3'), '');
   writeFileSync(join(root, 'sfx', 'notas.txt'), '');
-  writeFileSync(join(root, 'golpe.wav'), '');
+  writeFileSync(join(root, 'golpe.wav'), 'x'.repeat(50));
+  writeFileSync(join(root, 'golpe.mp3'), 'x'.repeat(10)); // mismo nombre en dos formatos: gana el más liviano
   writeFileSync(join(root, 'golpe-2.ogg'), '');
   writeFileSync(join(root, 'music', 'duelo.ogg'), '');
-  writeFileSync(join(root, 'music', 'radio-camion-1.mp3'), '');
-  writeFileSync(join(root, 'music', 'radio-camion-2.mp3'), '');
+  for (const n of [1, 2, 7]) writeFileSync(join(root, 'music', `radio-camion-${n}.mp3`), `${n}`);
   writeFileSync(join(root, 'voz', 'zona-nueva.mp3'), '');
-  assert.deepEqual(buildAudioManifest(root), {
-    sfx: { explosion: ['/assets/audio/sfx/explosion.mp3'], golpe: ['/assets/audio/golpe-2.ogg', '/assets/audio/golpe.wav'] },
-    music: { duelo: ['/assets/audio/music/duelo.ogg'], 'radio-camion': ['/assets/audio/music/radio-camion-1.mp3', '/assets/audio/music/radio-camion-2.mp3'] },
-    voice: { 'zona-nueva': '/assets/audio/voz/zona-nueva.mp3' },
-  });
+  const m = buildAudioManifest(root);
+  // 7B: cada ruta lleva la huella del contenido (?v=…)
+  const strip = (list) => list.map((u) => u.replace(/\?v=[0-9a-f]{8}$/, '')).sort();
+  assert.deepEqual(strip(m.sfx.explosion), ['/assets/audio/sfx/explosion.mp3']);
+  assert.deepEqual(strip(m.sfx.golpe), ['/assets/audio/golpe-2.ogg', '/assets/audio/golpe.mp3']);
+  assert.deepEqual(strip(m.music['radio-camion']), [1, 2, 7].map((n) => `/assets/audio/music/radio-camion-${n}.mp3`), 'radios sin límite');
+  assert.deepEqual(Object.keys(m.music).sort(), ['duelo', 'radio-camion']);
+  assert.match(m.voice['zona-nueva'], /^\/assets\/audio\/voz\/zona-nueva\.mp3\?v=[0-9a-f]{8}$/);
+  // Al reemplazar un archivo (mismo nombre) cambia la huella
+  const before = m.sfx.golpe.find((u) => u.includes('golpe.mp3'));
+  writeFileSync(join(root, 'golpe.mp3'), 'y'.repeat(10));
+  assert.notEqual(buildAudioManifest(root).sfx.golpe.find((u) => u.includes('golpe.mp3')), before);
   assert.deepEqual(buildAudioManifest(join(root, 'nada')), { sfx: {}, music: {}, voice: {} });
   rmSync(root, { recursive: true, force: true });
 });

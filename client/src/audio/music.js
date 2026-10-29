@@ -160,6 +160,11 @@ export function createMusic(ctx, destination, noise, loadBuffer) {
           const src = ctx.createBufferSource();
           src.buffer = buffer;
           src.loop = true;
+          // El mp3 trae un poco de relleno al principio y al final: el bucle lo salta
+          if (buffer.duration > 1) {
+            src.loopStart = 0.03;
+            src.loopEnd = buffer.duration - 0.03;
+          }
           src.connect(gain);
           src.start();
           entry.source = src;

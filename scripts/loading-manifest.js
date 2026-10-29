@@ -1,7 +1,8 @@
 // Imágenes de la pantalla de carga (7A): todas las .png, .jpg o .webp de client/public/assets/loading/
 // (cualquier nombre). Escribe client/src/ui/loading-manifest.json; si no hay, el fondo se genera.
 // Corre antes de npm run dev y npm run build. Uso: node scripts/loading-manifest.js
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +15,8 @@ export function buildLoadingManifest(dir = DIR) {
   return readdirSync(dir)
     .filter((f) => IMAGE.test(f))
     .sort()
-    .map((f) => `/assets/loading/${encodeURIComponent(f)}`);
+    // Con la huella del contenido: una imagen reemplazada con el mismo nombre se ve nueva para todos
+    .map((f) => `/assets/loading/${encodeURIComponent(f)}?v=${createHash('sha1').update(readFileSync(join(dir, f))).digest('hex').slice(0, 8)}`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

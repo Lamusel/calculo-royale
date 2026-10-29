@@ -25,8 +25,7 @@ import { choosePoint, encodeBus, jump, nearestZipline, startDeploy, updateDeploy
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
   answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
-  resetVehicles, switchSeat, updateVehicles,
-} from './vehicles.js';
+  resetVehicles, switchSeat, updateVehicles, honk, toggleRadio } from './vehicles.js';
 
 const DT = TICK_MS / 1000;
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -147,6 +146,8 @@ export class Game {
       return;
     }
     if (player.vehicleId !== null) {
+      if (kind === 'horn') return void honk(this, player);
+      if (kind === 'radio') return void toggleRadio(this, player);
       if (kind === 'seat') switchSeat(this, player);
       else exitVehicle(this, player);
       return;

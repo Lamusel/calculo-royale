@@ -104,6 +104,7 @@ export class SnapshotBuffer {
         state: vb[8],
         type: VEHICLE_TYPE_IDS[vb[9] ?? 0],
         passengers: vb[10] ?? [vb[7]],
+        radioOff: Boolean(vb[11]),
       });
     }
     // Bus de despliegue: [x, y, rumbo, ms para arrancar]

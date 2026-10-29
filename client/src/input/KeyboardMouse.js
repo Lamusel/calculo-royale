@@ -81,7 +81,10 @@ export function attachKeyboardMouse() {
       press(BUTTONS.MELEE);
       actions.meleeLocal();
     }
-    else if (isKey(e, 'B')) actions.requestAmmo();
+    else if (isKey(e, 'B')) {
+      if (inputState.driving) actions.interact('horn');
+      else actions.requestAmmo();
+    }
     else if (isKey(e, 'E')) {
       if (inputState.actionKind === 'melee') actions.meleeLocal();
       actions.interact(inputState.actionKind ?? null);

@@ -113,3 +113,29 @@ export function ambienceMix(x, y) {
   const total = ciudad + bosque + rio + campo || 1;
   return { ciudad: ciudad / total, bosque: bosque / total, rio: rio / total, campo: campo / total };
 }
+
+// --- 7B: duración máxima de los efectos de un instante y fundido de salida ---
+// Los archivos propios pueden durar más que la acción: el juego los corta con un fundido corto para que
+// no suene un clic. Cambiar aquí los tiempos (ms). Lo que no figura suena completo.
+export const FADE_MS = 120;
+export const SOUND_MAX_MS = [
+  [/^disparo-(francotirador|lanzacohetes)/, 2500],
+  [/^disparo/, 1200],
+  [/^(golpe|tajo|estocada|filo)/, 800],
+  [/^explosion/, 3000],
+  [/^(casquillo|clic|tomar|cambio-arma|sin-balas|pregunta|impacto|baja|dano|logro|tic-tac|candado)/, 600],
+];
+export const maxDurationFor = (name = '') => SOUND_MAX_MS.find(([re]) => re.test(name))?.[1] ?? null;
+
+// Con el cupo de voces lleno: qué sonido sonando se corta para dejar entrar a uno nuevo. Primero el
+// menos importante y, entre iguales, el más bajo (más lejano). Nunca uno más importante que el nuevo.
+// voices: [{ priority, loud }] · newcomer: { priority, loud } → la voz a cortar o null
+export function voiceToDrop(voices, newcomer) {
+  let worst = null;
+  for (const v of voices) {
+    if (!worst || v.priority < worst.priority || (v.priority === worst.priority && v.loud < worst.loud)) worst = v;
+  }
+  if (!worst) return null;
+  const weaker = worst.priority < newcomer.priority || (worst.priority === newcomer.priority && worst.loud < newcomer.loud);
+  return weaker ? worst : null;
+}

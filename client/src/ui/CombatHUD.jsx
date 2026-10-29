@@ -37,13 +37,15 @@ function JeepBar({ vehicle, client }) {
       {vehicle.type === 'truck' && client && hasMusic('radio-camion') && (
         <TouchButton
           onPress={() => {
-            client.truckRadioOff = !client.truckRadioOff;
+            // El conductor la apaga para todos; un pasajero, solo para él
+            if (vehicle.seat === 'driver') actions.interact('radio');
+            else client.truckRadioOff = !client.truckRadioOff;
             refresh((n) => n + 1);
           }}
           className="pointer-events-auto rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-stone-200"
           title="Radio del camión"
         >
-          📻 {client.truckRadioOff ? 'Apagada' : 'Radio'}
+          📻 {client.truckRadioOff || client.frameVehicle?.radioOff ? 'Apagada' : 'Radio'}
         </TouchButton>
       )}
     </div>
@@ -256,11 +258,13 @@ function AmmoButton({ self, client, isTouch }) {
 }
 
 // Zona de acción: una sola, siempre en el mismo lugar. La más cercana; con varias, una flechita cambia.
-function ActionZone({ list, isTouch, inVehicle }) {
+function ActionZone({ list, isTouch, inVehicle, driving = false }) {
   const [index, setIndex] = useState(0);
   const key = list.map((a) => a.kind).join(',');
   useEffect(() => setIndex(0), [key]);
-  const items = inVehicle ? [list[0], { kind: 'seat', icon: 'seat', label: 'Cambiar asiento', enabled: true, color: '#fb923c' }].filter(Boolean) : list;
+  const items = inVehicle
+    ? [list[0], { kind: 'seat', icon: 'seat', label: 'Cambiar asiento', enabled: true, color: '#fb923c' }, driving && { kind: 'horn', icon: 'horn', label: 'Bocina (B)', enabled: true, color: '#facc15' }].filter(Boolean)
+    : list;
   const current = items.length ? items[Math.min(index, items.length - 1)] : null;
   inputState.actionKind = current?.kind ?? null;
   useEffect(() => {
@@ -490,7 +494,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
       {/* Zona de acción: una sola, sobre la barra de armas (no tapa los joysticks) */}
       {mode !== 'none' && (
         <div className="absolute bottom-[8.5rem] left-1/2 z-20 -translate-x-1/2">
-          <ActionZone list={mode === 'zipline' ? [{ kind: 'zip', icon: 'drop', label: 'Soltarse', enabled: true, color: '#38bdf8', dist: 0 }] : nearby} isTouch={isTouch} inVehicle={Boolean(vehicle)} />
+          <ActionZone list={mode === 'zipline' ? [{ kind: 'zip', icon: 'drop', label: 'Soltarse', enabled: true, color: '#38bdf8', dist: 0 }] : nearby} isTouch={isTouch} inVehicle={Boolean(vehicle)} driving={vehicle?.seat === 'driver'} />
         </div>
       )}
 
