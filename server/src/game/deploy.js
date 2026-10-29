@@ -1,4 +1,5 @@
-import { DEPLOY, GULAG, MAP_HALF, PLAYER_RADIUS } from '@calculo-royale/shared/constants';
+import { DEPLOY, GULAG, MAP_HALF, PLATFORM, PLAYER_RADIUS, ZIPLINE } from '@calculo-royale/shared/constants';
+import { JUMP_PADS, ZIPLINE_LINES } from '@calculo-royale/shared/mapLayout';
 import { resolveCircle } from '@calculo-royale/shared/collision';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { insideZonePoint } from '@calculo-royale/shared/zone';
@@ -162,4 +163,65 @@ export function encodeBus(game) {
   const d = game.deploy;
   if (d?.mode !== 'bus' || d.done) return [];
   return [r2(d.x), r2(d.y), r2(d.heading), Math.max(0, Math.round(d.departAt - game.now))];
+}
+
+// --- Movilidad (fase 35): plataformas de salto y tirolinas ---
+// Plataforma: al pisarla te lanza alto y bajas planeando como desde el bus (paracaídas incluido).
+// Se vuelve a armar cuando te alejas de ella.
+export function updatePads(game) {
+  if (game.room.phase !== 'playing') return;
+  for (const p of game.room.players.values()) {
+    if (!p.alive || p.deploy || p.vehicleId !== null || p.zip || p.arena != null) continue;
+    if (p.padAt && Math.hypot(p.x - p.padAt.x, p.y - p.padAt.y) > PLATFORM.rearmDistance) p.padAt = null;
+    if (p.padAt) continue;
+    const pad = JUMP_PADS.find((j) => Math.hypot(j.x - p.x, j.y - p.y) < PLATFORM.radius);
+    if (!pad) continue;
+    p.padAt = pad;
+    p.healing = null;
+    p.deploy = { phase: 'fall', z: PLATFORM.altitude, since: game.now };
+  }
+}
+
+// Tirolina más cercana a una de sus puntas: { line, from, to } (o null)
+export function nearestZipline(x, y) {
+  for (const line of ZIPLINE_LINES) {
+    if (Math.hypot(line.from[0] - x, line.from[1] - y) < ZIPLINE.grabRadius) return { line, from: line.from, to: line.to };
+    if (Math.hypot(line.to[0] - x, line.to[1] - y) < ZIPLINE.grabRadius) return { line, from: line.to, to: line.from };
+  }
+  return null;
+}
+
+// Colgarse (botón Tirolina) o soltarse (otra vez, o Saltar): al soltarse baja en paracaídas
+export function useZipline(game, p) {
+  if (p.zip) {
+    const z = ZIPLINE.height;
+    p.zip = null;
+    p.deploy = { phase: 'chute', z };
+    return true;
+  }
+  if (!p.alive || p.deploy || p.vehicleId !== null) return false;
+  const near = nearestZipline(p.x, p.y);
+  if (!near) return false;
+  const len = Math.hypot(near.to[0] - near.from[0], near.to[1] - near.from[1]);
+  p.zip = { from: near.from, to: near.to, len, t: 0 };
+  p.healing = null;
+  return true;
+}
+
+export function updateZiplines(game, dt) {
+  for (const p of game.room.players.values()) {
+    const z = p.zip;
+    if (!z) continue;
+    if (!p.alive) {
+      p.zip = null;
+      continue;
+    }
+    z.t = Math.min(1, z.t + (ZIPLINE.speed * dt) / z.len);
+    p.x = z.from[0] + (z.to[0] - z.from[0]) * z.t;
+    p.y = z.from[1] + (z.to[1] - z.from[1]) * z.t;
+    if (z.t >= 1) {
+      p.zip = null;
+      land(p);
+    }
+  }
 }

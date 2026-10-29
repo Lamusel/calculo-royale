@@ -303,6 +303,22 @@ export const JEEP = {
   explosionDamage: 100,
 };
 
+// Vehículos (fase 35): todos usan la física y el encendido del jeep. seats[0] es el conductor; los demás
+// disparan. La lancha solo anda en el agua; los de tierra no entran al agua honda. seatLift: altura del
+// asiento (las skins externas tiesas no flotan ni atraviesan el asiento). noiseRadius: se oye en el
+// minimapa (el camión lleva música a todo volumen y se oye lejos).
+export const VEHICLE_TYPES = {
+  jeep: { name: 'Jeep', ...JEEP, seats: 2, seatLift: 0.95 },
+  moto: { name: 'Moto', ...JEEP, radius: 0.9, maxSpeed: 20, accel: 16, brake: 26, turnRate: 3.1, hp: 120, seats: 2, seatLift: 0.85, explosionDamage: 70 },
+  truck: { name: 'Camión', ...JEEP, radius: 2.3, maxSpeed: 10, accel: 6, brake: 14, turnRate: 1.5, hp: 750, seats: 6, seatLift: 1.55, noiseRadius: 160, runOverDamagePerSpeed: 9, enterRadius: 3.6 },
+  boat: { name: 'Lancha', ...JEEP, radius: 1.6, maxSpeed: 14, accel: 9, brake: 12, turnRate: 1.9, hp: 220, seats: 2, seatLift: 0.55, water: true },
+};
+export const VEHICLE_TYPE_IDS = Object.keys(VEHICLE_TYPES);
+export const vehicleType = (v) => VEHICLE_TYPES[v?.type ?? 'jeep'];
+// Plataformas de salto y tirolinas (fase 35)
+export const PLATFORM = { radius: 1.6, altitude: 42, rearmDistance: 4 };
+export const ZIPLINE = { speed: 13, height: 7, grabRadius: 2.6 };
+
 // Duelo final: al quedar 2 vivos, presentación congelada y un último círculo
 export const DUEL = { introMs: 4_000, radius: 9, shrinkMs: 25_000 };
 

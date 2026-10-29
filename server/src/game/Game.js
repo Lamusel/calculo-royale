@@ -17,7 +17,7 @@ import { answerAmmo, requestAmmo, updateAmmo } from './ammo.js';
 import { driveBots } from './bots.js';
 import { clearLoot, deathBox, dropAround, nearestLoot, pickUp, spawnGroundLoot, syncLoot, updateHealing, useItem } from './loot.js';
 import { recordTick } from '../metrics.js';
-import { choosePoint, encodeBus, jump, startDeploy, updateDeploy } from './deploy.js';
+import { choosePoint, encodeBus, jump, nearestZipline, startDeploy, updateDeploy, updatePads, updateZiplines, useZipline } from './deploy.js';
 import { checkDuel, duelFrozen, Recorder, scoreKill } from './cine.js';
 import {
   answerEngine, cancelEngine, createVehicles, driveInput, encodeVehicles, exitVehicle, interactVehicle, nearestVehicle,
@@ -100,6 +100,8 @@ export class Game {
       if (input.buttons & BUTTONS.JUMP) jump(this, player);
       return;
     }
+    // Colgado de la tirolina: Saltar suelta
+    if (player.zip && input.buttons & BUTTONS.JUMP) useZipline(this, player);
     // Respondiendo el código del motor: moverse cancela
     if (player.engineQuestion) {
       if (input.mx !== 0 || input.my !== 0) cancelEngine(this, player, 'Te moviste');
@@ -146,6 +148,13 @@ export class Game {
     const vehicle = nearestVehicle(this, player.x, player.y);
     if (vehicle) options.push({ kind: 'vehicle', dist: vehicle.dist, use: () => interactVehicle(this, player, vehicle.vehicle) });
     // Botín en el suelo: un poco de ventaja frente a cajas y jeeps (es lo que más se toca)
+    // Tirolina: colgarse o soltarse
+    if (player.zip || (this.room.phase === 'playing' && kind === 'zip')) {
+      useZipline(this, player);
+      return;
+    }
+    const zip = this.room.phase === 'playing' ? nearestZipline(player.x, player.y) : null;
+    if (zip) options.push({ kind: 'zip', dist: Math.hypot(zip.from[0] - player.x, zip.from[1] - player.y), use: () => useZipline(this, player) });
     const loot = nearestLoot(this, player.x, player.y, player);
     if (loot) options.push({ kind: 'loot', dist: loot.dist - 0.3, use: () => pickUp(this, player, loot.entry) });
     options.sort((a, b) => a.dist - b.dist);
@@ -264,7 +273,7 @@ export class Game {
         (input) => this.handleInput(p, input),
         (pl, input, dt) => {
           // En el bus (o eligiendo punto) no se mueve por su cuenta: solo apunta
-          if ((pl.deploy && !pl.air) || pl.frozen) pl.aim = input.aim;
+          if ((pl.deploy && !pl.air) || pl.frozen || pl.zip) pl.aim = input.aim;
           else if (pl.vehicleId !== null) driveInput(this, pl, input, dt);
           else applyInput(pl, input, dt);
         },
@@ -273,6 +282,8 @@ export class Game {
       if (p.reloadUntil && this.now >= p.reloadUntil) finishReload(p);
     }
     updateDeploy(this, DT);
+    updatePads(this);
+    updateZiplines(this, DT);
     updateGrenades(this, DT);
     updateThrowables(this, DT);
     updateCrates(this);
@@ -312,7 +323,8 @@ export class Game {
         (p.id === this.leaderId ? PLAYER_FLAGS.LEADER : 0) |
         (p.deploy && !p.air ? PLAYER_FLAGS.IN_BUS : 0) |
         (p.air === 'fall' ? PLAYER_FLAGS.FALLING : 0) |
-        (p.air === 'chute' ? PLAYER_FLAGS.PARACHUTE : 0);
+        (p.air === 'chute' ? PLAYER_FLAGS.PARACHUTE : 0) |
+        (p.zip ? PLAYER_FLAGS.ZIPLINE : 0);
       return encodePlayerState(p, WEAPON_IDS.indexOf(p.weaponId), flags);
     });
     return [

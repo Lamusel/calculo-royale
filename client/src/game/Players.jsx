@@ -1,3 +1,4 @@
+import { VEHICLE_TYPES, vehicleType } from '@calculo-royale/shared/constants';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -133,9 +134,9 @@ function SoldierAvatar({ player, isMe, register, blobShadow }) {
 // Asiento y rumbo del jeep en el que va (para sentarlo mirando al frente del jeep)
 function seatOf(id, frame) {
   for (const v of frame.vehicles?.values() ?? []) {
-    if (v.driver === id || v.passenger === id) {
+    if (v.driver === id || (v.passengers ?? [v.passenger]).includes(id)) {
       const own = frame.mySeat === 'driver' && frame.myVehicleId === v.id && frame.me?.jeep;
-      return { seat: v.driver === id ? 'driver' : 'passenger', heading: own ? own.heading : v.heading };
+      return { seat: v.driver === id ? 'driver' : 'passenger', heading: own ? own.heading : v.heading, lift: vehicleType(v).seatLift - VEHICLE_TYPES.jeep.seatLift };
     }
   }
   return null;
@@ -186,7 +187,8 @@ export default function Players({ client, roster, myId, frameRef, quality, night
       const z = info.z ?? 0;
       const air = info.flags & PLAYER_FLAGS.FALLING ? 'fall' : info.flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
       a.group.visible = true;
-      a.group.position.set(pos.x, terrainHeight(pos.x, pos.y) + z, -pos.y);
+      const rideLift = info.flags & PLAYER_FLAGS.IN_VEHICLE ? seatOf(id, frame)?.lift ?? 0 : 0;
+      a.group.position.set(pos.x, terrainHeight(pos.x, pos.y) + z + rideLift, -pos.y);
       a.chute.visible = air === 'chute';
       if (a.chute.visible) a.chute.rotation.z = Math.sin(now / 700 + id) * 0.08;
 

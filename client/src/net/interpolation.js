@@ -1,3 +1,4 @@
+import { VEHICLE_TYPE_IDS } from '@calculo-royale/shared/constants';
 import { INTERP_DELAY_MS, TICK_MS } from '@calculo-royale/shared/constants';
 
 const BUFFER_MS = 1000;
@@ -101,6 +102,8 @@ export class SnapshotBuffer {
         driver: vb[6],
         passenger: vb[7],
         state: vb[8],
+        type: VEHICLE_TYPE_IDS[vb[9] ?? 0],
+        passengers: vb[10] ?? [vb[7]],
       });
     }
     // Bus de despliegue: [x, y, rumbo, ms para arrancar]

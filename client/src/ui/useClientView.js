@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { HEALING, INTERACT_RADIUS, ITEM_NAMES, JEEP, LOOT, LOOT_ITEMS, RARITIES, TIER_COLORS, WEAPONS } from '@calculo-royale/shared/constants';
+import { HEALING, INTERACT_RADIUS, ITEM_NAMES, JEEP, LOOT, LOOT_ITEMS, RARITIES, TIER_COLORS, vehicleType, WEAPONS, ZIPLINE } from '@calculo-royale/shared/constants';
 import { CRATE_STATE, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
-import { nearestRack } from '@calculo-royale/shared/mapLayout';
+import { nearestRack, ZIPLINE_LINES } from '@calculo-royale/shared/mapLayout';
 import { CRATES, cratePosition } from '../game/crateList.js';
 import { selfWeaponId } from '../net/GameClient.js';
 
@@ -17,11 +17,12 @@ const CRATE_STATUS = {
 
 // Qué se puede hacer con un jeep según su estado y sus asientos
 function jeepAction(v) {
-  if (v.state === VEHICLE_STATE.LOCKED) return { label: 'Encender jeep (código del motor)', enabled: true, color: '#fb923c' };
+  const name = vehicleType(v).name.toLowerCase();
+  if (v.state === VEHICLE_STATE.LOCKED) return { label: `Encender ${name}`, enabled: true, color: '#fb923c' };
   if (v.state === VEHICLE_STATE.JAMMED) return { label: 'Motor atascado', enabled: false };
-  if (!v.driver) return { label: 'Conducir jeep', enabled: true, color: '#fb923c' };
-  if (!v.passenger) return { label: 'Subir de pasajero', enabled: true, color: '#fb923c' };
-  return { label: 'Jeep lleno', enabled: false };
+  if (!v.driver) return { label: `Conducir ${name}`, enabled: true, color: '#fb923c' };
+  if ((v.passengers ?? [v.passenger]).some((p) => !p)) return { label: 'Subir', enabled: true, color: '#fb923c' };
+  return { label: `${vehicleType(v).name} lleno`, enabled: false };
 }
 
 // Todo lo que está al alcance, de más cercano a más lejano (una acción por tipo, como en el servidor):
@@ -49,10 +50,20 @@ export function interactables(me, phase, crateStates, airdrop, vehicles, inVehic
   let jeep = null;
   for (const v of vehicles?.values() ?? []) {
     const d = Math.hypot(v.x - me.x, v.y - me.y);
-    if (v.state === VEHICLE_STATE.DESTROYED || d > JEEP.enterRadius || (jeep && d > jeep.dist)) continue;
+    if (v.state === VEHICLE_STATE.DESTROYED || d > vehicleType(v).enterRadius || (jeep && d > jeep.dist)) continue;
     jeep = { kind: 'vehicle', icon: 'enter', dist: d, ...jeepAction(v) };
   }
   if (jeep) out.push(jeep);
+  // Tirolina: en cualquiera de sus dos puntas
+  if (phase === 'playing') {
+    for (const z of ZIPLINE_LINES) {
+      const d = Math.min(Math.hypot(z.from[0] - me.x, z.from[1] - me.y), Math.hypot(z.to[0] - me.x, z.to[1] - me.y));
+      if (d < ZIPLINE.grabRadius) {
+        out.push({ kind: 'zip', icon: 'zipline', label: 'Tirolina', enabled: true, color: '#38bdf8', dist: d });
+        break;
+      }
+    }
+  }
   let near = null;
   for (const e of loot?.values() ?? []) {
     // Lo que otro no eligió de una caja es solo suyo por un rato

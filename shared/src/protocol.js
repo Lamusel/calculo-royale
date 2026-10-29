@@ -110,6 +110,7 @@ export const PLAYER_FLAGS = {
   IN_BUS: 32, // va en el bus de despliegue (no se dibuja)
   FALLING: 64, // caída libre (la altura va en el índice 9 de su entrada)
   PARACHUTE: 128, // bajando en paracaídas
+  ZIPLINE: 256, // colgado de una tirolina (la altura va en el índice 9)
 };
 
 // Estado de cada caja en el snapshot

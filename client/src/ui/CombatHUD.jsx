@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  AMMO_TYPES, ARMOR_ABSORB, BACKPACK, GRENADE, JEEP, MAX_HP, RESPAWN_MS, THROWABLE_IDS, THROWABLES, TIER_COLORS, WEAPON_IDS, WEAPONS,
+  AMMO_TYPES, ARMOR_ABSORB, BACKPACK, GRENADE, MAX_HP, vehicleType, RESPAWN_MS, THROWABLE_IDS, THROWABLES, TIER_COLORS, WEAPON_IDS, WEAPONS,
 } from '@calculo-royale/shared/constants';
 import { BUTTONS } from '@calculo-royale/shared/protocol';
 import { GEAR_INFO } from '@calculo-royale/shared/gear';
@@ -22,10 +22,10 @@ const SLOT_KEYS = ['1', '2', '3'];
 
 // Vida del jeep y asiento (mientras vas en uno)
 function JeepBar({ vehicle }) {
-  const hp = Math.max(0, (vehicle.hp ?? 0) / JEEP.hp);
+  const hp = Math.max(0, (vehicle.hp ?? 0) / vehicleType(vehicle).hp);
   return (
     <div className="flex w-56 items-center gap-2 sm:w-72">
-      <span className="w-10 text-right font-mono text-[10px] text-orange-300">Jeep</span>
+      <span className="w-10 text-right font-mono text-[10px] text-orange-300">{vehicleType(vehicle).name}</span>
       <div className="h-2 flex-1 overflow-hidden rounded bg-black/60">
         <div className={`h-full transition-all ${hp > 0.35 ? 'bg-orange-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} />
       </div>
@@ -403,7 +403,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
       {/* Zona de acción: una sola, sobre la barra de armas (no tapa los joysticks) */}
       {mode !== 'none' && (
         <div className="absolute bottom-[8.5rem] left-1/2 z-20 -translate-x-1/2">
-          <ActionZone list={nearby} isTouch={isTouch} inVehicle={Boolean(vehicle)} />
+          <ActionZone list={mode === 'zipline' ? [{ kind: 'zip', icon: 'drop', label: 'Soltarse', enabled: true, color: '#38bdf8', dist: 0 }] : nearby} isTouch={isTouch} inVehicle={Boolean(vehicle)} />
         </div>
       )}
 
@@ -415,7 +415,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
       )}
 
       {/* Celular: botones fijos en una columna al borde derecho; en vehículo solo lo que sirve */}
-      {isTouch && client && (mode === 'foot' || mode === 'passenger') && (
+      {isTouch && client && (mode === 'foot' || mode === 'passenger' || mode === 'zipline') && (
         <div className="absolute bottom-[4.5rem] right-2 z-20 flex flex-col items-center gap-1.5">
           <RoundButton icon="reload" label="Recargar" onPress={() => press(BUTTONS.RELOAD)} />
           <AmmoButton self={self} client={client} isTouch />

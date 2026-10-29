@@ -1,4 +1,4 @@
-import { JEEP, PLAYER_RADIUS, TOPICS, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { JEEP, PLAYER_RADIUS, TOPICS, VEHICLE_TYPE_IDS, vehicleType, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { hasLineOfSight, resolveCircle } from '@calculo-royale/shared/collision';
 import { EVENTS, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { VEHICLE_SPOTS } from '@calculo-royale/shared/mapLayout';
@@ -7,7 +7,8 @@ import { drawQuestion } from '../questions/QuestionBank.js';
 import { damagePlayer } from './combat.js';
 import { recordStats } from './crates.js';
 
-// Jeeps: se encienden respondiendo el "código del motor". Conductor y un pasajero.
+// Vehículos (jeep, moto, camión y lancha): se encienden respondiendo el "código del motor". seats[0] es el
+// conductor; los demás asientos son pasajeros que disparan.
 // El servidor mueve el jeep con la física compartida (shared/vehicle.js).
 
 const JEEP_INDEX = WEAPON_IDS.indexOf('jeep');
@@ -21,10 +22,10 @@ const fresh = (spot) => ({
   x: spot.x,
   y: spot.y,
   heading: spot.heading,
+  type: spot.type ?? 'jeep',
   speed: 0,
-  hp: JEEP.hp,
-  driverId: null,
-  passengerId: null,
+  hp: vehicleType(spot).hp,
+  seats: Array(vehicleType(spot).seats).fill(null),
   state: VEHICLE_STATE.LOCKED,
   jamUntil: 0,
   hits: new Map(), // atropellos recientes: id del jugador → momento
@@ -45,11 +46,13 @@ export function resetVehicles(game) {
 
 const active = (game) => game.room.phase === 'playing';
 
+const driverOf = (v) => v.seats[0];
+
 function placeOccupants(game, v) {
-  for (const seat of ['driver', 'passenger']) {
-    const p = game.room.players.get(seat === 'driver' ? v.driverId : v.passengerId);
+  for (let i = 0; i < v.seats.length; i++) {
+    const p = game.room.players.get(v.seats[i]);
     if (!p) continue;
-    const pos = seatPosition(v, seat);
+    const pos = seatPosition(v, i);
     p.x = pos.x;
     p.y = pos.y;
   }
@@ -58,11 +61,11 @@ function placeOccupants(game, v) {
 export function nearestVehicle(game, x, y) {
   if (!active(game)) return null;
   let best = null;
-  let bestDist = JEEP.enterRadius;
+  let bestDist = Infinity;
   for (const v of game.vehicles) {
     if (v.state === VEHICLE_STATE.DESTROYED) continue;
     const d = Math.hypot(v.x - x, v.y - y);
-    if (d <= bestDist) {
+    if (d <= vehicleType(v).enterRadius && d <= bestDist) {
       best = v;
       bestDist = d;
     }
@@ -70,11 +73,12 @@ export function nearestVehicle(game, x, y) {
   return best ? { vehicle: best, dist: bestDist } : null;
 }
 
+// seat: índice del asiento (0 = conductor)
 function board(game, player, v, seat) {
-  if (seat === 'driver') v.driverId = player.id;
-  else v.passengerId = player.id;
+  v.seats[seat] = player.id;
   player.vehicleId = v.id;
-  player.seat = seat;
+  player.seat = seat === 0 ? 'driver' : 'passenger';
+  player.seatIndex = seat;
   player.inputs = [];
   placeOccupants(game, v);
 }
@@ -83,22 +87,27 @@ function board(game, player, v, seat) {
 export function switchSeat(game, player) {
   const v = game.vehicles[player.vehicleId];
   if (!v) return;
-  const other = player.seat === 'driver' ? 'passenger' : 'driver';
-  if ((other === 'driver' ? v.driverId : v.passengerId) !== null) return;
-  if (player.seat === 'driver') v.driverId = null;
-  else v.passengerId = null;
-  board(game, player, v, other);
+  const from = v.seats.indexOf(player.id);
+  // El siguiente asiento libre (dando la vuelta)
+  for (let k = 1; k < v.seats.length; k++) {
+    const to = (from + k) % v.seats.length;
+    if (v.seats[to] !== null) continue;
+    v.seats[from] = null;
+    board(game, player, v, to);
+    return;
+  }
 }
 
 export function exitVehicle(game, player) {
   const v = game.vehicles[player.vehicleId];
   if (!v) return;
-  if (v.driverId === player.id) v.driverId = null;
-  if (v.passengerId === player.id) v.passengerId = null;
+  v.seats = v.seats.map((id) => (id === player.id ? null : id));
   player.vehicleId = null;
   player.seat = null;
+  player.seatIndex = null;
   // Se baja por el costado izquierdo (−sen h, cos h), fuera de cualquier obstáculo
-  const pos = { x: v.x - Math.sin(v.heading) * 2.3, y: v.y + Math.cos(v.heading) * 2.3 };
+  const out = vehicleType(v).radius + 1;
+  const pos = { x: v.x - Math.sin(v.heading) * out, y: v.y + Math.cos(v.heading) * out };
   resolveCircle(pos, PLAYER_RADIUS);
   player.teleport(pos.x, pos.y);
 }
@@ -115,7 +124,7 @@ function askEngine(game, player, v) {
     enunciado: q.enunciado,
     opciones: q.opciones,
     timeLimitMs: JEEP.questionMs,
-    loot: ['Encender el jeep y manejarlo'],
+    loot: [`Encender ${vehicleType(v).name.toLowerCase()} y manejarlo`],
   });
 }
 
@@ -127,8 +136,8 @@ export function interactVehicle(game, player, v) {
   }
   if (v.state === VEHICLE_STATE.LOCKED) askEngine(game, player, v);
   else if (v.state === VEHICLE_STATE.READY) {
-    if (v.driverId === null) board(game, player, v, 'driver');
-    else if (v.passengerId === null) board(game, player, v, 'passenger');
+    const free = v.seats.indexOf(null);
+    if (free >= 0) board(game, player, v, free);
   }
 }
 
@@ -142,9 +151,10 @@ export function answerEngine(game, player, index) {
   recordStats(player, pq.q, correct, index);
   if (correct && v.state === VEHICLE_STATE.LOCKED) {
     v.state = VEHICLE_STATE.READY;
-    board(game, player, v, v.driverId === null ? 'driver' : 'passenger');
+    const free = v.seats.indexOf(null);
+    if (free >= 0) board(game, player, v, free);
     game.room.emitTo(player, EVENTS.CRATE_RESULT, {
-      crateId: null, outcome: 'correct', title: 'Motor encendido', loot: ['Jeep listo: el joystick izquierdo maneja'], explicacion: pq.q.explicacion,
+      crateId: null, outcome: 'correct', title: 'Motor encendido', loot: [`${vehicleType(v).name} listo: el joystick izquierdo maneja`], explicacion: pq.q.explicacion,
     });
   } else {
     if (v.state === VEHICLE_STATE.LOCKED) {
@@ -183,15 +193,16 @@ function destroyVehicle(game, v, attackerId) {
   v.state = VEHICLE_STATE.DESTROYED;
   v.hp = 0;
   v.speed = 0;
-  for (const id of [v.driverId, v.passengerId]) {
+  for (const id of v.seats) {
     const p = game.room.players.get(id);
     if (p) exitVehicle(game, p);
   }
   game.explosions.push([r2(v.x), r2(v.y)]);
   for (const p of game.room.players.values()) {
     const d = Math.hypot(p.x - v.x, p.y - v.y);
-    if (!p.alive || d > JEEP.explosionRadius || !hasLineOfSight(v.x, v.y, p.x, p.y)) continue;
-    damagePlayer(game, p, Math.round(JEEP.explosionDamage * (1 - 0.7 * (d / JEEP.explosionRadius))), attackerId ?? null, JEEP_INDEX);
+    const T = vehicleType(v);
+    if (!p.alive || d > T.explosionRadius || !hasLineOfSight(v.x, v.y, p.x, p.y)) continue;
+    damagePlayer(game, p, Math.round(T.explosionDamage * (1 - 0.7 * (d / T.explosionRadius))), attackerId ?? null, JEEP_INDEX);
   }
 }
 
@@ -201,27 +212,28 @@ export function updateVehicles(game, dt) {
     if (v.state === VEHICLE_STATE.JAMMED && game.now >= v.jamUntil) v.state = VEHICLE_STATE.LOCKED;
     if (v.state === VEHICLE_STATE.DESTROYED) continue;
     // Quien se desconectó o cayó deja el asiento
-    for (const key of ['driverId', 'passengerId']) {
-      const p = game.room.players.get(v[key]);
-      if (v[key] !== null && (!p || !p.alive || p.vehicleId !== v.id)) v[key] = null;
-    }
-    // Sin conductor el jeep frena solo
-    if (v.driverId === null && v.speed !== 0) applyVehicleInput(v, { mx: 0, my: 0 }, dt);
+    v.seats = v.seats.map((id) => {
+      const p = game.room.players.get(id);
+      return id !== null && (!p || !p.alive || p.vehicleId !== v.id) ? null : id;
+    });
+    // Sin conductor frena solo
+    if (driverOf(v) === null && v.speed !== 0) applyVehicleInput(v, { mx: 0, my: 0 }, dt);
     if (v.crashed && Math.abs(v.speed) > 2) damageVehicle(game, v, 10, null);
     v.crashed = false;
     placeOccupants(game, v);
 
     // Atropello: daño según la velocidad y empujón
-    if (Math.abs(v.speed) < JEEP.runOverMinSpeed) continue;
+    const T = vehicleType(v);
+    if (Math.abs(v.speed) < T.runOverMinSpeed || T.water) continue;
     for (const p of game.room.players.values()) {
       if (!p.alive || p.vehicleId !== null || p.deploying) continue;
       const dx = p.x - v.x;
       const dy = p.y - v.y;
       const d = Math.hypot(dx, dy);
-      if (d > JEEP.radius + PLAYER_RADIUS || game.now - (v.hits.get(p.id) ?? -Infinity) < RUN_OVER_COOLDOWN_MS) continue;
+      if (d > T.radius + PLAYER_RADIUS || game.now - (v.hits.get(p.id) ?? -Infinity) < RUN_OVER_COOLDOWN_MS) continue;
       v.hits.set(p.id, game.now);
-      damagePlayer(game, p, Math.round(Math.abs(v.speed) * JEEP.runOverDamagePerSpeed), v.driverId, JEEP_INDEX);
-      const push = JEEP.radius + PLAYER_RADIUS + 0.8;
+      damagePlayer(game, p, Math.round(Math.abs(v.speed) * T.runOverDamagePerSpeed), driverOf(v), JEEP_INDEX);
+      const push = T.radius + PLAYER_RADIUS + 0.8;
       const nx = d > 1e-6 ? dx / d : 1;
       const ny = d > 1e-6 ? dy / d : 0;
       const pos = { x: v.x + nx * push, y: v.y + ny * push };
@@ -233,7 +245,9 @@ export function updateVehicles(game, dt) {
 
 export function encodeVehicles(game) {
   if (!active(game)) return [];
+  // [id, x, y, rumbo, velocidad, vida, conductor, primer pasajero, estado, tipo, [todos los pasajeros]]
   return game.vehicles.map((v) => [
-    v.id, r2(v.x), r2(v.y), r2(v.heading), r2(v.speed), Math.ceil(v.hp), v.driverId ?? 0, v.passengerId ?? 0, v.state,
+    v.id, r2(v.x), r2(v.y), r2(v.heading), r2(v.speed), Math.ceil(v.hp), v.seats[0] ?? 0, v.seats[1] ?? 0, v.state,
+    VEHICLE_TYPE_IDS.indexOf(v.type), v.seats.slice(1).map((id) => id ?? 0),
   ]);
 }

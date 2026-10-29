@@ -1,10 +1,10 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { JEEP } from '@calculo-royale/shared/constants';
+import { vehicleType } from '@calculo-royale/shared/constants';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { VEHICLE_SPOTS } from '@calculo-royale/shared/mapLayout';
-import { terrainGradient, terrainHeight } from '@calculo-royale/shared/terrain';
+import { terrainGradient, terrainHeight, WATER_LEVEL } from '@calculo-royale/shared/terrain';
 import { box, cylinder, limb, merge, modelMaterial, piece } from './models/build.js';
 
 // Jeep militar procedural: carrocería en una sola geometría + 4 ruedas que giran.
@@ -62,6 +62,39 @@ const wheelGeometry = merge([
   piece(cylinder(0.2, 0.2, 0.34, 6), '#6b6f5a', { rotation: [Math.PI / 2, 0, 0] }),
 ]);
 
+// --- Moto, camión con platón y lancha (fase 35): mismas piezas simples ---
+const MOTO_WHEELS = [[0.75, 0], [-0.75, 0]];
+const motoGeometry = merge([
+  piece(box(1.3, 0.3, 0.32), '#7f1d1d', { position: [0, 0.75, 0] }),
+  piece(box(0.55, 0.22, 0.3), '#1c1c1a', { position: [-0.25, 0.98, 0] }), // asiento largo (parrillero)
+  piece(box(0.35, 0.3, 0.3), '#991b1b', { position: [0.45, 0.95, 0] }), // tanque
+  limb([0.7, 0.6, 0], [0.55, 1.2, 0], 0.06, METAL),
+  piece(box(0.06, 0.06, 0.7), METAL, { position: [0.55, 1.22, 0] }), // manubrio
+  piece(box(0.1, 0.12, 0.16), '#fde68a', { position: [0.78, 1.08, 0] }),
+]);
+const TRUCK_WHEELS = [[1.6, 1.05], [1.6, -1.05], [-0.6, 1.05], [-0.6, -1.05], [-1.7, 1.05], [-1.7, -1.05]];
+const truckGeometry = merge([
+  piece(box(5.2, 0.4, 2.2), '#4b5320', { position: [0, 0.75, 0] }),
+  piece(box(1.5, 1.4, 2.1), '#5b6530', { position: [1.75, 1.6, 0] }), // cabina
+  piece(box(0.06, 0.6, 1.7), '#93c5fd', { position: [2.51, 1.9, 0] }), // parabrisas
+  // Platón con barandas (los pasajeros van parados aquí)
+  piece(box(3.4, 0.1, 2.2), '#3f4520', { position: [-0.9, 1.0, 0] }),
+  piece(box(3.4, 0.5, 0.08), '#5b6530', { position: [-0.9, 1.3, 1.08] }),
+  piece(box(3.4, 0.5, 0.08), '#5b6530', { position: [-0.9, 1.3, -1.08] }),
+  piece(box(0.08, 0.5, 2.2), '#5b6530', { position: [-2.6, 1.3, 0] }),
+  // Parlantes en el techo (la música lo delata)
+  piece(box(0.4, 0.3, 0.5), '#111827', { position: [1.6, 2.45, 0.5] }),
+  piece(box(0.4, 0.3, 0.5), '#111827', { position: [1.6, 2.45, -0.5] }),
+]);
+const boatGeometry = merge([
+  piece(box(3.4, 0.5, 1.6), '#e5e7eb', { position: [0, 0.25, 0] }),
+  piece(box(1.0, 0.45, 1.2), '#e5e7eb', { position: [1.9, 0.2, 0], rotation: [0, 0, 0.25] }), // proa
+  piece(box(3.2, 0.12, 1.65), '#1d4ed8', { position: [0, 0.48, 0] }), // franja
+  piece(box(0.6, 0.5, 0.9), '#374151', { position: [-0.4, 0.75, 0] }), // consola
+  piece(box(0.4, 0.6, 0.4), '#111827', { position: [-1.85, 0.25, 0] }), // motor fuera de borda
+]);
+const MODELS = { jeep: { body: bodyGeometry, wheels: WHEELS }, moto: { body: motoGeometry, wheels: MOTO_WHEELS }, truck: { body: truckGeometry, wheels: TRUCK_WHEELS }, boat: { body: boatGeometry, wheels: [] } };
+
 // Quemado: el mismo modelo, oscurecido
 const wreckMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, color: '#3a3430' });
 
@@ -83,7 +116,8 @@ export function JeepModel(props) {
   );
 }
 
-function Jeep({ id, register }) {
+function Jeep({ id, type, register }) {
+  const model = MODELS[type] ?? MODELS.jeep;
   const refs = useRef({ wheels: [] }).current;
   const set = (key) => (node) => {
     refs[key] = node;
@@ -92,8 +126,8 @@ function Jeep({ id, register }) {
   return (
     <group ref={set('group')} visible={false}>
       <group ref={set('body')}>
-        <mesh ref={set('mesh')} geometry={bodyGeometry} material={modelMaterial} castShadow receiveShadow />
-        {WHEELS.map(([x, z], i) => (
+        <mesh ref={set('mesh')} geometry={model.body} material={modelMaterial} castShadow receiveShadow />
+        {model.wheels.map(([x, z], i) => (
           <mesh key={i} ref={(m) => (refs.wheels[i] = m)} geometry={wheelGeometry} material={modelMaterial} position={[x, WHEEL_R, z]} castShadow />
         ))}
       </group>
@@ -125,8 +159,10 @@ export default function Vehicles({ client, frameRef, quality }) {
         continue;
       }
       a.group.visible = true;
-      a.group.position.set(pose.x, terrainHeight(pose.x, pose.y), -pose.y);
-      const [fx, fy] = terrainGradient(pose.x, pose.y);
+      const T = vehicleType(v);
+      // La lancha flota sobre el agua y no se inclina con el fondo
+      a.group.position.set(pose.x, T.water ? WATER_LEVEL - 0.15 + Math.sin(now / 600 + id) * 0.05 : terrainHeight(pose.x, pose.y), -pose.y);
+      const [fx, fy] = T.water ? [0, 0] : terrainGradient(pose.x, pose.y);
       tilt.setFromUnitVectors(UP, normal.set(-fx, 1, fy).normalize());
       yaw.setFromAxisAngle(UP, pose.heading);
       a.body.quaternion.multiplyQuaternions(tilt, yaw);
@@ -140,16 +176,16 @@ export default function Vehicles({ client, frameRef, quality }) {
         w.material = a.mesh.material;
       }
       // Humo si está dañado o quemado
-      if ((destroyed || v.hp < JEEP.hp * 0.35) && now - a.st.smokeAt > (destroyed ? 260 : 180) / quality.particles) {
+      if ((destroyed || v.hp < T.hp * 0.35) && now - a.st.smokeAt > (destroyed ? 260 : 180) / quality.particles) {
         a.st.smokeAt = now;
         client.effects.push({ type: 'dust', x: pose.x + (Math.random() - 0.5), y: pose.y + (Math.random() - 0.5) });
       }
-      const ratio = Math.max(0, v.hp / JEEP.hp);
+      const ratio = Math.max(0, v.hp / T.hp);
       a.bg.visible = !destroyed && ratio < 1;
       a.hp.visible = a.bg.visible;
       a.hp.scale.x = Math.max(0.001, BAR_WIDTH * ratio);
     }
   });
 
-  return VEHICLE_SPOTS.map((_, id) => <Jeep key={id} id={id} register={register} />);
+  return VEHICLE_SPOTS.map((spot, id) => <Jeep key={id} id={id} type={spot.type} register={register} />);
 }

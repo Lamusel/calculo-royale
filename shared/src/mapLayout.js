@@ -8,7 +8,7 @@ import {
   antenna, barrel, cliff, container, crate, damWall, fence, furnishRoom, houseShell, localFrame, logs, parkedBus, partitions, rock,
   sandbags, seededRandom, silo, stall, stand, tomb, tree, towerLegs,
 } from './mapBuild.js';
-import { AREAS, BRIDGES, DAM, PARKING, RAILWAY, ROADS, riverY, waterAt } from './mapPlan.js';
+import { AREAS, BRIDGES, DAM, DOCKS, PARKING, PLATFORMS, RAILWAY, RESERVOIR, ROADS, riverY, waterAt, ZIPLINES } from './mapPlan.js';
 
 export { WALL_HEIGHT, FURNITURE_SIZES } from './mapBuild.js';
 export {
@@ -366,8 +366,80 @@ function groves() {
   return items;
 }
 
-// Jeeps (solo en partida): en los estacionamientos marcados en el plano
-export const VEHICLE_SPOTS = PARKING;
+// Vehículos (fase 35, solo en partida): jeeps, motos y camiones en los estacionamientos y al borde de las
+// carreteras; lanchas en el río y el embalse. Se generan con semilla (mismo mapa en servidor y cliente).
+function vehicleSpots() {
+  const rand = seededRandom(20261029);
+  const land = PARKING.map((p) => ({ ...p }));
+  for (let attempts = 0; land.length < 58 && attempts < 4000; attempts++) {
+    const road = ROADS[Math.floor(rand() * ROADS.length)];
+    const i = Math.floor(rand() * (road.length - 1));
+    const [ax, ay] = road[i];
+    const [bx, by] = road[i + 1];
+    const t = rand();
+    const heading = Math.atan2(by - ay, bx - ax);
+    // A un costado de la carretera (berma), mirando en su sentido
+    const side = rand() < 0.5 ? 6.5 : -6.5;
+    const x = ax + (bx - ax) * t - Math.sin(heading) * side;
+    const y = ay + (by - ay) * t + Math.cos(heading) * side;
+    if (Math.abs(x) > MAP_HALF - 8 || Math.abs(y) > MAP_HALF - 8 || waterAt(x, y) || Math.hypot(x, y) < 40 || land.some((s) => Math.hypot(s.x - x, s.y - y) < 35)) continue;
+    // Sin pisar obstáculos (paredes, cobertura, cercas)
+    if (OBSTACLES.some((o) => Math.abs(o.x - x) < (o.w ?? o.r * 2) / 2 + 3 && Math.abs(o.y - y) < (o.h ?? o.r * 2) / 2 + 3)) continue;
+    land.push({ x, y, heading });
+  }
+  // 25 jeeps, 25 motos y 8 camiones repartidos (en orden mezclado)
+  const types = [...Array(25).fill('jeep'), ...Array(25).fill('moto'), ...Array(8).fill('truck')];
+  for (let i = types.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [types[i], types[j]] = [types[j], types[i]];
+  }
+  const out = land.slice(0, types.length).map((s, i) => ({ ...s, type: types[i] }));
+  // Lanchas: los muelles y puntos del río (lejos de los puentes) y el embalse
+  const water = [...DOCKS.map((d) => ({ x: d.x, y: d.y, heading: 0 })), ...[-340, -100, 260, 430].map((x) => ({ x, y: riverY(x), heading: 0 })), { x: RESERVOIR.x + 10, y: RESERVOIR.y + 20, heading: Math.PI / 2 }];
+  for (const w of water.slice(0, 8)) out.push({ ...w, type: 'boat' });
+  return out;
+}
+
+// Plataformas de salto (25): las del plano y una junto a cada zona con nombre (al borde, en campo libre)
+export const JUMP_PADS = (() => {
+  const out = PLATFORMS.map((p) => ({ x: p.x, y: p.y }));
+  for (const a of Object.values(AREAS)) {
+    if (!a.name || out.length >= 25) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const x = a.x + dx * (a.w / 2 + 8);
+      const y = a.y + dy * (a.h / 2 + 8);
+      if (Math.abs(x) < MAP_HALF - 10 && Math.abs(y) < MAP_HALF - 10 && !waterAt(x, y) && Math.abs(y - riverY(x)) > 25) {
+        out.push({ x, y });
+        break;
+      }
+    }
+  }
+  return out;
+})();
+
+// Tirolinas (12): las del plano y entre zonas cercanas (postes en las puntas)
+export const ZIPLINE_LINES = (() => {
+  const out = ZIPLINES.map((z) => ({ from: z.from, to: z.to }));
+  const named = Object.values(AREAS).filter((a) => a.name);
+  const used = new Set();
+  const pairs = [];
+  for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) pairs.push([named[i], named[j]]);
+  for (const [a, b] of pairs) {
+    if (out.length >= 12) break;
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    if (d < 90 || d > 200 || used.has(a) || used.has(b)) continue;
+    // De la orilla de una zona a la orilla de la otra
+    const ux = (b.x - a.x) / d;
+    const uy = (b.y - a.y) / d;
+    const from = [Math.round(a.x + ux * (a.w / 2 + 6)), Math.round(a.y + uy * (a.h / 2 + 6))];
+    const to = [Math.round(b.x - ux * (b.w / 2 + 6)), Math.round(b.y - uy * (b.h / 2 + 6))];
+    if (waterAt(...from) || waterAt(...to)) continue;
+    used.add(a);
+    used.add(b);
+    out.push({ from, to });
+  }
+  return out;
+})();
 
 // Cobertura dispersa (rocas, cajas, árboles sueltos y cercas de potrero), con semilla fija
 function scatteredCover(taken) {
@@ -419,6 +491,7 @@ export function worldLimits(x, y, r) {
 const NATURE = [...forest(), ...groves()];
 export const OBSTACLES = [...NAMED, ...NATURE, ...scatteredCover(NATURE), ...gulag];
 export const TREES = OBSTACLES.filter((o) => o.kind === 'tree');
+export const VEHICLE_SPOTS = vehicleSpots();
 
 // Pista del aeródromo (solo visual): rectángulo de asfalto
 export const RUNWAY = { x: AREAS.airfield.x + 2, y: AREAS.airfield.y - 14, w: 130, h: 8 };

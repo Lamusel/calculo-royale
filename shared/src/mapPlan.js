@@ -32,8 +32,9 @@ export const onBridge = (x, y) => BRIDGES.some((b) => inRect(b, x, y));
 export const onDam = (x, y) => inRect(DAM, x, y);
 
 // Agua en (x, y): 0 tierra, 1 poco profunda (se camina lento y se dispara), 2 honda (se nada, no se dispara)
-export function waterAt(x, y) {
-  if (onDam(x, y) || onBridge(x, y)) return 0;
+// underBridge: true para la lancha (el agua sigue bajo el tablero del puente)
+export function waterAt(x, y, underBridge = false) {
+  if (onDam(x, y) || (!underBridge && onBridge(x, y))) return 0;
   if (x < DAM.x) {
     const dx = (x - RESERVOIR.x) / RESERVOIR.rx;
     const dy = (y - RESERVOIR.y) / RESERVOIR.ry;

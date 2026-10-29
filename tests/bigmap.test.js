@@ -105,3 +105,50 @@ test('puentes: el jeep cruza cada uno de ida y vuelta sin chocar, sin saltos de 
     assert.equal(v.crashed, false);
   }
 });
+
+test('vehículos: camión de 6 plazas, lancha solo en el agua, el jeep no entra al río hondo, plataforma y tirolina', async () => {
+  const { applyVehicleInput } = await import('@calculo-royale/shared/vehicle');
+  const { JUMP_PADS, VEHICLE_SPOTS, ZIPLINE_LINES } = await import('@calculo-royale/shared/mapLayout');
+  const { VEHICLE_STATE } = await import('@calculo-royale/shared/protocol');
+  const count = (t) => VEHICLE_SPOTS.filter((s) => s.type === t).length;
+  assert.deepEqual([count('jeep'), count('moto'), count('truck'), count('boat')], [25, 25, 8, 8]);
+  assert.ok(JUMP_PADS.length >= 20 && ZIPLINE_LINES.length >= 10);
+  // Lancha: en el río avanza, hacia la orilla se frena
+  const boat = { x: 0, y: riverY(0), heading: Math.PI / 2, speed: 0, type: 'boat' };
+  for (let i = 0; i < 60; i++) applyVehicleInput(boat, { mx: 0, my: 1 }, 0.05);
+  assert.ok(waterAt(boat.x, boat.y, true) > 0, 'sigue en el agua');
+  // Jeep hacia el río (lejos de puentes y vado): no entra a lo hondo
+  const jeep = { x: 0, y: riverY(0) + 30, heading: -Math.PI / 2, speed: 0, type: 'jeep' };
+  for (let i = 0; i < 80; i++) applyVehicleInput(jeep, { mx: 0, my: -1 }, 0.05);
+  assert.notEqual(waterAt(jeep.x, jeep.y), 2);
+
+  const room = { phase: 'playing', players: new Map(), topics: ['integrales_dobles'], emitTo() {}, broadcast() {}, broadcastState() {}, respawnInLobby() {}, finishMatch() {}, sendClassStats() {} };
+  room.game = new Game(room);
+  const add = (id, x, y) => {
+    const p = new Player({ id, name: `P${id}`, color: '#fff', token: `t${id}` });
+    p.teleport(x, y);
+    p.connected = true;
+    room.players.set(id, p);
+    return p;
+  };
+  const truck = room.game.vehicles.find((v) => v.type === 'truck');
+  truck.state = VEHICLE_STATE.READY;
+  const riders = [1, 2, 3, 4, 5, 6, 7].map((id) => add(id, truck.x + 1, truck.y));
+  for (const p of riders) room.game.interact(p);
+  assert.equal(truck.seats.filter(Boolean).length, 6, 'seis plazas');
+  assert.equal(riders[6].vehicleId, null, 'el séptimo no cabe');
+  // Plataforma: lanza y se planea
+  const pad = JUMP_PADS[0];
+  const flyer = add(20, pad.x, pad.y);
+  room.game.update();
+  assert.equal(flyer.deploy?.phase, 'fall');
+  // Tirolina: de una punta a la otra
+  const line = ZIPLINE_LINES[0];
+  const rider = add(21, line.from[0], line.from[1]);
+  room.game.interact(rider, 'zip');
+  assert.ok(rider.zip);
+  const len = Math.hypot(line.to[0] - line.from[0], line.to[1] - line.from[1]);
+  for (let i = 0; i < Math.ceil(len / 13 / 0.05) + 5; i++) room.game.update();
+  assert.equal(rider.zip, null);
+  assert.ok(Math.hypot(rider.x - line.to[0], rider.y - line.to[1]) < 2);
+});

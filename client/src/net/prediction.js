@@ -70,7 +70,7 @@ export class Predictor {
     let dx;
     let dy;
     if (vehicle) {
-      const drive = { x: vehicle.x, y: vehicle.y, heading: vehicle.heading, speed: vehicle.speed };
+      const drive = { x: vehicle.x, y: vehicle.y, heading: vehicle.heading, speed: vehicle.speed, type: vehicle.type };
       for (const input of this.pending) applyVehicleInput(drive, input, DT);
       Object.assign(next, seatPosition(drive, 'driver'));
       dx = drive.x - (this.drive?.x ?? drive.x);

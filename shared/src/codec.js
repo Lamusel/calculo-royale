@@ -18,6 +18,10 @@
 //   vehicles:   [[id, x, y, rumbo, velocidad, vida, conductor, pasajero, estado], ...] (estado: VEHICLE_STATE)
 
 import { encodeGear } from './gear.js';
+import { ZIPLINE } from './constants.js';
+
+// Colgado de la tirolina: a esta altura bajo el cable
+const ZIP_HANG = ZIPLINE.height - 1.9;
 
 const round2 = (v) => Math.round(v * 100) / 100;
 
@@ -45,7 +49,7 @@ export function decodeInput(data) {
 // En el aire se agrega la altura (índice 9)
 export function encodePlayerState(p, weaponIndex, flags) {
   // [9] altura en el despliegue (0 en el suelo) · [10] equipo visible (gear.js)
-  return [p.id, round2(p.x), round2(p.y), round2(p.aim), p.lastSeq, Math.ceil(p.hp), p.armorLevel, weaponIndex, flags, p.deploy ? Math.round(p.deploy.z * 10) / 10 : 0, encodeGear(p)];
+  return [p.id, round2(p.x), round2(p.y), round2(p.aim), p.lastSeq, Math.ceil(p.hp), p.armorLevel, weaponIndex, flags, p.deploy ? Math.round(p.deploy.z * 10) / 10 : p.zip ? ZIP_HANG : 0, encodeGear(p)];
 }
 
 // Disparo con silenciador: el índice del arma lleva este bit (no sale en el minimapa de los demás)

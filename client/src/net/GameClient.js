@@ -136,7 +136,7 @@ export class GameClient {
         setDynamicObstacles(effects.filter((e) => e[0] === 3).flatMap((e) => wallPieces(e[2], e[3], e[4])));
         // Jeep propio: [id, x, y, heading, speed, hp, conductor, pasajero, estado]
         const driving = vehicles.find((v) => v[6] === this.myId);
-        const riding = vehicles.find((v) => v[7] === this.myId);
+        const riding = vehicles.find((v) => v[7] === this.myId || (v[10] ?? []).includes(this.myId));
         const wasDriving = this.seat === 'driver';
         this.vehicleId = (driving ?? riding)?.[0] ?? null;
         this.seat = driving ? 'driver' : riding ? 'passenger' : null;
@@ -148,6 +148,7 @@ export class GameClient {
         if (me) {
           const flags = me[8];
           // Despliegue: en el bus (o eligiendo punto), en caída libre o con paracaídas
+          this.onZipline = Boolean(flags & PLAYER_FLAGS.ZIPLINE);
           const deploying = flags & PLAYER_FLAGS.IN_BUS ? 'bus' : flags & PLAYER_FLAGS.FALLING ? 'fall' : flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
           if (deploying !== this.deploying) {
             if (deploying === 'fall') sound.jump();

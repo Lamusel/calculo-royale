@@ -11,7 +11,7 @@ import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
 import { waterAt } from '@calculo-royale/shared/mapPlan';
 import { worldLimits } from '@calculo-royale/shared/mapLayout';
-import { isSniper, THROWABLES } from '@calculo-royale/shared/constants';
+import { isSniper, THROWABLES, vehicleType } from '@calculo-royale/shared/constants';
 import { activateUav, blastTactical, damageSensor, damageWall, detonateTactical, smokeBlocks } from './throwables.js';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
@@ -42,7 +42,7 @@ export function targetsAt(game, shooter, viewTick) {
   if (game.room.phase === 'playing') {
     for (const v of game.vehicles) {
       if (v.state === VEHICLE_STATE.DESTROYED || v.id === shooter?.vehicleId) continue;
-      targets.push({ id: vehicleTargetId(v.id), x: v.x, y: v.y, vehicle: v, radius: JEEP.radius });
+      targets.push({ id: vehicleTargetId(v.id), x: v.x, y: v.y, vehicle: v, radius: vehicleType(v).radius });
     }
   }
   return targets;
@@ -144,6 +144,8 @@ export function fire(game, p, input) {
   const id = p.weaponId;
   // Nadando (agua honda) no se dispara
   if (game.now < p.nextFireAt || p.reloadUntil || waterAt(p.x, p.y) === 2) return;
+  // Colgado de la tirolina: solo la pistola
+  if (p.zip && WEAPONS[p.weaponId].category !== 'pistol') return;
   // Retroceso acumulado (se recupera con el tiempo); culata y punto rojo cierran la dispersión
   p.recoil = currentRecoil(game, p);
   const w = weaponWith(id, p.attachments, p.recoil);
@@ -338,7 +340,7 @@ export function updateGrenades(game, dt) {
       if (g.impact) {
         const ny0 = g.y + g.vy * dt;
         const hitPlayer = [...game.room.players.values()].some((q) => q.id !== g.ownerId && q.alive && !q.deploying && Math.hypot(q.x - nx, q.y - ny0) < PLAYER_RADIUS + 0.4);
-        const hitVehicle = (game.vehicles ?? []).some((v) => v.state !== VEHICLE_STATE.DESTROYED && Math.hypot(v.x - nx, v.y - ny0) < JEEP.radius + 0.3);
+        const hitVehicle = (game.vehicles ?? []).some((v) => v.state !== VEHICLE_STATE.DESTROYED && Math.hypot(v.x - nx, v.y - ny0) < vehicleType(v).radius + 0.3);
         if (hitPlayer || hitVehicle || overlapsObstacle(nx, ny0, GRENADE_RADIUS) || nx < box.minX || nx > box.maxX || ny0 < box.minY || ny0 > box.maxY) {
           explode(game, g);
           return false;

@@ -2,9 +2,10 @@ import { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MAP_HALF } from '@calculo-royale/shared/constants';
-import { BRIDGES, DAM, DOCKS, RAILWAY, RESERVOIR, RIVER, riverY } from '@calculo-royale/shared/mapLayout';
+import { BRIDGES, DAM, DOCKS, JUMP_PADS, RAILWAY, RESERVOIR, RIVER, riverY, ZIPLINE_LINES } from '@calculo-royale/shared/mapLayout';
+import { ZIPLINE } from '@calculo-royale/shared/constants';
 import { BRIDGE_DECK, BRIDGE_SPAN, terrainHeight, WATER_LEVEL } from '@calculo-royale/shared/terrain';
-import { box, limb, merge, modelMaterial, piece } from './models/build.js';
+import { box, cylinder, limb, merge, modelMaterial, piece } from './models/build.js';
 import { Chunked } from './chunks.js';
 
 // Agua (azul verdoso, más clara y transparente cerca de la orilla, con brillo del sol; en calidad
@@ -91,6 +92,23 @@ function structuresGeometry() {
     const y = d.y + toShore * 3;
     parts.push(piece(box(4, 0.25, 9), '#7a5634', { position: [d.x, 0.15, -y] }));
     for (const sx of [-1.7, 1.7]) for (const sy of [-3.5, 0, 3.5]) parts.push(piece(box(0.25, 2.4, 0.25), '#5b4027', { position: [d.x + sx, -0.9, -(y + sy)] }));
+  }
+  // Plataformas de salto (fase 35): disco amarillo y negro con una flecha hacia arriba
+  for (const j of JUMP_PADS) {
+    const h = terrainHeight(j.x, j.y);
+    parts.push(piece(cylinder(1.6, 1.8, 0.3, 12), '#1f2937', { position: [j.x, h + 0.15, -j.y] }));
+    parts.push(piece(cylinder(1.2, 1.2, 0.05, 12), '#facc15', { position: [j.x, h + 0.32, -j.y] }));
+    parts.push(piece(cylinder(0, 0.5, 0.6, 4), '#facc15', { position: [j.x, h + 0.7, -j.y] }));
+  }
+  // Tirolinas: dos postes y el cable entre ellos
+  for (const z of ZIPLINE_LINES) {
+    const top = (pt) => [pt[0], terrainHeight(pt[0], pt[1]) + ZIPLINE.height, -pt[1]];
+    for (const pt of [z.from, z.to]) {
+      const h = terrainHeight(pt[0], pt[1]);
+      parts.push(piece(box(0.3, ZIPLINE.height + 0.6, 0.3), '#6b4a2b', { position: [pt[0], h + (ZIPLINE.height + 0.6) / 2, -pt[1]] }));
+      parts.push(piece(box(0.9, 0.12, 0.9), '#38bdf8', { position: [pt[0], h + 0.06, -pt[1]] }));
+    }
+    parts.push(limb(top(z.from), top(z.to), 0.05, '#1f2937'));
   }
   return merge(parts);
 }

@@ -69,7 +69,9 @@ export class Player {
     this.transmission = null; // pregunta de práctica o del Gulag en curso
     this.arena = null; // índice de la arena del Gulag donde pelea (null: en la partida)
     this.gulag = null; // { state: 'queue'|'fight', since, fightId } mientras está en el Gulag
-    this.vehicleId = null; // jeep en el que va
+    this.zip = null; // { from, to, len, t } colgado de una tirolina
+    this.padAt = null; // plataforma que acaba de usar (se rearma al alejarse)
+    this.vehicleId = null; // vehículo en el que va
     this.seat = null; // 'driver' | 'passenger'
     this.engineQuestion = null; // código del motor pendiente
     this.ammoQuestion = null; // "Obtener balas" pendiente

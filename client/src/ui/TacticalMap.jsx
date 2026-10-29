@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { JEEP, MAP_HALF, MAP_SIZE, NIGHT_REVEAL_MS, SECTORS } from '@calculo-royale/shared/constants';
+import { MAP_HALF, MAP_SIZE, NIGHT_REVEAL_MS, SECTORS, vehicleType } from '@calculo-royale/shared/constants';
 import { PLAYER_FLAGS, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import {
   AREAS, BRIDGES, DAM, HOUSES, OBSTACLES, PATHS, RAILWAY, RESERVOIR, RIVER, ROADS, RUNWAY, TOWERS, TREES, riverY,
@@ -259,7 +259,7 @@ export function draw(ctx, size, data, detailed, view = FULL) {
   // Jeeps encendidos con conductor a menos de noiseRadius: se oyen
   if (data.me) {
     for (const v of data.vehicles?.values() ?? []) {
-      const near = Math.hypot(v.x - data.me.x, v.y - data.me.y) <= JEEP.noiseRadius;
+      const near = Math.hypot(v.x - data.me.x, v.y - data.me.y) <= vehicleType(v).noiseRadius;
       if (!near || v.state !== VEHICLE_STATE.READY || !v.driver || v.id === data.myVehicleId) continue;
       const r = 5 + 2 * Math.sin(now / 90);
       ctx.strokeStyle = 'rgba(253, 186, 116, 0.8)';
