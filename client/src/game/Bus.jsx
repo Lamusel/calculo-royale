@@ -59,21 +59,20 @@ const busGeometry = merge([
 
 const propellerGeometry = merge([0, 1, 2].map((i) => piece(box(0.12, 2.2, 0.35), DARK, { rotation: [(i / 3) * Math.PI * 2, 0, 0], position: [0, 0, 0] })));
 
-// ¿Hay una imagen propia para los costados? (si no, el bus queda con sus colores)
+// ¿Hay una imagen propia para los costados? Vite lo decide al compilar: si el archivo no existe no se
+// pide nada (antes la consulta daba un 404 en la consola). Sin imagen, el bus queda con sus colores.
+const SIDE_IMAGE = Object.keys(import.meta.glob('/public/assets/bus/costado.png')).length ? '/assets/bus/costado.png' : null;
+
 function useSideTexture() {
   const [texture, setTexture] = useState(null);
   useEffect(() => {
     let alive = true;
-    fetch('/assets/bus/costado.png', { method: 'HEAD' })
-      .then((res) => {
-        const type = res.headers.get('content-type') ?? '';
-        if (!res.ok || !type.startsWith('image/')) return;
-        new THREE.TextureLoader().load('/assets/bus/costado.png', (t) => {
-          t.colorSpace = THREE.SRGBColorSpace;
-          if (alive) setTexture(t);
-        });
-      })
-      .catch(() => {});
+    if (SIDE_IMAGE) {
+      new THREE.TextureLoader().load(SIDE_IMAGE, (t) => {
+        t.colorSpace = THREE.SRGBColorSpace;
+        if (alive) setTexture(t);
+      });
+    }
     return () => {
       alive = false;
     };

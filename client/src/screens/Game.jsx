@@ -1,5 +1,6 @@
+import { PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { MAP_HALF } from '@calculo-royale/shared/constants';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
 import { createQualityController, initialQuality } from '../game/quality.js';
@@ -213,7 +214,45 @@ function SlowWarning({ onClose }) {
 }
 
 // Pantalla de la sala: la misma escena sirve para el campo de entrenamiento y para la partida
-export default function Game({ room, myId, sessionKey, onLeave }) {
+// Límite de errores: si algo de la partida falla, un mensaje con "Volver al lobby" en vez de la
+// pantalla en blanco (recargar vuelve a la sala con la misma sesión)
+class GameErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('[partida] error en la pantalla de juego:', error, info?.componentStack);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-olive-950 p-6 text-center text-stone-100">
+        <p className="text-xl font-black uppercase tracking-widest text-khaki">Algo falló en la partida</p>
+        <p className="max-w-md text-sm text-stone-300">{String(this.state.error?.message ?? this.state.error)}</p>
+        <button onClick={() => location.reload()} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
+          Volver al lobby
+        </button>
+      </div>
+    );
+  }
+}
+
+export default function Game(props) {
+  return (
+    <GameErrorBoundary>
+      <GameScreen {...props} />
+    </GameErrorBoundary>
+  );
+}
+
+function GameScreen({ room, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
   const [replayDone, setReplayDone] = useState(false);
