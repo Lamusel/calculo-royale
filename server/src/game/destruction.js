@@ -5,10 +5,18 @@ import { explode } from './combat.js';
 // Destrucción ligera (6.5): balas y explosiones rompen cajas de madera, barriles y cercas. Lo roto sale
 // de la colisión (o.broken, compartido con el cliente) y los barriles rojos explotan como una granada.
 
-const brokenIds = () => DESTRUCTIBLES.filter((o) => o.broken).map((o) => o.destId);
+// Cada sala guarda lo suyo en game.broken (Set de destId); o.broken (compartido con la colisión) se pone
+// desde ahí al empezar cada ciclo de la sala (syncProps)
+const brokenIds = (game) => [...(game.broken ?? [])];
+export function syncProps(game) {
+  const set = game.broken ?? EMPTY;
+  for (const o of DESTRUCTIBLES) o.broken = set.has(o.destId);
+}
+const EMPTY = new Set();
 
 export function resetProps(game) {
-  const had = DESTRUCTIBLES.some((o) => o.broken);
+  const had = game.broken?.size > 0;
+  game.broken = new Set();
   for (const o of DESTRUCTIBLES) o.broken = false;
   game.propHp = new Map();
   if (had) game.room.broadcast?.(EVENTS.PROPS_BROKEN, []);
@@ -22,7 +30,8 @@ export function damageProp(game, o, amount, ownerId = null) {
   game.propHp.set(o.destId, hp);
   if (hp > 0) return true;
   o.broken = true;
-  game.room.broadcast(EVENTS.PROPS_BROKEN, brokenIds());
+  (game.broken ??= new Set()).add(o.destId);
+  game.room.broadcast(EVENTS.PROPS_BROKEN, brokenIds(game));
   if (o.red) explode(game, { kind: 'frag', x: o.x, y: o.y, ownerId });
   return true;
 }

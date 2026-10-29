@@ -561,3 +561,41 @@ test('7B: sin armas ni balas, el golpe a puños (botón MELEE del input) le baja
   room.game.handleInput(a, { mx: 0, my: 0, aim: Math.PI, buttons: BUTTONS.MELEE | BUTTONS.AUTO, viewTick: room.game.tick });
   assert.equal(b.hp, 100 - WEAPONS.fists.damage);
 });
+
+test('7B: dos salas a la vez: lo roto en una no cuenta en la otra y un error repetido cierra solo esa sala', async () => {
+  const { DESTRUCTIBLES } = await import('@calculo-royale/shared/mapLayout');
+  const { overlapsObstacle } = await import('@calculo-royale/shared/collision');
+  const { damageProp } = await import('../server/src/game/destruction.js');
+  const { RoomManager } = await import('../server/src/rooms/RoomManager.js');
+  const r1 = makeRoom();
+  const r2 = makeRoom();
+  addPlayers(r1, 2);
+  addPlayers(r2, 2);
+  start(r1);
+  start(r2);
+  const fence = DESTRUCTIBLES.find((o) => o.kind === 'fence');
+  damageProp(r1.game, fence, 1e4);
+  r2.game.update();
+  assert.ok(overlapsObstacle(fence.x, fence.y, 0.3), 'en la sala 2 la cerca sigue en pie');
+  r1.game.update();
+  assert.equal(overlapsObstacle(fence.x, fence.y, 0.3), false, 'en la sala 1 está rota');
+  r1.game.resetWorld();
+  // Error repetido en el ciclo: la sala se cierra sola y la otra sigue
+  const io = { to: () => ({ emit() {}, volatile: { emit() {} } }), sockets: { sockets: new Map() } };
+  const rm = new RoomManager(io);
+  const s1 = { id: 'A', data: {}, join() {}, leave() {}, emit() {} };
+  const s2 = { id: 'B', data: {}, join() {}, leave() {}, emit() {} };
+  rm.create(s1, { name: 'Ana' });
+  rm.create(s2, { name: 'Beto' });
+  const [bad, good] = [rm.roomOf(s1), rm.roomOf(s2)];
+  const original = console.error;
+  console.error = () => {};
+  bad.game.update = () => {
+    throw new Error('falla de prueba');
+  };
+  await new Promise((r) => setTimeout(r, 60 * 25));
+  console.error = original;
+  assert.equal(rm.rooms.has(bad.code), false, 'la sala con error se cerró');
+  assert.ok(rm.rooms.has(good.code) && good.game.timer, 'la otra sigue');
+  good.destroy();
+});

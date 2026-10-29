@@ -43,6 +43,17 @@ const rooms = new RoomManager(io);
 const reply = (ack, result) => typeof ack === 'function' && ack(result);
 
 io.on('connection', (socket) => {
+  // 7B: un error dentro de un evento se registra con su sala y no tumba el servidor (ni las otras salas)
+  const on = socket.on.bind(socket);
+  socket.on = (event, handler) =>
+    on(event, (...args) => {
+      try {
+        return handler(...args);
+      } catch (err) {
+        console.error(`[sala ${socket.data.roomCode ?? '-'}] error en ${event}:`, err);
+        return undefined;
+      }
+    });
   socket.on(EVENTS.PING, (clientTime) => {
     socket.emit(EVENTS.PONG, { clientTime, serverTime: Date.now() });
   });

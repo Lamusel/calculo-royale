@@ -5,7 +5,8 @@ import { applyInput } from '@calculo-royale/shared/movement';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 import { inventoryOp } from './inventoryOps.js';
-import { resetProps } from './destruction.js';
+import { resetProps, syncProps } from './destruction.js';
+import { setDynamicObstacles } from '@calculo-royale/shared/collision';
 import { resetAnts, startAnts, updateAnts } from './ants.js';
 import { startRevive, tryDown, updateTeams } from './teams.js';
 import { meleeAttack } from './melee.js';
@@ -31,6 +32,15 @@ const DT = TICK_MS / 1000;
 const round2 = (v) => Math.round(v * 100) / 100;
 
 // Loop autoritativo de una sala. Corre también en el lobby (campo de entrenamiento).
+const MAX_TICK_ERRORS = 20; // ~1 s fallando seguido: la sala se cierra
+
+// Varias salas a la vez (7B): la colisión de objetos rotos y muros de espuma vive en módulos compartidos;
+// antes de cada ciclo se pone la de esta sala
+function syncSharedState(game) {
+  syncProps(game);
+  setDynamicObstacles((game.walls ?? []).flatMap((w) => w.pieces));
+}
+
 export class Game {
   constructor(room) {
     this.room = room;
@@ -66,7 +76,15 @@ export class Game {
     if (this.timer) return;
     this.timer = setInterval(() => {
       const t0 = performance.now();
-      this.update();
+      try {
+        this.update();
+        this.errors = 0;
+      } catch (err) {
+        // 7B: el error de una sala no afecta a las demás; si sigue fallando, se cierra sola
+        this.errors = (this.errors ?? 0) + 1;
+        console.error(`[sala ${this.room.code}] error en el ciclo (${this.errors}):`, err);
+        if (this.errors >= MAX_TICK_ERRORS) this.room.crash?.('La sala tuvo un error y se cerró. Crea otra para seguir jugando.');
+      }
       recordTick(performance.now() - t0);
     }, TICK_MS);
   }
@@ -137,6 +155,7 @@ export class Game {
   interact(player, kind = null) {
     // "Golpear" (celular): botón contextual con un enemigo a 2 m o menos
     if (kind === 'melee') {
+      syncSharedState(this); // fuera del ciclo: la colisión de esta sala
       meleeAttack(this, player, player.aim, this.tick, true);
       return;
     }
@@ -279,6 +298,7 @@ export class Game {
   }
 
   update() {
+    syncSharedState(this);
     this.tick++;
     this.now = this.tick * TICK_MS;
     this.shots = [];

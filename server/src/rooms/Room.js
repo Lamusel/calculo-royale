@@ -308,6 +308,12 @@ export class Room {
     this.io.to(this.code).volatile.emit(EVENTS.STATE, snapshot);
   }
 
+  // Error repetido en el ciclo (7B): se avisa a los jugadores y la sala se cierra sin afectar a las otras
+  crash(reason) {
+    this.broadcast(EVENTS.ROOM_KICKED, { reason });
+    this.destroy();
+  }
+
   destroy() {
     this.game.stop();
     for (const player of this.players.values()) clearTimeout(player.removeTimer);
