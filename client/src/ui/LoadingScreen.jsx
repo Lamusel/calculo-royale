@@ -92,6 +92,41 @@ export default function LoadingScreen({ minMs = 8_000, needClick = true, ready =
       className="fixed inset-0 z-[100] overflow-hidden bg-olive-950 text-stone-100"
       onPointerMove={(e) => setTilt({ x: e.clientX / innerWidth - 0.5, y: e.clientY / innerHeight - 0.5 })}
     >
+      <LoadingBackdrop slide={slide} image={image} tilt={tilt} />
+      <div className="relative flex h-full flex-col justify-between p-[max(1rem,env(safe-area-inset-top))_max(1rem,env(safe-area-inset-right))_max(1rem,env(safe-area-inset-bottom))_max(1rem,env(safe-area-inset-left))]">
+        <div className="flex items-center gap-3">
+          <Logo className="h-12 w-12 sm:h-16 sm:w-16" />
+          <p className="text-2xl font-black uppercase tracking-tight sm:text-4xl">
+            Cálculo <span className="text-khaki">Royale</span>
+          </p>
+        </div>
+        <div className="mx-auto w-full max-w-2xl">
+          <div key={slide} className="mb-4 animate-[loadfade_0.8s_ease-out] rounded-lg border-l-4 border-orange-400 bg-black/55 px-4 py-3 backdrop-blur-sm">
+            <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.3em] text-orange-300">Dato de cálculo</p>
+            <MathText text={fact} className="block text-[clamp(0.95rem,2.6vw,1.25rem)] leading-snug" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-2 flex-1 overflow-hidden rounded bg-black/60">
+              <div className="h-full bg-gradient-to-r from-khaki to-orange-400 transition-[width] duration-200" style={{ width: `${progress * 100}%` }} />
+            </div>
+            {needClick && canGo ? (
+              <button onClick={() => !done.current && ((done.current = true), onDone?.())} className="animate-[loadfade_0.4s_ease-out] rounded-lg bg-khaki px-5 py-2 font-black uppercase tracking-wider text-olive-950 shadow-lg">
+                Continuar ▸
+              </button>
+            ) : (
+              <span className="w-28 text-right font-mono text-xs uppercase tracking-widest text-stone-300">{title}…</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Fondo animado (también el de la portada): imagen con acercamiento lento o fondo generado, paralaje y polvo
+export function LoadingBackdrop({ slide, image, tilt }) {
+  return (
+    <>
       {/* Fondo: imagen con acercamiento lento (o uno generado), con un leve paralaje */}
       <div className="absolute -inset-[4%]" style={{ transform: `translate(${tilt.x * -18}px, ${tilt.y * -12}px)`, transition: 'transform 0.6s ease-out' }}>
         <div key={slide} className="absolute inset-0 animate-[loadzoom_6s_linear_forwards]">
@@ -124,32 +159,28 @@ export default function LoadingScreen({ minMs = 8_000, needClick = true, ready =
         ))}
       </div>
 
-      <div className="relative flex h-full flex-col justify-between p-[max(1rem,env(safe-area-inset-top))_max(1rem,env(safe-area-inset-right))_max(1rem,env(safe-area-inset-bottom))_max(1rem,env(safe-area-inset-left))]">
-        <div className="flex items-center gap-3">
-          <Logo className="h-12 w-12 sm:h-16 sm:w-16" />
-          <p className="text-2xl font-black uppercase tracking-tight sm:text-4xl">
-            Cálculo <span className="text-khaki">Royale</span>
-          </p>
-        </div>
-        <div className="mx-auto w-full max-w-2xl">
-          <div key={slide} className="mb-4 animate-[loadfade_0.8s_ease-out] rounded-lg border-l-4 border-orange-400 bg-black/55 px-4 py-3 backdrop-blur-sm">
-            <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.3em] text-orange-300">Dato de cálculo</p>
-            <MathText text={fact} className="block text-[clamp(0.95rem,2.6vw,1.25rem)] leading-snug" />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded bg-black/60">
-              <div className="h-full bg-gradient-to-r from-khaki to-orange-400 transition-[width] duration-200" style={{ width: `${progress * 100}%` }} />
-            </div>
-            {needClick && canGo ? (
-              <button onClick={() => !done.current && ((done.current = true), onDone?.())} className="animate-[loadfade_0.4s_ease-out] rounded-lg bg-khaki px-5 py-2 font-black uppercase tracking-wider text-olive-950 shadow-lg">
-                Continuar ▸
-              </button>
-            ) : (
-              <span className="w-28 text-right font-mono text-xs uppercase tracking-widest text-stone-300">{title}…</span>
-            )}
-          </div>
-        </div>
-      </div>
+    </>
+  );
+}
+
+// Fondo de la portada: rota solo las imágenes cada 6 s y sigue el puntero
+export function MenuBackdrop() {
+  const order = useMemo(() => shuffled(IMAGES.length), []);
+  const [slide, setSlide] = useState(0);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    const id = setInterval(() => setSlide((s) => s + 1), SLIDE_MS);
+    const move = (e) => setTilt({ x: e.clientX / innerWidth - 0.5, y: e.clientY / innerHeight - 0.5 });
+    addEventListener('pointermove', move);
+    return () => {
+      clearInterval(id);
+      removeEventListener('pointermove', move);
+    };
+  }, []);
+  const image = IMAGES.length ? IMAGES[order[slide % IMAGES.length]] : null;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <LoadingBackdrop slide={slide} image={image} tilt={tilt} />
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { TOPIC_NAMES, teamColor, teamName } from '@calculo-royale/shared/constan
 import { ClassTopics } from './HostPanel.jsx';
 import MathText from './MathText.jsx';
 import { SkinPortrait } from './SkinPicker.jsx';
+import Podium from './Podium.jsx';
+import { useEffect, useState } from 'react';
 import { loadSkin } from '../achievements.js';
 import { getSkinEntry } from '../game/character/skins/index.js';
 
@@ -57,18 +59,35 @@ export function downloadCsv({ filename, csv }) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Medallas de la partida (una por categoría)
+// Número que cuenta hacia arriba (7A)
+export function CountUp({ value, ms = 1200 }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    let raf;
+    const step = (t) => {
+      const k = Math.min(1, (t - start) / ms);
+      setShown(Math.round(value * (1 - (1 - k) ** 3)));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, ms]);
+  return shown;
+}
+
+// Medallas de la partida (una por categoría): aparecen una por una
 function Medals({ medals, myId }) {
   if (!medals?.length) return null;
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {medals.map((m) => (
-        <div key={m.id} className={`rounded border p-2 ${m.playerId === myId ? 'border-khaki bg-khaki/15' : 'border-white/10 bg-black/30'}`}>
+      {medals.map((m, i) => (
+        <div key={m.id} className={`animate-[popin_0.5s_ease-out_both] rounded border p-2 ${m.playerId === myId ? 'border-khaki bg-khaki/15' : 'border-white/10 bg-black/30'}`} style={{ animationDelay: `${0.4 + i * 0.35}s` }}>
           <p className="text-xl leading-none">{m.icon}</p>
           <p className="mt-1 text-[0.7rem] uppercase tracking-wider text-stone-400">{m.name}</p>
           <p className="truncate font-bold">{m.playerName}</p>
           <p className="font-mono text-xs text-khaki-light">
-            {m.value} {m.unit}
+            <CountUp value={m.value} /> {m.unit}
           </p>
         </div>
       ))}
@@ -78,6 +97,11 @@ function Medals({ medals, myId }) {
 
 function TopicBars({ byTopic }) {
   const entries = Object.entries(byTopic ?? {});
+  const [grown, setGrown] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setGrown(true), 300);
+    return () => clearTimeout(id);
+  }, []);
   if (entries.length === 0) return <p className="text-sm text-stone-400">No abriste cajas en esta partida.</p>;
   return (
     <div className="flex flex-col gap-1.5">
@@ -85,7 +109,7 @@ function TopicBars({ byTopic }) {
         <div key={slug} className="flex items-center gap-2 text-sm">
           <span className="w-48 shrink-0 truncate text-stone-300">{TOPIC_NAMES[slug] ?? slug}</span>
           <div className="h-2 flex-1 overflow-hidden rounded bg-black/50">
-            <div className="h-full bg-khaki" style={{ width: `${(ok / total) * 100}%` }} />
+            <div className="h-full bg-gradient-to-r from-khaki to-orange-400 transition-[width] duration-1000 ease-out" style={{ width: grown ? `${(ok / total) * 100}%` : 0 }} />
           </div>
           <span className="w-12 text-right font-mono text-xs text-stone-300">
             {ok}/{total}
@@ -167,7 +191,11 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
           <p className="text-2xl font-black uppercase tracking-wider text-khaki sm:text-3xl">
             {winner ? `🏆 Gana ${winner.team ? `el ${teamName(winner.team)} (${winner.name})` : winner.name}` : 'Fin de la partida'}
           </p>
-          {me && <p className="rounded bg-white/10 px-3 py-1 font-mono">Tu puesto: {me.place}° · {me.score} pts</p>}
+          {me && (
+            <p className="rounded bg-white/10 px-3 py-1 font-mono">
+              Tu puesto: {me.place}° · <CountUp value={me.score} /> pts
+            </p>
+          )}
           {results.easy && <p className="rounded bg-amber-800/70 px-2 py-1 text-xs text-amber-100">Modo fácil · no cuenta para logros</p>}
           <div className="ml-auto flex items-center gap-2">
             {csv && (spectator || isHost) && (
@@ -190,7 +218,8 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
           </div>
         </div>
 
-        {won && <p className="text-center text-3xl font-black uppercase tracking-wider text-yellow-300 drop-shadow sm:text-5xl">¡Victoria! Una integral para cenar</p>}
+        {winner && <Podium ranking={results.ranking} winnerId={results.winnerId} />}
+        {won && <p className="text-center text-sm font-bold uppercase tracking-[0.3em] text-yellow-300">¡Ganaste!</p>}
         {me && <PlayerCard me={me} mine={mine} medals={results.medals} />}
 
         <Medals medals={results.medals} myId={myId} />
@@ -211,9 +240,10 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
               </thead>
               <tbody>
                 {results.ranking.map((r, i) => (
-                  <tr key={r.id} className={r.id === myId ? 'font-bold text-khaki-light' : ''}>
-                    <td className="py-0.5">{i + 1}</td>
-                    <td className="py-0.5" style={{ color: r.id === myId ? undefined : r.color }}>
+                  <tr key={r.id} className={`animate-[popin_0.4s_ease-out_both] ${r.id === myId ? 'font-bold text-khaki-light' : ''}`} style={{ animationDelay: `${Math.min(i, 12) * 0.06}s`, boxShadow: r.team ? `inset 3px 0 0 ${teamColor(r.team)}` : undefined }}>
+                    <td className="py-0.5 pl-1.5">{i + 1}</td>
+                    <td className="flex items-center gap-1.5 py-0.5" style={{ color: r.id === myId ? undefined : r.color }}>
+                      {r.skin && <SkinPortrait skin={getSkinEntry(r.skin)} className="h-7 w-6 shrink-0 rounded-sm" />}
                       {r.name}
                       {r.team && <span className="ml-1 text-[10px]" style={{ color: teamColor(r.team) }}>{teamName(r.team)}</span>}
                       {r.bot && <span className="ml-1 text-[10px] text-stone-500">bot</span>}
@@ -223,7 +253,11 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                     <td className="py-0.5 text-right">
                       {r.correct}/{r.answered}
                     </td>
-                    {r.score !== undefined && <td className="py-0.5 text-right">{r.score}</td>}
+                    {r.score !== undefined && (
+                      <td className="py-0.5 text-right">
+                        <CountUp value={r.score} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -237,7 +271,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
           </div>
         </div>
         <p className="text-xs text-stone-400">
-          Puntos: 10 por cada puesto superado, 15 por baja y 5 por acierto (cajas, Obtener balas, Gulag, reanimar, código del motor y práctica de espectador).
+          Puntos: 10 por cada puesto superado, 15 por baja, 5 por acierto (cajas, Obtener balas, Gulag, reanimar, código del motor y práctica de espectador) y 5 por hormiga culona.
         </p>
 
         {!spectator && mine?.history ? (

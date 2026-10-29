@@ -105,6 +105,7 @@ export default function Options({ onClose }) {
         <Volume label="Volumen general" setting="volume" values={audio} onChange={changeAudio} disabled={audio.muted} />
         <Volume label="Música" setting="musicVolume" values={audio} onChange={changeAudio} disabled={audio.muted} />
         <Volume label="Efectos" setting="sfxVolume" values={audio} onChange={changeAudio} disabled={audio.muted} />
+        <Volume label="Voz del Mando (grabada)" setting="voiceVolume" values={audio} onChange={changeAudio} disabled={audio.muted} />
         <Choice label="Calidad" options={QUALITY_OPTIONS} value={quality} onChange={changeQuality} />
         <p className="mt-1 text-[0.7rem] text-stone-400">
           {quality === 'auto' ? 'Auto baja la resolución, las sombras y los detalles solo si el juego va lento.' : 'Fija: no cambia aunque el juego vaya lento.'}

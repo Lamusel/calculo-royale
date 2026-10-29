@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TEAM_MODES, TOPICS, WEATHERS, teamName } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TEAM_MODES, TOPICS, WEATHERS, teamColor, teamName } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
-import SkinPicker from '../ui/SkinPicker.jsx';
+import SkinPicker, { SkinPortrait } from '../ui/SkinPicker.jsx';
+import { getSkinEntry } from '../game/character/skins/index.js';
 
 const isLocalhost = () => ['localhost', '127.0.0.1'].includes(location.hostname);
 
@@ -327,6 +328,41 @@ function Tutorial({ isTouch }) {
   );
 }
 
+// Tarjetas de los jugadores (7A): retrato de su skin y el color de su equipo; se pliega
+function PlayerCards({ room, myId }) {
+  const [open, setOpen] = useState(() => typeof innerWidth === 'number' && innerWidth >= 900);
+  return (
+    <div className="absolute right-3 top-[calc(max(0.5rem,env(safe-area-inset-top))+5.5rem)] z-20 flex w-52 flex-col items-end gap-1">
+      <button onClick={() => setOpen((o) => !o)} className="rounded bg-black/60 px-2 py-1 text-xs text-stone-200 backdrop-blur">
+        👥 {room.players.length} {open ? '▴' : '▾'}
+      </button>
+      {open && (
+        <div className="flex max-h-[55vh] w-full flex-col gap-1 overflow-y-auto rounded-lg bg-black/55 p-1.5 backdrop-blur">
+          {room.players.map((p) => {
+            const team = p.teamChoice ?? p.team;
+            return (
+              <div key={p.id} className={`flex animate-[popin_0.35s_ease-out] items-center gap-2 rounded border-l-4 bg-olive-950/80 px-1.5 py-1 ${p.id === myId ? 'ring-1 ring-khaki' : ''}`} style={{ borderColor: team ? teamColor(team) : p.color }}>
+                <SkinPortrait skin={getSkinEntry(p.skin)} className="h-9 w-7 shrink-0 rounded-sm" />
+                <div className="min-w-0 text-[11px] leading-tight">
+                  <p className="truncate font-bold text-stone-100">
+                    {p.id === room.hostId && '👑 '}
+                    {p.name}
+                    {!p.connected && ' 💤'}
+                  </p>
+                  <p className="truncate text-stone-400">
+                    {p.bot ? 'bot' : getSkinEntry(p.skin).name}
+                    {team ? <span style={{ color: teamColor(team) }}> · {teamName(team)}</span> : null}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
@@ -353,8 +389,10 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
       <div className="absolute left-1/2 top-[calc(max(0.5rem,env(safe-area-inset-top))+2.6rem)] z-20 flex w-max max-w-[62vw] -translate-x-1/2 flex-col items-center gap-1.5 [@media(min-height:600px)]:top-3">
         <div className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-lg bg-black/60 px-3 py-2 text-stone-100 backdrop-blur">
           <button onClick={() => setShowInvite(true)} className="flex items-center gap-3" title="Mostrar código y QR">
-            <span className="font-mono text-[clamp(1.1rem,3.2vw,1.5rem)] font-black tracking-[0.2em] text-khaki">{room.code}</span>
-            <span className="rounded-lg bg-white/10 px-2 py-1 text-xs">QR</span>
+            <span className="rounded-md border border-orange-400/70 bg-black/50 px-2 font-mono text-[clamp(1.3rem,3.6vw,1.8rem)] font-black tracking-[0.25em] text-khaki shadow-[0_0_14px_rgba(251,146,60,0.35)]">{room.code}</span>
+            <span className="rounded bg-white p-0.5">
+              <QRCodeSVG value={url} size={34} />
+            </span>
           </button>
           <span className="text-sm text-stone-300">
             {room.players.length}/{MAX_PLAYERS}
@@ -391,6 +429,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
 
       <ControlsHelp isTouch={isTouch} />
       <Tutorial isTouch={isTouch} />
+      <PlayerCards room={room} myId={myId} />
 
       {showInvite && <BigInvite room={room} url={url} onClose={() => setShowInvite(false)} />}
       {showTopics && <TopicPicker room={room} isHost={isHost} onClose={() => setShowTopics(false)} />}

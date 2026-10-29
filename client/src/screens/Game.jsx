@@ -120,7 +120,7 @@ function SkinDebugOverlay({ roster }) {
   );
 }
 
-// Aviso para quien está dentro del sector que van a bombardear
+// Interfaz de la partida sobre la escena (HUD, avisos, paneles y resultados)
 function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying }) {
   const view = useClientView(client, frameRef, room.phase);
   const isHost = room.hostId === myId;
@@ -383,7 +383,7 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
           stats={stats}
           weather={room.weather}
           windAngle={room.windAngle}
-          paused={Boolean(killCam && room.phase === 'playing')}
+          paused={Boolean(killCam && room.phase === 'playing') || room.phase === 'results'}
         />
       )}
       {stats && <DebugOverlay stats={stats} quality={profile} />}

@@ -196,7 +196,7 @@ calculo-royale/
 | S → C | `state` | `[tick, jugadores, granadas, blancos, disparos, explosiones]` (ver `shared/src/codec.js`); luego cajas y zona |
 | S → C | `crate:question` | enunciado, opciones, tiempo límite |
 | S → C | `crate:result` | correcto o no, botín, explicación |
-| S → C | `radio:message` | transmisión del mando (zona, lanzamiento aéreo, bombardeo) |
+| S → C | `radio:message` | aviso del Mando (zona, lanzamiento aéreo, líder, Gulag, duelo), con su archivo de voz |
 | S → C | `game:over` | ranking y estadísticas por tema |
 
 ---
@@ -794,7 +794,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - [ ] `git pull` y `npm test` en verde; el último despliegue de Vercel y Render dice *Ready* / *Live*.
 - [ ] Abrir la URL de Vercel en un celular **antiguo** de la clase: probar Auto, y si va lento, Opciones → Calidad **Baja** y Escala **Pequeña**.
 - [ ] Completar `client/src/credits.js` (nombres reales) y hacer push.
-- [ ] Revisar que la voz del Mando suene en el PC del proyector (Opciones → Voz del Mando). Si no hay voz en español instalada, el texto igual sale en pantalla.
+- [ ] Si ya están los archivos de voz (`voz/`), revisar que suene en el PC del proyector (Opciones → Voz del Mando). Sin archivos, el Mando sale solo en texto.
 - [ ] Jugar una partida de prueba con **Modo fácil** y **bots** para practicar el flujo (no cuenta para logros).
 
 **El día (30 min antes)**
@@ -1090,3 +1090,4 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - 2026-10-29: **7A · "Entrando a…" y efectos de vehículos.** Letrero corto y elegante arriba al centro (2 s) al entrar a una zona con nombre, con `voz/entrando-<id>` si existe y sin repetirse antes de 60 s. Polvo detrás de las ruedas fuera del asfalto, salpicaduras y estela de la lancha, humo negro con el vehículo muy dañado y chispas al raspar (frenazo brusco contra algo); todo con las partículas instanciadas y según la calidad.
 - 2026-10-29: **7A · hormigas culonas.** 20 por partida sorteadas entre 63 escondites del plano (techos, bajo los puentes y rincones de todas las zonas: bosque, represa, cementerio, estadio, granja…). Modelo procedural instanciado con brillo y sonido `hormiga` al acercarse; se toman al pasar (solo personas), 5 puntos cada una, caja dorada al lado con 3 y otra con 6, contador en el HUD con al menos una, medalla "Comehormigas" y su línea en la tarjeta. También en el CSV/JSON.
 - 2026-10-29: **7A · Halloween y Navidad en todas las partidas.** Zona Halloween (cementerio, campamento del bosque, granja, aserradero y 40 m alrededor): calabazas talladas con luz, los barriles rojos de la zona son calabazas que explotan, lápidas extra, telarañas en las casas, velas, murciélagos y cuervos volando, niebla anaranjada suave y cajas en forma de calabaza. Zona Navidad (ciudad, plaza de mercado, barrio residencial, universidad y terminal): luces de colores que parpadean en casas y calles, árboles navideños, nieve solo sobre esas zonas, escarcha en los techos y cajas como regalos con moño del color de su rareza. El bus lleva luces y una calabaza. Accesorios para las skins del juego en el selector (gorro de bruja, máscara de calabaza, gorro navideño), que ven todos. Todo instanciado; en calidad baja, la mitad de la decoración.
+- 2026-10-29: **7A · pantallas.** Portada con el fondo animado de la pantalla de carga, el soldado del jugador grande en primer plano, logo con presencia y botones grandes con iconos; lobby con tarjetas de jugadores (retrato, color de equipo, anfitrión, bots) plegables y el código con su QR destacado; podio 3D con los 3 primeros y sus skins, confeti y "¡Victoria! Una integral para cenar" con la tarjeta del ganador; resultados con puntos que cuentan hacia arriba, medallas una por una, ranking con retratos y franja de equipo, barras por tema animadas y el repaso. La escena del mapa descansa mientras se ven los resultados. Opciones: volumen de la voz grabada. Fuera textos viejos (intercepciones, voz sintetizada).

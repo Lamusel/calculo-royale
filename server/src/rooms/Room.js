@@ -193,6 +193,8 @@ export class Room {
           answered: p.stats.answered,
           score: score(place, players.length, p.kills, p.stats.correct, p.ants ?? 0),
           ants: p.ants || undefined,
+          skin: p.skin,
+          hat: p.hat ?? undefined,
           bot: p.bot || undefined,
           team: p.team ?? undefined,
         };

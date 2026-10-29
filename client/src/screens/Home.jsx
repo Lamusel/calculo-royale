@@ -4,6 +4,7 @@ import { createRoom, joinRoom, loadName, saveName } from '../net/session.js';
 import Intro, { Credits, shouldShowIntro } from '../ui/Intro.jsx';
 import Logo from '../ui/Logo.jsx';
 import Options from '../ui/Options.jsx';
+import { MenuBackdrop } from '../ui/LoadingScreen.jsx';
 import SkinPicker, { SkinPortrait } from '../ui/SkinPicker.jsx';
 import { loadSkin } from '../achievements.js';
 import { getSkinEntry } from '../game/character/skins/index.js';
@@ -73,31 +74,35 @@ export default function Home({ connected, notice, onEnter }) {
 
   return (
     <main
-      className="flex min-h-full items-center justify-center overflow-y-auto bg-olive-950 p-4 text-stone-100"
-      style={{ background: 'radial-gradient(ellipse at 70% 40%, #4b5a2a 0%, #1f2614 55%, #0c0f08 100%)' }}
+      className="relative flex min-h-full items-center justify-center overflow-y-auto overflow-x-hidden bg-olive-950 p-4 text-stone-100"
     >
-      <div className="flex w-full max-w-3xl flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-10">
+      <MenuBackdrop />
+      <div className="relative flex w-full max-w-4xl flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-10">
         <div className="flex w-full max-w-sm flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-          <Logo className="h-[clamp(4rem,14vmin,6rem)] w-[clamp(4rem,14vmin,6rem)]" />
-          <h1 className="text-4xl font-black uppercase tracking-tight sm:text-5xl">
+          <Logo className="h-[clamp(5rem,18vmin,8rem)] w-[clamp(5rem,18vmin,8rem)] drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]" />
+          <h1 className="text-5xl font-black uppercase tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] sm:text-6xl">
             Cálculo <span className="text-khaki">Royale</span>
           </h1>
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-stone-400">Battle royale militar · Cálculo Multivariable</p>
           <WakeUp connected={connected} />
           {view === 'menu' ? (
             <div className="mt-2 flex w-full flex-col gap-2">
-              <button type="button" onClick={() => setView('play')} className="w-full rounded-xl py-3 text-lg font-black uppercase tracking-wider transition bg-khaki text-olive-950 hover:brightness-110">
-                Jugar
-              </button>
-              <button type="button" onClick={() => setView('skins')} className="w-full rounded-xl py-3 text-lg font-black uppercase tracking-wider transition bg-stone-800/80 text-stone-100 hover:bg-stone-700">
-                Skins
-              </button>
-              <button type="button" onClick={() => setView('options')} className="w-full rounded-xl py-3 text-lg font-black uppercase tracking-wider transition bg-stone-800/80 text-stone-100 hover:bg-stone-700">
-                Opciones
-              </button>
-              <button type="button" onClick={() => setCredits(true)} className="w-full rounded-xl py-3 text-lg font-black uppercase tracking-wider transition bg-stone-800/80 text-stone-100 hover:bg-stone-700">
-                Créditos
-              </button>
+              {[
+                ['play', '▶', 'Jugar', 'bg-gradient-to-r from-orange-500 to-khaki text-olive-950 shadow-[0_6px_20px_rgba(234,88,12,0.35)]'],
+                ['skins', '🎭', 'Skins', 'border border-khaki-dark/60 bg-olive-900/80 text-stone-100 hover:bg-olive-800'],
+                ['options', '⚙', 'Opciones', 'border border-khaki-dark/60 bg-olive-900/80 text-stone-100 hover:bg-olive-800'],
+                ['credits', '★', 'Créditos', 'border border-khaki-dark/60 bg-olive-900/80 text-stone-100 hover:bg-olive-800'],
+              ].map(([id, icon, label, look]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => (id === 'credits' ? setCredits(true) : setView(id))}
+                  className={`flex w-full items-center gap-3 rounded-xl px-5 py-3 text-lg font-black uppercase tracking-wider backdrop-blur transition hover:-translate-y-0.5 ${look}`}
+                >
+                  <span className="w-6 text-center text-xl">{icon}</span>
+                  {label}
+                </button>
+              ))}
             </div>
           ) : (
             view === 'play' && (
@@ -152,7 +157,11 @@ export default function Home({ connected, notice, onEnter }) {
             {(error || notice) && <p className="text-center text-sm text-red-400">{error || notice}</p>}
           </form>
         ) : (
-          <SkinPortrait skin={getSkinEntry(skin)} className="hidden aspect-[3/4] w-56 rounded-2xl drop-shadow-2xl sm:block" />
+          <div className="relative hidden sm:block">
+            <div className="absolute -inset-6 rounded-full bg-orange-500/20 blur-3xl" />
+            <SkinPortrait skin={getSkinEntry(skin)} className="relative aspect-[3/4] w-[min(34vw,24rem)] animate-[popin_0.8s_ease-out] rounded-2xl border border-khaki-dark/60 drop-shadow-[0_18px_30px_rgba(0,0,0,0.7)]" />
+            <p className="relative mt-2 text-center font-mono text-xs uppercase tracking-[0.3em] text-khaki-light">{getSkinEntry(skin).name}</p>
+          </div>
         )}
       </div>
       {view === 'skins' && (
