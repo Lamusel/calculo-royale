@@ -112,13 +112,14 @@ export const isSniper = (id) => WEAPONS[id]?.category === 'sniper';
 export const START_WEAPON = 'm1911';
 export const START_BULLETS = 3; // fase 29: se arranca con la pistola y solo 3 balas en total
 
-// Tipos de munición: nombre y cuánto trae una caja del suelo
+// Tipos de munición: nombre y cuánto trae un paquete del suelo (correcciones 6.3: pocas balas; la forma
+// normal de llenar la reserva es "Obtener balas")
 export const AMMO_TYPES = {
-  '9mm': { name: '9 mm', pack: 24 },
-  556: { name: '5,56', pack: 30 },
-  762: { name: '7,62', pack: 20 },
-  '12g': { name: 'Calibre 12', pack: 8 },
-  300: { name: '.300', pack: 5 },
+  '9mm': { name: '9 mm', pack: 6 },
+  556: { name: '5,56', pack: 8 },
+  762: { name: '7,62', pack: 5 },
+  '12g': { name: 'Calibre 12', pack: 2 },
+  300: { name: '.300', pack: 2 },
   rocket: { name: 'Cohetes', pack: 1 },
   bolt: { name: 'Flechas', pack: 3 },
 };
@@ -160,6 +161,7 @@ export const GRENADE = {
 export const ITEM_NAMES = {
   ...Object.fromEntries(Object.entries(WEAPONS).map(([id, w]) => [id, w.name])),
   grenade: 'Granadas',
+  frag: 'Granadas de fragmentación',
   armor: 'Chaleco',
 };
 
@@ -383,13 +385,15 @@ export const LOOT_GROUND = ['ammo_9mm', 'ammo_556', 'ammo_762', 'ammo_12g', 'amm
 export const LOOT = {
   perHouseRoom: 2, // objetos por cuarto de casa
   perArea: { big: 24, mid: 14, small: 6 }, // objetos sueltos por zona con nombre, según su tamaño
-  scattered: 320, // objetos sueltos por el campo abierto
+  scattered: 220, // objetos sueltos por el campo abierto
   pickupRadius: 2.2,
   dropSpread: 1.2, // al soltar algo queda a esta distancia, alrededor del jugador
   deathBox: true,
   privateMs: 10_000, // lo que no elegiste de una caja es solo tuyo este tiempo
-  // Peso de cada objeto al sortear (los que no figuran pesan 1): el arranque con 3 balas pide munición
-  weights: { ammo_9mm: 6, ammo_556: 3, ammo_762: 2, ammo_12g: 2, ammo_300: 1, bandage: 3, helmet1: 1 },
+  // Armas de cajas o del botín: salen con esta fracción del cargador
+  weaponMagFraction: 1 / 3,
+  // Peso de cada objeto al sortear (los que no figuran pesan 1): la munición es escasa
+  weights: { ammo_9mm: 1.5, ammo_556: 1, ammo_762: 0.7, ammo_12g: 0.7, ammo_300: 0.4, bandage: 4, helmet1: 1.5 },
 };
 
 // Curación con tiempo. Mientras cura se camina más lento; disparar o cambiar de arma la cancela.

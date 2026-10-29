@@ -1,3 +1,4 @@
+import { MAP_HALF } from '@calculo-royale/shared/constants';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WEATHERS } from '@calculo-royale/shared/constants';
 import { sectorOf } from '@calculo-royale/shared/zone';
@@ -62,10 +63,24 @@ function DebugOverlay({ stats, quality }) {
 }
 
 // Clima de la partida (y hacia dónde sopla el viento en la tormenta de arena)
+// Contadores siempre visibles (vivos, mis bajas y, al caer o ganar, mi puesto)
+function Counters({ frameRef, self }) {
+  let alive = self?.alive && frameRef.current.me && Math.abs(frameRef.current.me.x) <= MAP_HALF ? 1 : 0;
+  for (const p of frameRef.current.others?.values() ?? []) if (!(p.flags & PLAYER_FLAGS.DEAD) && Math.abs(p.x) <= MAP_HALF) alive++;
+  const chip = 'rounded bg-black/65 px-2 py-0.5 font-mono text-[11px] font-bold';
+  return (
+    <div className="flex gap-1">
+      <span className={`${chip} text-stone-100`} title="Vivos">👤 {alive}</span>
+      <span className={`${chip} text-red-300`} title="Mis bajas">✕ {self?.kills ?? 0}</span>
+      {self?.place && <span className={`${chip} text-khaki-light`} title="Mi puesto">#{self.place}</span>}
+    </div>
+  );
+}
+
 function WeatherChip({ weather, windAngle }) {
   if (!weather || weather === 'despejado') return null;
   return (
-    <div className="pointer-events-none absolute right-3 top-12 z-20 flex items-center gap-1.5 rounded bg-black/55 px-2 py-0.5 text-[11px] text-stone-200">
+    <div className="pointer-events-none flex items-center gap-1.5 rounded bg-black/55 px-2 py-0.5 text-[11px] text-stone-200">
       {WEATHERS[weather]}
       {weather === 'arena' && (
         <span className="inline-block text-orange-300" style={{ transform: `rotate(${-windAngle}rad)` }} title="Viento: desvía las granadas">
@@ -131,7 +146,15 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         lastShot={client.heardShot}
         deployRoute={client.deploying === 'bus' && client.deployInfo?.route ? client.deployInfo.route : null}
       />
-      {room.phase === 'playing' && <WeatherChip weather={room.weather} windAngle={room.windAngle} />}
+      {room.phase === 'playing' && (
+        <div className={`pointer-events-none absolute top-12 z-20 flex flex-col items-end gap-1 ${isTouch ? 'right-16' : 'right-3'}`}>
+          <Counters frameRef={frameRef} self={view.self} />
+          <WeatherChip weather={room.weather} windAngle={room.windAngle} />
+          {view.self?.alive && view.self.streak > 0 && (
+            <span className="rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-sky-200">Racha {view.self.streak % 3 === 0 ? 3 : view.self.streak % 3}/3</span>
+          )}
+        </div>
+      )}
       <ZoneStatus zone={frameRef.current.zone} me={view.me} alive={view.self?.alive} mapSize={minimapSize(isTouch)} />
       <RadioFeed radio={client.radio} />
       {room.phase === 'playing' && <GulagPanel client={client} self={view.self} roster={room.players} frameRef={frameRef} />}

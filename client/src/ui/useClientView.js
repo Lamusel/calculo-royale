@@ -27,7 +27,7 @@ function jeepAction(v) {
 // Todo lo que está al alcance, de más cercano a más lejano (una acción por tipo, como en el servidor):
 // armero (lobby), caja visible, jeep o botín del suelo (el botín con la misma ventaja de 0,3 m).
 // La zona de acción muestra la primera y una flechita para cambiar entre ellas.
-function interactables(me, phase, crateStates, airdrop, vehicles, inVehicle, loot, myId, now) {
+export function interactables(me, phase, crateStates, airdrop, vehicles, inVehicle, loot, myId, now) {
   if (inVehicle) return [{ kind: 'vehicle', icon: 'exit', label: 'Bajar', enabled: true, color: '#fb923c', dist: 0 }];
   const out = [];
   const rack = phase === 'lobby' ? nearestRack(me.x, me.y, INTERACT_RADIUS) : null;
@@ -39,10 +39,10 @@ function interactables(me, phase, crateStates, airdrop, vehicles, inVehicle, loo
     if (state === undefined || state === CRATE_STATE.HIDDEN || !c) return;
     const d = Math.hypot(c.x - me.x, c.y - me.y);
     if (d > INTERACT_RADIUS || (crate && d > crate.dist)) return;
-    const rarity = RARITIES[c0.rarity];
+    const rarity = RARITIES[c0.rarity] ?? RARITIES[1];
     crate = {
       kind: 'crate', icon: 'open', dist: d, color: rarity.color, enabled: state === CRATE_STATE.CLOSED,
-      label: state === CRATE_STATE.CLOSED ? `Abrir caja ${rarity.name.toLowerCase()}` : `Caja ${CRATE_STATUS[state]}`,
+      label: state === CRATE_STATE.CLOSED ? `Abrir caja ${rarity.name.toLowerCase()}` : `Caja ${CRATE_STATUS[state] ?? 'cerrada'}`,
     };
   });
   if (crate) out.push(crate);
@@ -106,7 +106,7 @@ export function useClientView(client, frameRef, phase) {
             ? { item: self.healing.item, progress: 1 - (client.healingEndsAt - now) / HEALING[self.healing.item].useMs }
             : null,
         drinkLeft: Math.max(0, Math.ceil(((client.drinkEndsAt ?? 0) - now) / 1000)),
-        lootToast: client.lootToast && now - client.lootToast.at < LOOT_TOAST_MS ? client.lootToast : null,
+        toasts: (client.toasts ?? []).filter((t) => now - t.at < 3000),
         gearCard: client.gearCard && now - client.gearCard.at < 4000 ? client.gearCard : null,
       });
     };

@@ -82,7 +82,7 @@ function RoundButton({ icon, label, onPress, active = false, alert = false, badg
     <TouchButton
       onPress={() => !disabled && onPress()}
       title={label}
-      className={`relative flex h-12 w-12 flex-col items-center justify-center rounded-full border text-[8px] font-bold uppercase leading-none ${
+      className={`relative flex h-11 w-11 flex-col items-center justify-center rounded-full border text-[8px] font-bold uppercase leading-none ${
         alert ? 'animate-pulse border-red-300 bg-red-700/85 text-white' : active ? 'border-khaki bg-khaki/30 text-khaki-light' : disabled ? 'border-white/5 bg-black/35 text-stone-500' : 'border-white/15 bg-black/55 text-stone-100'
       }`}
     >
@@ -146,7 +146,7 @@ function Fan({ items, onPick, onClose, selected = null }) {
           key={id}
           onPress={() => onPick(id)}
           title={label}
-          className={`relative flex h-12 w-12 flex-col items-center justify-center rounded-full border text-[8px] font-bold uppercase ${selected === id ? 'border-khaki bg-khaki/30 text-khaki-light' : 'border-white/15 bg-stone-900/90 text-stone-100'}`}
+          className={`relative flex h-11 w-11 flex-col items-center justify-center rounded-full border text-[8px] font-bold uppercase ${selected === id ? 'border-khaki bg-khaki/30 text-khaki-light' : 'border-white/15 bg-stone-900/90 text-stone-100'}`}
         >
           <Icon name={icon} className="h-5 w-5" />
           <span className="max-w-[3rem] truncate">{label}</span>
@@ -325,7 +325,7 @@ function DeathScreen({ self, phase, deathAt, roster, myId }) {
 
 // Interfaz de combate: vida, armas, botones, zona de acción, inventario y pantalla de muerte
 export default function CombatHUD({ view, phase, roster, myId, isTouch, client }) {
-  const { self, me, reloadProgress, actions: nearby = [], damageFlashAt, deathAt, vehicle, healing, drinkLeft, lootToast, gearCard } = view;
+  const { self, me, reloadProgress, actions: nearby = [], damageFlashAt, deathAt, vehicle, healing, drinkLeft, toasts = [], gearCard } = view;
   const [fan, setFan] = useState(null); // 'throw' | 'heal' | null
   const [inventory, setInventory] = useState(false);
   // Tab o I abren el inventario; F cambia de acción (KeyboardMouse llama a estas)
@@ -389,10 +389,15 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
         </div>
       )}
 
-      {lootToast && (
-        <p className="pointer-events-none absolute bottom-[9.5rem] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-xs text-stone-100">
-          {lootToast.full ? `No te sirve o no te cabe: ${lootToast.name}` : `+ ${(lootToast.names ?? []).join(', ')}`}
-        </p>
+      {/* Avisos de botín: cola en la esquina inferior izquierda, uno debajo del otro, máximo 3 */}
+      {toasts.length > 0 && (
+        <div className="pointer-events-none absolute bottom-[4.5rem] left-3 z-20 flex flex-col items-start gap-1">
+          {toasts.map((t) => (
+            <p key={t.at} className="max-w-[14rem] truncate rounded bg-black/70 px-2 py-0.5 text-[11px] text-stone-100">
+              {t.text}
+            </p>
+          ))}
+        </div>
       )}
 
       {/* Zona de acción: una sola, sobre la barra de armas (no tapa los joysticks) */}
@@ -402,11 +407,6 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
         </div>
       )}
 
-      {self.alive && self.streak > 0 && mode === 'foot' && (
-        <p className="pointer-events-none absolute right-3 top-14 z-20 rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-sky-200">
-          Racha {self.streak % 3 === 0 ? 3 : self.streak % 3}/3
-        </p>
-      )}
 
       {!isTouch && self.alive && client && mode !== 'none' && (
         <div className="absolute bottom-3 right-3 z-20">
@@ -416,7 +416,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
 
       {/* Celular: botones fijos en una columna al borde derecho; en vehículo solo lo que sirve */}
       {isTouch && client && (mode === 'foot' || mode === 'passenger') && (
-        <div className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-2">
+        <div className="absolute bottom-[4.5rem] right-2 z-20 flex flex-col items-center gap-1.5">
           <RoundButton icon="reload" label="Recargar" onPress={() => press(BUTTONS.RELOAD)} />
           <AmmoButton self={self} client={client} isTouch />
           {mode === 'foot' && (

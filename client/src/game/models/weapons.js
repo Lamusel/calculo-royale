@@ -19,7 +19,7 @@ const GREEN = '#4f6b3a';
 const SPECS = {
   m1911: { L: 0.3, h: 0.08, b: 0.04, r: 0.016, body: STEEL, grip: WOOD, mag: 'grip', stock: 0 },
   glock17: { L: 0.28, h: 0.09, b: 0.03, r: 0.016, body: DARK, grip: DARK, mag: 'grip', stock: 0, extra: 'square' },
-  deagle: { L: 0.36, h: 0.1, b: 0.06, r: 0.022, body: GOLD, grip: DARK, mag: 'grip', stock: 0, extra: 'square' },
+  deagle: { L: 0.38, h: 0.11, b: 0.06, r: 0.024, body: GOLD, grip: DARK, mag: 'grip', stock: 0, extra: 'square', gold: true },
   mp5: { L: 0.4, h: 0.1, b: 0.12, r: 0.02, body: DARK, mag: 'curved', stock: 0.22, stockKind: 'skeleton', hand: DARK },
   ump45: { L: 0.42, h: 0.12, b: 0.1, r: 0.022, body: POLYMER, mag: 'box', stock: 0.24, stockKind: 'folded', hand: POLYMER },
   uzi: { L: 0.3, h: 0.12, b: 0.08, r: 0.018, body: STEEL, mag: 'grip', stock: 0.16, stockKind: 'skeleton' },
@@ -30,15 +30,15 @@ const SPECS = {
   spas12: { L: 0.36, h: 0.11, b: 0.62, r: 0.033, body: DARK, mag: 'tube', stock: 0.32, stockKind: 'skeleton', hand: DARK, extra: 'pump' },
   m870: { L: 0.32, h: 0.1, b: 0.62, r: 0.032, body: STEEL, mag: 'tube', stock: 0.36, stockKind: 'wood', hand: WOOD, extra: 'pump' },
   dbarrel: { L: 0.26, h: 0.1, b: 0.6, r: 0.03, body: STEEL, mag: 'none', stock: 0.38, stockKind: 'wood', hand: WOOD, extra: 'double' },
-  sks: { L: 0.62, h: 0.1, b: 0.4, r: 0.022, body: WOOD, mag: 'fixed', stock: 0.4, stockKind: 'wood', hand: WOOD },
-  mini14: { L: 0.58, h: 0.1, b: 0.36, r: 0.022, body: STEEL, mag: 'box', stock: 0.38, stockKind: 'wood', hand: WOOD },
-  kar98k: { L: 0.6, h: 0.1, b: 0.6, r: 0.02, body: WOOD, mag: 'fixed', stock: 0.42, stockKind: 'wood', hand: WOOD, extra: 'bolt' },
-  m24: { L: 0.58, h: 0.11, b: 0.62, r: 0.022, body: OLIVE, mag: 'fixed', stock: 0.42, stockKind: 'solid', hand: OLIVE, extra: 'bolt' },
-  awm: { L: 0.62, h: 0.13, b: 0.66, r: 0.026, body: GREEN, mag: 'box', stock: 0.44, stockKind: 'thumb', hand: GREEN, extra: 'bolt' },
-  m249: { L: 0.64, h: 0.14, b: 0.42, r: 0.028, body: DARK, mag: 'drum', stock: 0.34, stockKind: 'solid', hand: DARK, extra: 'bipod' },
-  rpg: { L: 0.2, h: 0.1, b: 0, r: 0, body: OLIVE, mag: 'none', stock: 0, extra: 'rocket' },
-  crossbow: { L: 0.5, h: 0.08, b: 0, r: 0, body: WOOD, mag: 'none', stock: 0.3, stockKind: 'wood', extra: 'bow' },
-  gl: { L: 0.34, h: 0.12, b: 0.26, r: 0.05, body: DARK, mag: 'drumgl', stock: 0.26, stockKind: 'skeleton', extra: 'gl' },
+  sks: { L: 0.62, h: 0.1, b: 0.44, r: 0.022, body: WOOD, mag: 'fixed', stock: 0.4, stockKind: 'wood', hand: WOOD, scope: 1, extra: 'bayonet' },
+  mini14: { L: 0.56, h: 0.1, b: 0.38, r: 0.022, body: STEEL, mag: 'box', stock: 0.34, stockKind: 'skeleton', hand: STEEL, scope: 1 },
+  kar98k: { L: 0.66, h: 0.09, b: 0.62, r: 0.018, body: WOOD, mag: 'fixed', stock: 0.44, stockKind: 'wood', hand: WOOD, extra: 'bolt', scope: 2 },
+  m24: { L: 0.6, h: 0.12, b: 0.66, r: 0.024, body: OLIVE, mag: 'fixed', stock: 0.42, stockKind: 'thumb', hand: OLIVE, extra: 'bolt', scope: 2 },
+  awm: { L: 0.64, h: 0.15, b: 0.74, r: 0.03, body: GREEN, mag: 'box', stock: 0.46, stockKind: 'thumb', hand: GREEN, extra: 'brake', scope: 3, gold: true },
+  m249: { L: 0.66, h: 0.15, b: 0.44, r: 0.03, body: DARK, mag: 'drum', stock: 0.34, stockKind: 'solid', hand: OLIVE, extra: 'bipod', carry: true },
+  rpg: { L: 0.2, h: 0.1, b: 0, r: 0, body: OLIVE, mag: 'none', stock: 0, extra: 'rocket', gold: true },
+  crossbow: { L: 0.5, h: 0.08, b: 0, r: 0, body: WOOD, mag: 'none', stock: 0.3, stockKind: 'wood', extra: 'bow', gold: true },
+  gl: { L: 0.34, h: 0.12, b: 0.26, r: 0.05, body: DARK, mag: 'drumgl', stock: 0.26, stockKind: 'skeleton', extra: 'gl', gold: true },
 };
 
 const barrel = (length, radius, x, y, color = STEEL) =>
@@ -91,6 +91,19 @@ function gun(s) {
     parts.push(piece(box(0.4, 0.008, 0.008), '#ddd6c0', { position: [s.L / 2 - 0.08, 0.1, 0] }));
   }
   if (s.extra === 'gl') parts.push(piece(box(0.1, 0.04, 0.04), STEEL, { position: [0.1, top, 0] }));
+  if (s.extra === 'bayonet') parts.push(piece(box(0.18, 0.015, 0.02), '#c8c8c8', { position: [front + s.b + 0.06, 0.03, 0] }));
+  if (s.extra === 'brake') parts.push(piece(box(0.08, 0.06, 0.06), DARK, { position: [front + s.b + 0.02, 0.07, 0] }));
+  if (s.carry) parts.push(piece(box(0.2, 0.05, 0.03), DARK, { position: [0.2, top + 0.01, 0] }));
+  // Mira telescópica: más larga y gruesa cuanto más lejos tira (1 tirador, 2–3 francotirador)
+  if (s.scope) {
+    const len = 0.16 + s.scope * 0.06;
+    const rad = 0.03 + s.scope * 0.008;
+    parts.push(barrel(len, rad, s.L * 0.3, top + 0.04, DARK));
+    parts.push(piece(box(0.03, 0.04, 0.03), DARK, { position: [s.L * 0.3, top - 0.01, 0] }));
+    parts.push(barrel(0.012, rad * 0.8, s.L * 0.3 + len / 2, top + 0.04, '#7dd3fc'));
+  }
+  // Legendarias: franjas doradas
+  if (s.gold) parts.push(piece(box(0.05, s.h + 0.02, 0.075), GOLD, { position: [s.L * 0.6 - 0.08, 0.06, 0] }));
   return parts;
 }
 

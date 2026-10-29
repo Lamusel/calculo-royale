@@ -111,7 +111,7 @@ export class GameClient {
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
     this.heardShot = new Map(); // lo mismo, sin los disparos con silenciador (minimapa de noche)
     this.lootStore = new LootStore(); // botín en el suelo (ver lootStore.js)
-    this.lootToast = null; // { names } o { full, name } al tomar algo
+    this.toasts = []; // avisos cortos de botín (máximo 3, ver toast)
     this.phrases = []; // frases rápidas recientes: { id, index, at }
     this.csv = null; // CSV de la última partida (anfitrión y proyector)
     this.easy = false; // modo fácil de la sala: no cuenta para los logros
@@ -272,7 +272,7 @@ export class GameClient {
       [EVENTS.LOOT_REMOVE]: (ids) => this.lootStore.remove(ids),
       [EVENTS.CRATE_CHOSEN]: (result) => {
         this.offer = null;
-        this.lootToast = { names: result.loot, items: result.items, at: performance.now() };
+        this.toast((result.loot ?? []).map((n) => `+ ${n}`).join(' · '));
         this.showGear(result.items);
       },
       [EVENTS.LOOT_TAKEN]: (result) => {
@@ -287,7 +287,7 @@ export class GameClient {
           this.replacePrompt = { ...result, at: performance.now() };
           return;
         }
-        this.lootToast = { ...result, at: performance.now() };
+        this.toast(result.full ? `No cabe: ${result.name}` : `+ ${(result.names ?? []).join(', ')}`);
         this.showGear(result.items);
         if (!result.full) sound.pickup();
         vibrate(result.full ? 60 : 15);
@@ -625,6 +625,12 @@ export class GameClient {
   // Inventario (fase 29): todo lo pide al servidor, que lo valida
   inventory(op) {
     this.socket.emit(EVENTS.INVENTORY, op);
+  }
+
+  // Aviso corto en la cola de la esquina (máximo 3 visibles)
+  toast(text) {
+    if (!text) return;
+    this.toasts = [...(this.toasts ?? []), { text: text.length > 42 ? `${text.slice(0, 40)}…` : text, at: performance.now() }].slice(-3);
   }
 
   switchWeaponSlot(slot) {

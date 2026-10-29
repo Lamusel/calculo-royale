@@ -1,6 +1,6 @@
 import {
   AIRDROP, ALARM_MS, CRATE_LOCK_MS, CRATE_SPAWN, INTERACT_RADIUS, LOOT_ITEMS, PRACTICE_CRATE_RESET_MS, RADAR_MS, RARITIES,
-  STREAK_FOR_RADAR, TOPICS, WEAPONS,
+  LOOT, STREAK_FOR_RADAR, TOPICS, WEAPONS,
 } from '@calculo-royale/shared/constants';
 import { take } from '@calculo-royale/shared/inventory';
 import { dropAround } from './loot.js';
@@ -46,16 +46,25 @@ export const rollLoot = (rarity, rand = Math.random) => rollOffers(rarity, rand)
 
 // Aplica un objeto al jugador; devuelve su nombre. Lo que reemplaza o no le cabe queda en el suelo a su
 // alrededor si hay partida (game). Las armas nunca reemplazan sin preguntar: si no hay lugar, al suelo.
-export function applyLoot(player, item, game = null, owner = null) {
+export function applyLoot(player, item, game = null, owner = null, state = null) {
   const name = LOOT_ITEMS[item].name;
-  const res = take(player, item);
+  const res = take(player, item, state);
   if (res.need || !res.taken) {
-    if (game?.loot) dropAround(game, player.x, player.y, [{ item }], owner);
+    if (game?.loot) dropAround(game, player.x, player.y, [{ item, state }], owner);
     return `${name} (quedó en el suelo)`;
   }
   if (game?.loot && res.drops.length) dropAround(game, player.x, player.y, res.drops);
   if (res.left > 0 && game?.loot) dropAround(game, player.x, player.y, [{ item, state: { n: res.left } }], owner);
   return name;
+}
+
+// Estado de un objeto dentro de un paquete: el arma sale con un tercio del cargador y su munición es
+// UN cargador (correcciones 6.3: las cajas no dan reservas grandes)
+export function bundleState(bundle, item) {
+  const weapon = bundle.find((i) => WEAPONS[i]);
+  if (item === weapon) return { mag: Math.max(1, Math.ceil(WEAPONS[weapon].magazine * LOOT.weaponMagFraction)) };
+  if (weapon && item === `ammo_${WEAPONS[weapon].ammo}`) return { n: WEAPONS[weapon].magazine };
+  return null;
 }
 
 // El jugador eligió un premio (o se le acabó el tiempo: index null, todo queda en el suelo para él)
@@ -65,8 +74,8 @@ export function chooseOffer(game, player, index) {
   player.offer = null;
   const crate = game.crates[offer.crateId];
   const chosen = Number.isInteger(index) ? offer.options[index] : null;
-  const loot = chosen ? chosen.map((item) => applyLoot(player, item, game, player.id)) : [];
-  const rest = offer.options.filter((o) => o !== chosen).flat().map((item) => ({ item }));
+  const loot = chosen ? chosen.map((item) => applyLoot(player, item, game, player.id, bundleState(chosen, item))) : [];
+  const rest = offer.options.filter((o) => o !== chosen).flatMap((b) => b.map((item) => ({ item, state: bundleState(b, item) })));
   if (rest.length && game.loot) dropAround(game, crate?.x ?? player.x, crate?.y ?? player.y, rest, player.id);
   game.room.emitTo(player, EVENTS.CRATE_CHOSEN, { loot, items: chosen ?? [] });
 }

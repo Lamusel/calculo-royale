@@ -1,4 +1,4 @@
-import { ARMOR_ABSORB, AMMO_TYPES, MAX_HP, MAX_INPUT_BURST, THROWABLES, WEAPONS } from '@calculo-royale/shared/constants';
+import { ARMOR_ABSORB, MAX_HP, MAX_INPUT_BURST, THROWABLES, WEAPONS } from '@calculo-royale/shared/constants';
 import { applyInput } from '@calculo-royale/shared/movement';
 import { DEFAULT_SKIN } from '@calculo-royale/shared/skins';
 import { freeSlot, magazineOf, newWeapon, noAttachments, slotsFor, startingKit } from '@calculo-royale/shared/inventory';
@@ -145,7 +145,7 @@ export class Player {
       const slot = free >= 0 ? free : slotsFor(item)[0];
       this.weapons[slot] = newWeapon(item);
       const type = WEAPONS[item].ammo;
-      if (type) this.ammo[type] = Math.max(this.ammo[type] ?? 0, Math.min(AMMO_TYPES[type].pack * 2, 60));
+      if (type) this.ammo[type] = Math.max(this.ammo[type] ?? 0, WEAPONS[item].magazine * 2);
       this.active = slot;
       this.reloadUntil = 0;
     } else if (THROWABLES[item]) {
@@ -249,6 +249,8 @@ export class Player {
       spectating: Boolean(this.operator),
       gulag: this.gulag && { state: this.gulag.state, since: this.gulag.since, fightId: this.gulag.fightId ?? null, choose: Boolean(this.gulag.choose) },
       gulagUsed: this.gulagUsed,
+      kills: this.kills,
+      place: this.place,
       vehicle: this.vehicleId !== null ? { id: this.vehicleId, seat: this.seat } : null,
       killedBy: this.killedBy,
       killedWith: this.killedWith,

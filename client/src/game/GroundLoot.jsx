@@ -1,7 +1,9 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { LOOT_ITEMS, RARITIES } from '@calculo-royale/shared/constants';
+import { LOOT_ITEMS, TIER_COLORS, WEAPONS } from '@calculo-royale/shared/constants';
+import { modelMaterial } from './models/build.js';
+import { weaponGeometry } from './models/weapons.js';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 
 // Botín en el suelo (fase 18): una malla instanciada por forma, con el color de cada objeto, y un
@@ -19,7 +21,10 @@ const SHAPES = {
 };
 const ring = new THREE.RingGeometry(0.45, 0.62, 20).rotateX(-Math.PI / 2);
 
-const KIND_SHAPE = { weapon: 'long', ammo: 'box', heal: 'box', grenade: 'ball', armor: 'gear', helmet: 'gear', backpack: 'gear', attachment: 'box' };
+const KIND_SHAPE = { weapon: 'long', ammo: 'box', heal: 'box', grenade: 'ball', throwable: 'ball', armor: 'gear', helmet: 'gear', backpack: 'gear', attachment: 'box' };
+// Las armas se ven con su propio modelo (fase 6.4: que se distingan en el suelo)
+const GUN_IDS = Object.keys(WEAPONS).filter((id) => id !== 'fists');
+const MAX_GUN = 60;
 const COLORS = {
   weapon: '#2f342c',
   ammo: '#c9a33a',
@@ -34,13 +39,13 @@ const COLORS = {
   box: '#8a2f3f',
 };
 
-const shapeOf = (e) => (!e.item ? 'crate' : e.item === 'drink' ? 'can' : KIND_SHAPE[LOOT_ITEMS[e.item].kind]);
+const shapeOf = (e) => (!e.item ? 'crate' : WEAPONS[e.item] ? `gun:${e.item}` : e.item === 'drink' ? 'can' : KIND_SHAPE[LOOT_ITEMS[e.item]?.kind] ?? 'box');
 const colorOf = (e) => {
   if (!e.item) return COLORS.box;
   const def = LOOT_ITEMS[e.item];
-  return COLORS[e.item] ?? COLORS[def.kind];
+  return COLORS[e.item] ?? COLORS[def?.kind] ?? '#888888';
 };
-const ringColor = (e) => (e.item ? RARITIES[LOOT_ITEMS[e.item].tier].color : '#f43f5e');
+const ringColor = (e) => TIER_COLORS[e.item ? LOOT_ITEMS[e.item]?.tier ?? 0 : e.tier ?? 0];
 
 export default function GroundLoot({ client }) {
   const meshes = useRef({});
@@ -56,19 +61,23 @@ export default function GroundLoot({ client }) {
     const loot = client.loot;
     const o3 = new THREE.Object3D();
     const color = new THREE.Color();
-    const counts = Object.fromEntries(Object.keys(SHAPES).map((k) => [k, 0]));
+    const counts = Object.fromEntries([...Object.keys(SHAPES), ...GUN_IDS.map((id) => `gun:${id}`)].map((k) => [k, 0]));
     let r = 0;
     for (const e of loot.values()) {
       const shape = shapeOf(e);
       const mesh = meshes.current[shape];
-      if (!mesh || counts[shape] >= MAX) continue;
+      const gun = shape.startsWith('gun:');
+      if (!mesh || counts[shape] >= (gun ? MAX_GUN : MAX)) continue;
       const h = terrainHeight(e.x, e.y);
-      const lift = shape === 'crate' ? 0.3 : shape === 'gear' ? 0.18 : 0.15;
+      const lift = shape === 'crate' ? 0.3 : shape === 'gear' ? 0.18 : gun ? 0.08 : 0.15;
       o3.position.set(e.x, h + lift, -e.y);
-      o3.rotation.set(0, (e.id * 2.39) % (Math.PI * 2), 0);
+      // Las armas se acuestan de lado y se ven más grandes
+      o3.rotation.set(gun ? Math.PI / 2 : 0, (e.id * 2.39) % (Math.PI * 2), 0);
+      o3.scale.setScalar(gun ? 1.7 : 1);
       o3.updateMatrix();
       mesh.setMatrixAt(counts[shape], o3.matrix);
-      mesh.setColorAt(counts[shape], color.set(colorOf(e)));
+      if (!gun) mesh.setColorAt(counts[shape], color.set(colorOf(e)));
+      o3.scale.setScalar(1);
       counts[shape]++;
       if (r < MAX) {
         o3.position.set(e.x, h + 0.04, -e.y);
@@ -101,6 +110,9 @@ export default function GroundLoot({ client }) {
           castShadow
           frustumCulled={false}
         />
+      ))}
+      {GUN_IDS.map((id) => (
+        <instancedMesh key={id} ref={(m) => { if (m) meshes.current[`gun:${id}`] = m; }} args={[weaponGeometry(id), modelMaterial, MAX_GUN]} castShadow frustumCulled={false} />
       ))}
       <instancedMesh ref={ringMesh} args={[ring, ringMaterial, MAX]} frustumCulled={false} renderOrder={1} />
     </>

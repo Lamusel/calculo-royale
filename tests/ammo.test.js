@@ -1,7 +1,7 @@
 // Munición finita y "Obtener balas" (npm test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AMMO, optionCount, TICK_MS, WEAPONS } from '@calculo-royale/shared/constants';
+import { AMMO, optionCount, TICK_MS, WEAPONS, AMMO_TYPES } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS } from '@calculo-royale/shared/protocol';
 import { applyLoot } from '../server/src/game/crates.js';
 import { Game } from '../server/src/game/Game.js';
@@ -112,9 +112,11 @@ test('fallo o tiempo agotado: 10 s de espera antes de volver a pedir; morir canc
 test('la munición de las cajas va a la mochila según su tipo', () => {
   const p = new Player({ id: 2, name: 'Luis', color: '#fff', token: 'u' });
   applyLoot(p, 'ammo_9mm');
-  assert.equal(p.ammo['9mm'], 24);
+  assert.equal(p.ammo['9mm'], AMMO_TYPES['9mm'].pack);
   applyLoot(p, 'ammo_12g');
-  assert.equal(p.ammo['12g'], 8);
+  assert.equal(p.ammo['12g'], AMMO_TYPES['12g'].pack);
+  // Paquetes pequeños: menos de un cargador de rifle
+  assert.ok(AMMO_TYPES['556'].pack < WEAPONS.m4a1.magazine / 2);
 });
 
 test('preguntas rápidas: correctas verificadas y 2 opciones distintas', () => {
