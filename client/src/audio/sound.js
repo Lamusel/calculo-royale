@@ -165,6 +165,13 @@ export const sound = {
       if (!silent) tone(out, { freq: v.thump, to: v.thump * 0.4, decay: v.decay * 0.8, peak: 0.6 });
     });
   },
+  melee(id, x, y) {
+    const name = id === 'fists' ? 'golpe' : id === 'machete' || id === 'katana' ? 'tajo' : 'estocada';
+    effect(name, { level: 0.45, at: { x, y }, priority: 1 }, (out) => {
+      noiseBurst(out, { filter: id === 'fists' ? 700 : 3200, type: id === 'fists' ? 'lowpass' : 'bandpass', q: 1.5, attack: 0.02, decay: id === 'fists' ? 0.08 : 0.16, peak: 0.8, sweepTo: id === 'fists' ? 200 : 6000 });
+      if (id === 'fists') tone(out, { freq: 140, to: 60, decay: 0.08, peak: 0.5 });
+    });
+  },
   reload() {
     effect('recarga', { level: 0.35 }, (out) => {
       noiseBurst(out, { filter: 4500, type: 'highpass', decay: 0.04, peak: 0.6 });

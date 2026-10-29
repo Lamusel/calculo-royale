@@ -126,6 +126,14 @@ function WeaponBar({ self, reloadProgress, isTouch }) {
           </TouchButton>
         );
       })}
+      {/* Ranura de arma blanca (7A): solo se muestra; se usa con V o con "Golpear" */}
+      <div className="pointer-events-none flex flex-col items-center rounded border border-white/10 bg-stone-900/90 px-1.5 py-1 text-[10px] leading-tight text-stone-300">
+        {!isTouch && <span className="self-start font-mono text-[9px] opacity-60">V</span>}
+        <WeaponIcon weapon={self.melee ?? 'fists'} className="h-4 w-10" />
+        <span className="max-w-[4.5rem] truncate" style={{ color: self.melee ? TIER_COLORS[WEAPONS[self.melee].rarity] : undefined }}>
+          {WEAPONS[self.melee ?? 'fists'].name}
+        </span>
+      </div>
       {reloadProgress !== null && (
         <div className="absolute -top-5 left-1/2 w-40 -translate-x-1/2">
           <p className="text-center text-[10px] uppercase tracking-widest text-khaki-light">Recargando</p>
@@ -244,7 +252,11 @@ function ActionZone({ list, isTouch, inVehicle }) {
     actions.cycleAction = () => setIndex((i) => i + 1);
   }, []);
   if (!current) return null;
-  const use = (a) => a.enabled && actions.interact(a.kind);
+  const use = (a) => {
+    if (!a.enabled) return;
+    if (a.kind === 'melee') actions.meleeLocal();
+    actions.interact(a.kind);
+  };
   if (!isTouch) {
     return (
       <p className={`rounded border-l-4 bg-black/65 px-3 py-1.5 text-sm ${current.enabled ? 'text-khaki-light' : 'text-stone-400'}`} style={{ borderColor: current.color ?? 'transparent' }}>

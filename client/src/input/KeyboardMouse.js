@@ -76,8 +76,16 @@ export function attachKeyboardMouse() {
       e.preventDefault();
       actions.jump();
     } else if (isKey(e, 'R')) press(BUTTONS.RELOAD);
+    else if (isKey(e, 'V')) {
+      // Golpe cuerpo a cuerpo (7A)
+      press(BUTTONS.MELEE);
+      actions.meleeLocal();
+    }
     else if (isKey(e, 'B')) actions.requestAmmo();
-    else if (isKey(e, 'E')) actions.interact(inputState.actionKind ?? null);
+    else if (isKey(e, 'E')) {
+      if (inputState.actionKind === 'melee') actions.meleeLocal();
+      actions.interact(inputState.actionKind ?? null);
+    }
     else if (isKey(e, 'F')) actions.cycleAction();
     else if (isKey(e, 'T')) actions.phraseMenu();
     else if (e.code === 'Enter') {

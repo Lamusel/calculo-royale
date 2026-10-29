@@ -31,6 +31,16 @@ function jeepAction(v) {
 export function interactables(me, phase, crateStates, airdrop, vehicles, inVehicle, loot, myId, now, others = null, mates = null) {
   if (inVehicle) return [{ kind: 'vehicle', icon: 'exit', label: 'Bajar', enabled: true, color: '#fb923c', dist: 0 }];
   const out = [];
+  // Enemigo a 2 m o menos: "Golpear" (cuerpo a cuerpo, 7A); va primero
+  if (phase === 'playing') {
+    for (const [id, p] of others ?? []) {
+      if (id === myId || mates?.has(id) || p.flags & PLAYER_FLAGS.DEAD) continue;
+      if (Math.hypot(p.x - me.x, p.y - me.y) <= 2) {
+        out.push({ kind: 'melee', icon: 'melee', label: 'Golpear', enabled: true, color: '#ef4444', dist: -1 });
+        break;
+      }
+    }
+  }
   // Compañero derribado cerca: Reanimar (5 s y una pregunta rápida)
   for (const [id, p] of others ?? []) {
     if (!mates?.has(id) || !(p.flags & PLAYER_FLAGS.DOWNED)) continue;

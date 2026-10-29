@@ -12,7 +12,8 @@ import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
 import { waterAt } from '@calculo-royale/shared/mapPlan';
 import { worldLimits } from '@calculo-royale/shared/mapLayout';
-import { isSniper, THROWABLES, vehicleType } from '@calculo-royale/shared/constants';
+import { isMelee, isSniper, MELEE, THROWABLES, vehicleType } from '@calculo-royale/shared/constants';
+import { meleeAttack } from './melee.js';
 import { activateUav, blastTactical, damageSensor, damageWall, detonateTactical, smokeBlocks } from './throwables.js';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
@@ -85,7 +86,7 @@ export function aliveCount(game) {
 
 // Aplica daño: el casco lo reduce (más contra el francotirador), después el chaleco absorbe y el
 // resto va a la vida (salvo ignoreArmor: zona y bombardeo). Devuelve { dealt (ya reducido), killed }.
-export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ignoreArmor = false } = {}) {
+export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ignoreArmor = false, melee = false } = {}) {
   if (!target.alive) return { dealt: 0, killed: false };
   // Sin fuego amigo (dúos y escuadras)
   const from = game.room.players.get(attackerId);
@@ -99,7 +100,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
     amount = target.hp;
   }
   if (!ignoreArmor && !finishing) amount *= helmetFactor(target.helmetLevel ?? 0, isSniper(WEAPON_IDS[weaponIndex]));
-  const absorbed = ignoreArmor || finishing ? 0 : Math.min(target.armor, amount);
+  // Armas blancas: el chaleco absorbe solo una parte (7A)
+  const absorbed = ignoreArmor || finishing ? 0 : Math.min(target.armor, melee ? amount * MELEE.armorAbsorb : amount);
   target.armor -= absorbed;
   if (target.armor <= 0 && target.armorLevel > 0) {
     target.armor = 0;
@@ -131,6 +133,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   target.killStreak = 0;
   if (attacker && attacker !== target) {
     attacker.kills++;
+    if (isMelee(WEAPON_IDS[weaponIndex])) attacker.meleeKills = (attacker.meleeKills ?? 0) + 1;
     // Racha (6.5): cada 3 bajas seguidas sin morir, un UAV gratis
     attacker.killStreak = (attacker.killStreak ?? 0) + 1;
     if (game.room.phase === 'playing' && attacker.killStreak % 3 === 0 && attacker.alive) {
@@ -144,7 +147,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   return { dealt: amount, killed: true };
 }
 
-function damageTarget(game, target, amount, attackerId, weaponIndex) {
+export function damageTarget(game, target, amount, attackerId, weaponIndex, opts = {}) {
   if (target.vehicle) {
     damageVehicle(game, target.vehicle, amount, attackerId);
     return { dealt: amount, killed: false };
@@ -154,7 +157,7 @@ function damageTarget(game, target, amount, attackerId, weaponIndex) {
     target.dummy.lastHitAt = game.now;
     return { dealt: amount, killed: false };
   }
-  return damagePlayer(game, target.player, amount, attackerId, weaponIndex);
+  return damagePlayer(game, target.player, amount, attackerId, weaponIndex, opts);
 }
 
 // Retroceso que queda ahora (se recupera RECOIL.recoverPerSec por segundo desde el último disparo)
@@ -168,6 +171,11 @@ export const recoilStep = (weaponId, attachments) => (RECOIL.perShot[weaponId] ?
 // Disparo hitscan con compensación de lag: los objetivos se ubican donde el tirador los veía
 export function fire(game, p, input) {
   const id = p.weaponId;
+  // Puños en la mano (Gulag sin aciertos) o arma blanca: el golpe cuerpo a cuerpo
+  if (isMelee(id)) {
+    meleeAttack(game, p, input.aim, input.viewTick, Boolean(input.buttons & BUTTONS.AUTO));
+    return;
+  }
   // Nadando (agua honda) no se dispara
   if (game.now < p.nextFireAt || p.reloadUntil || waterAt(p.x, p.y) === 2) return;
   // Colgado de la tirolina: solo la pistola

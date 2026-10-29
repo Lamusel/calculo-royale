@@ -79,7 +79,7 @@ test('botín del suelo: mismo mapa con la misma semilla, en lugares libres', () 
 
 test('fase 23: en el suelo solo munición, vendas y casco 1 en muchas partidas (nada de armas ni poder gratis)', () => {
   const allowed = new Set(LOOT_GROUND);
-  assert.ok(LOOT_GROUND.every((id) => id.startsWith('ammo_') || id === 'bandage' || id === 'helmet1'));
+  assert.ok(LOOT_GROUND.every((id) => id.startsWith('ammo_') || id === 'bandage' || id === 'helmet1' || id === 'knife'), '7A: el cuchillo también');
   for (let seed = 1; seed <= 6; seed++) {
     const room = makeRoom();
     spawnGroundLoot(room.game, seeded(seed * 104729));
@@ -134,7 +134,7 @@ test('arranque: solo la M1911 con 3 balas; ninguna arma tiene munición infinita
   const p = addPlayer(room, 1, OPEN.x, OPEN.y);
   assert.deepEqual(p.weapons.map((w) => w?.id ?? null), [null, null, 'm1911']);
   assert.equal(p.mag + p.reserve, START_BULLETS);
-  for (const [id, w] of Object.entries(WEAPONS)) if (id !== 'fists') assert.ok(w.magazine < 200 && w.ammo, id);
+  for (const [id, w] of Object.entries(WEAPONS)) if (w.category !== 'melee') assert.ok(w.magazine < 200 && w.ammo, id);
 });
 
 test('armas: con lugar van a una ranura libre; con las dos principales llenas pregunta y no cambia nada', () => {

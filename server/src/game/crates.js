@@ -15,20 +15,21 @@ import { drawQuestion } from '../questions/QuestionBank.js';
 // legendario). Cada premio es un paquete: un arma viene con munición de su tipo. Lo que no elige
 // queda junto a la caja, solo para él por LOOT.privateMs. Nada se cambia sin que él lo decida.
 const withAmmo = (id) => [id, `ammo_${WEAPONS[id].ammo}`];
-const weaponsOf = (rarity) => Object.keys(WEAPONS).filter((id) => WEAPONS[id].rarity === rarity && id !== 'fists' && !(rarity === 0 && id === 'm1911'));
+const weaponsOf = (rarity) => Object.keys(WEAPONS).filter((id) => WEAPONS[id].rarity === rarity && WEAPONS[id].category !== 'melee' && !(rarity === 0 && id === 'm1911'));
 export const LOOT_TABLES = [
   [['ammo_9mm', 'bandage'], ['frag', 'ammo_9mm'], ['bandage', 'drink'], ['smoke', 'ammo_9mm']],
   [
     ...[...weaponsOf(0), ...weaponsOf(1)].map(withAmmo),
     ['armor2', 'helmet1'], ['backpack1', 'drink'], ['backpack2', 'bandage'], ['reddot', 'frag'], ['scope2x', 'extmag'], ['medkit', 'stock'],
     ['silencer', 'smoke'], ['wall', 'flash'], ['molotov', 'bandage'], ['armor1', 'frag'],
+    ['patecabra', 'bandage'], // armas blancas (7A): según su rareza, solo de cajas y del botín de los caídos
   ],
   [
     ...weaponsOf(2).map(withAmmo),
-    ['armor3', 'helmet2'], ['helmet3', 'drink'], ['backpack3', 'medkit'], ['scope4x', 'extmag'], ['sensor', 'wall'], ['uav', 'medkit'], ['molotov', 'frag', 'medkit'],
+    ['armor3', 'helmet2'], ['helmet3', 'drink'], ['backpack3', 'medkit'], ['scope4x', 'extmag'], ['sensor', 'wall'], ['uav', 'medkit'], ['molotov', 'frag', 'medkit'], ['machete', 'medkit'],
   ],
   // Doradas y lanzamientos aéreos: las especiales y lo mejor (munición escasa)
-  [...weaponsOf(3).map(withAmmo), ['armor3', 'helmet3', 'medkit'], ['backpack3', 'uav', 'wall']],
+  [...weaponsOf(3).map(withAmmo), ['armor3', 'helmet3', 'medkit'], ['backpack3', 'uav', 'wall'], ['katana', 'medkit']],
 ];
 
 // Opciones para elegir: distintas entre sí

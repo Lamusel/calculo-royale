@@ -1,6 +1,6 @@
 import { setDynamicObstacles } from '@calculo-royale/shared/collision';
 import { wallPieces } from '@calculo-royale/shared/throwables';
-import { GRENADE, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, THROWABLE_IDS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { GRENADE, isMelee, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, THROWABLE_IDS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { weaponWith } from '@calculo-royale/shared/inventory';
 import { RECOIL } from '@calculo-royale/shared/constants';
 import { GEAR_INFO } from '@calculo-royale/shared/gear';
@@ -31,6 +31,11 @@ export function snapshotEffects(snap, effects, lastShot, now, skipShooter = null
   for (const raw of snap.shots) {
     const shot = decodeShot(raw);
     if (shot.shooterId === skipShooter) continue; // ya se dibujó al predecir
+    if (isMelee(WEAPON_IDS[shot.weaponIndex])) {
+      if (audible) sound.melee(WEAPON_IDS[shot.weaponIndex], shot.x, shot.y);
+      lastShot.set(shot.shooterId, now);
+      continue;
+    }
     if (audible) sound.shot(shot.weaponIndex, shot.x, shot.y, shot.silent);
     if (!shot.silent) heardShot?.set(shot.shooterId, now);
     for (const { angle, dist } of shot.pellets) {
@@ -328,6 +333,7 @@ export class GameClient {
     actions.useItem = (item) => this.useItem(item);
     actions.phrase = (index) => this.socket.emit(EVENTS.QUICK_PHRASE, index);
     actions.chat = (text, team) => this.socket.emit(EVENTS.CHAT_SEND, { text, team });
+    actions.meleeLocal = () => this.meleeLocal();
     // En el bus salta; cayendo, abre el paracaídas antes
     actions.jump = () => (this.deploying === 'bus' || this.deploying === 'fall') && press(BUTTONS.JUMP);
 
@@ -457,6 +463,16 @@ export class GameClient {
     this.socket.emit(EVENTS.INPUT, packet);
   }
 
+  // Golpe propio (V, "Golpear" o puños): animación y sonido al instante; el daño lo decide el servidor
+  meleeLocal(now = performance.now()) {
+    const id = this.self?.melee ?? 'fists';
+    if (now < (this.meleeReadyAt ?? 0) || !this.self?.alive) return;
+    this.meleeReadyAt = now + WEAPONS[id].intervalMs;
+    this.lastShot.set(this.myId, now);
+    const me = this.predictor.state;
+    if (me) sound.melee(id, me.x, me.y);
+  }
+
   // Trazadoras y fogonazo inmediatos para los disparos propios (el daño lo decide el servidor)
   predictFire(input, now) {
     const me = this.predictor.state;
@@ -469,6 +485,12 @@ export class GameClient {
     }
     if (now < this.localNextFire || now < this.reloadEndsAt || this.predictedMag <= 0) return;
     const id = selfWeaponId(this.self);
+    // Puños en la mano (Gulag): golpe, no disparo
+    if (isMelee(id)) {
+      this.localNextFire = now + WEAPONS[id].intervalMs;
+      this.meleeLocal(now);
+      return;
+    }
     // Retroceso previsto (el mismo cálculo que el servidor): abre la dispersión y la cámara salta
     this.localRecoil = Math.max(0, (this.localRecoil ?? 0) - ((now - (this.localRecoilAt ?? now)) / 1000) * RECOIL.recoverPerSec);
     const att = selfHand(this.self)?.att;
@@ -755,6 +777,7 @@ export class GameClient {
     actions.useItem = () => {};
     actions.phrase = () => {};
     actions.chat = () => {};
+    actions.meleeLocal = () => {};
     actions.requestAmmo = () => {};
     actions.jump = () => {};
   }

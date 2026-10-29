@@ -1,4 +1,4 @@
-import { DUMMY_HP, DUMMY_REGEN_MS, INTERACT_RADIUS, ITEM_NAMES, RESPAWN_MS, TICK_MS, WEAPON_IDS } from '@calculo-royale/shared/constants';
+import { DUMMY_HP, DUMMY_REGEN_MS, INTERACT_RADIUS, ITEM_NAMES, RESPAWN_MS, TICK_MS, WEAPON_IDS, MELEE } from '@calculo-royale/shared/constants';
 import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
 import { encodePlayerState } from '@calculo-royale/shared/codec';
 import { applyInput } from '@calculo-royale/shared/movement';
@@ -7,6 +7,7 @@ import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGren
 import { inventoryOp } from './inventoryOps.js';
 import { resetProps } from './destruction.js';
 import { startRevive, tryDown, updateTeams } from './teams.js';
+import { meleeAttack } from './melee.js';
 import { encodeEffects, resetThrowables, updateThrowables } from './throwables.js';
 import {
   answerCrate, chooseOffer, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates, pickMatchCrates,
@@ -120,6 +121,7 @@ export class Game {
       if (input.mx !== 0 || input.my !== 0) cancelQuestion(this, player, 'Te moviste');
       return;
     }
+    if (input.buttons & BUTTONS.MELEE) meleeAttack(this, player, input.aim, input.viewTick);
     if (input.buttons & BUTTONS.RELOAD) startReload(this, player);
     if (input.buttons & BUTTONS.GRENADE) throwGrenade(this, player, input);
     else if (input.buttons & BUTTONS.FIRE) fire(this, player, input);
@@ -132,6 +134,11 @@ export class Game {
   // Dentro de un jeep: bajarse. Si no, lo más cercano entre armeros (lobby), cajas y jeeps.
   // kind: qué prefiere el jugador si hay varias cosas cerca ('rack' | 'crate' | 'vehicle' | 'loot')
   interact(player, kind = null) {
+    // "Golpear" (celular): botón contextual con un enemigo a 2 m o menos
+    if (kind === 'melee') {
+      meleeAttack(this, player, player.aim, this.tick, true);
+      return;
+    }
     if (!player.alive || player.question || player.engineQuestion || player.deploying || player.downed) return;
     if (kind === 'revive' || (!kind && this.room.phase === 'playing' && startRevive(this, player))) {
       if (kind === 'revive') startRevive(this, player);
@@ -340,7 +347,9 @@ export class Game {
         (p.air === 'chute' ? PLAYER_FLAGS.PARACHUTE : 0) |
         (p.zip ? PLAYER_FLAGS.ZIPLINE : 0) |
         (p.downed ? PLAYER_FLAGS.DOWNED : 0);
-      return encodePlayerState(p, WEAPON_IDS.indexOf(p.weaponId), flags);
+      // Golpeando: el arma blanca se ve en la mano un momento
+      const shown = p.meleeAt && this.now - p.meleeAt < MELEE.showMs ? p.meleeWeapon : p.weaponId;
+      return encodePlayerState(p, WEAPON_IDS.indexOf(shown), flags);
     });
     return [
       this.tick,

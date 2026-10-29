@@ -359,3 +359,62 @@ test('6.5: estadísticas de balance en el registro (bajas por arma, tema y dific
   assert.ok(s.duracion_s >= 2);
   assert.equal(typeof s.volvieron_del_gulag, 'number');
 });
+
+test('7A: cuerpo a cuerpo validado en el servidor: alcance, cadencia, espalda, chaleco, arco de la katana y machete', async () => {
+  const { meleeAttack } = await import('../server/src/game/melee.js');
+  const { DESTRUCTIBLES } = await import('@calculo-royale/shared/mapLayout');
+  const room = makeRoom();
+  const [a, b, c] = addPlayers(room, 3);
+  start(room);
+  for (const p of [a, b, c]) p.deploy = null;
+  const place = (p, x, y, aim) => {
+    p.teleport(x, y);
+    p.aim = aim;
+    p.history = [];
+  };
+  // Puños sin arma blanca, de frente: poco daño; a 3 m no llega
+  place(a, 0, 300, 0);
+  place(b, 1.5, 300, Math.PI);
+  place(c, 40, 300, 0);
+  meleeAttack(room.game, a, 0);
+  assert.equal(b.hp, 100 - WEAPONS.fists.damage);
+  assert.equal(meleeAttack(room.game, a, 0), false, 'cadencia');
+  b.hp = 100;
+  place(b, 3.5, 300, Math.PI);
+  advance(room, 600);
+  meleeAttack(room.game, a, 0);
+  assert.equal(b.hp, 100, 'fuera de alcance');
+  // Patecabra por la espalda (b mira hacia el mismo lado que el golpe): casi letal
+  a.melee = 'patecabra';
+  place(b, 1.5, 300, 0);
+  advance(room, 600);
+  meleeAttack(room.game, a, 0);
+  assert.ok(b.hp <= 100 - WEAPONS.patecabra.damage * 2, `${b.hp}`);
+  // Con chaleco: el chaleco absorbe menos que contra balas
+  b.hp = 100;
+  b.armor = 50;
+  b.armorLevel = 2;
+  place(b, 1.5, 300, Math.PI);
+  advance(room, 600);
+  meleeAttack(room.game, a, 0);
+  assert.equal(b.hp, 100 - Math.round(WEAPONS.patecabra.damage * 0.6));
+  // Katana: el tajo alcanza a dos
+  a.melee = 'katana';
+  b.hp = 100;
+  b.armor = 0;
+  place(b, 1.5, 300.4, Math.PI);
+  place(c, 2.2, 299.6, Math.PI);
+  advance(room, 700);
+  meleeAttack(room.game, a, 0);
+  assert.ok(b.hp < 100 && c.hp < 100);
+  // Machete: corta una cerca de un golpe
+  a.melee = 'machete';
+  const fence = DESTRUCTIBLES.find((o) => o.kind === 'fence');
+  place(a, fence.x - 1, fence.y, 0);
+  place(b, 80, 80, 0);
+  place(c, 90, 90, 0);
+  advance(room, 800);
+  meleeAttack(room.game, a, 0);
+  assert.ok(fence.broken);
+  room.game.resetWorld();
+});

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { isMelee, WEAPON_IDS } from '@calculo-royale/shared/constants';
 
 // Adaptador de animación: traduce el estado del juego a una pose y la pose a rotaciones de
 // huesos. Las rotaciones se expresan en el espacio del personaje (mira a +x, +z a su derecha)
@@ -10,6 +11,7 @@ const approach = (value, target, rate, dt) => value + (target - value) * (1 - Ma
 
 export const ANIM_STATES = ['idle', 'walk', 'run', 'aim', 'shoot', 'reload', 'death', 'victory', 'drive', 'passenger', 'fall', 'chute'];
 const RUN_SPEED = 6;
+const MELEE_INDEXES = new Set(WEAPON_IDS.map((id, i) => (isMelee(id) ? i : -1)).filter((i) => i >= 0));
 const SEATED_LEG = 1.45;
 
 export function createAnimState(x, y, aim) {
@@ -57,6 +59,8 @@ export function updateAnim(st, input, now, dt, onStep) {
   st.pitch = approach(st.pitch, goal, 10, dt);
   st.recoil = input.shotAgo < 160 ? 1 - input.shotAgo / 160 : 0;
   st.kick = input.weapon === 3 ? 0.35 : input.weapon === 1 ? 0.25 : 0.14;
+  // Cuerpo a cuerpo (7A): tajo de 300 ms (el torso gira y vuelve)
+  st.slash = MELEE_INDEXES.has(input.weapon) && input.shotAgo < 300 ? Math.sin((input.shotAgo / 300) * Math.PI) : 0;
 
   // Victoria: arma en alto y saltitos (presentación del duelo y ganador en los resultados)
   st.victory = Boolean(input.victory) && !input.dead;
@@ -107,9 +111,9 @@ export function poseDeltas(st, out = createDeltas()) {
   const dead = st.fall > 0;
   const yaw = dead ? st.deathYaw : st.legsYaw;
   q.hips.setFromAxisAngle(Y, yaw);
-  q.spine.setFromAxisAngle(Y, dead ? 0 : angleDiff(st.aimYaw, st.legsYaw));
+  q.spine.setFromAxisAngle(Y, dead ? 0 : angleDiff(st.aimYaw, st.legsYaw) + (st.slash ?? 0) * 0.9);
 
-  let arm = st.pitch + st.recoil * st.kick;
+  let arm = st.pitch + st.recoil * st.kick + (st.slash ?? 0) * 0.6;
   if (st.victory) arm = 1.15 + Math.sin(st.victoryT * 8) * 0.15;
   // Caída libre: brazos al frente; paracaídas: brazos arriba agarrando las cuerdas
   if (st.air === 'fall') arm = 1.1 + Math.sin(st.airT * 5) * 0.08;

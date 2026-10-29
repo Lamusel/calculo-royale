@@ -100,8 +100,13 @@ const ARSENAL = [
   ['rpg', 'Lanzacohetes', 'special', 3, 110, 1500, 1, 3200, 0.01, 1, 50, false, { projectile: 'rocket', blast: 4.5 }],
   ['crossbow', 'Ballesta', 'special', 3, 75, 1200, 1, 1700, 0.005, 1, 45, false, { ammo: 'bolt', silent: true }],
   ['gl', 'Lanzagranadas', 'special', 3, 85, 900, 4, 3200, 0.03, 1, 22, false, { projectile: 'lob', blast: 3.8 }],
-  // Gulag sin aciertos: golpe cuerpo a cuerpo (alcance corto, sin munición)
-  ['fists', 'Puños', 'melee', 0, 24, 450, 999, 0, 0.2, 1, 2.2, false],
+  // Cuerpo a cuerpo (7A): los puños siempre (V o "Golpear"; en el Gulag sin aciertos, en la mano) y las
+  // armas blancas en su propia ranura. backstab: multiplicador por la espalda · arc: a cuántos alcanza el tajo
+  ['fists', 'Puños', 'melee', 0, 16, 450, 999, 0, 0.2, 1, 2.0, false, { backstab: 1.5 }],
+  ['knife', 'Cuchillo', 'melee', 0, 32, 380, 999, 0, 0, 1, 2.0, false, { backstab: 1.8 }],
+  ['patecabra', 'Patecabra', 'melee', 1, 40, 300, 999, 0, 0, 1, 1.9, false, { backstab: 2.4 }],
+  ['machete', 'Machete', 'melee', 2, 60, 650, 999, 0, 0, 1, 2.5, false, { backstab: 1.6, cutsWood: true }],
+  ['katana', 'Katana', 'melee', 3, 66, 560, 999, 0, 0, 1, 3.2, false, { backstab: 1.6, arc: 2 }],
 ];
 export const WEAPONS = Object.fromEntries(ARSENAL.map(([id, name, category, rarity, damage, intervalMs, magazine, reloadMs, spread, pellets, range, auto, extra = {}]) => [
   id,
@@ -110,6 +115,10 @@ export const WEAPONS = Object.fromEntries(ARSENAL.map(([id, name, category, rari
 export const weaponCategory = (id) => WEAPON_CATEGORIES[WEAPONS[id]?.category];
 export const isSniper = (id) => WEAPONS[id]?.category === 'sniper';
 export const START_WEAPON = 'm1911';
+// Armas blancas (ranura propia) y reglas del golpe: el chaleco absorbe solo una parte, cono de ~65° al frente
+export const MELEE_IDS = ['knife', 'patecabra', 'machete', 'katana'];
+export const isMelee = (id) => WEAPONS[id]?.category === 'melee';
+export const MELEE = { armorAbsorb: 0.4, arcCos: 0.42, backCos: 0.35, showMs: 350 };
 export const START_BULLETS = 3; // fase 29: se arranca con la pistola y solo 3 balas en total
 
 // Tipos de munición: nombre y cuánto trae un paquete del suelo (6.5: mínima; la forma principal de
@@ -375,10 +384,10 @@ export const RADIO_MAX_WAIT_MS = 15000;
 export const RADIO_MIN_SHOW_MS = 2500; // si lo interrumpen antes, vuelve a la cola con lo que le faltaba
 
 // --- Botín de battle royale (fases 18 y 29) ---
-// Objetos del suelo y de las cajas. kind: weapon | ammo | heal | throwable | armor | helmet | backpack | attachment
+// Objetos del suelo y de las cajas. kind: weapon | melee | ammo | heal | throwable | armor | helmet | backpack | attachment
 // tier: rareza para el color (0 gris, 1 azul, 2 morado, 3 dorado)
 export const LOOT_ITEMS = {
-  ...Object.fromEntries(Object.entries(WEAPONS).filter(([id]) => id !== 'fists').map(([id, w]) => [id, { name: w.name, kind: 'weapon', tier: w.rarity }])),
+  ...Object.fromEntries(Object.entries(WEAPONS).filter(([id]) => id !== 'fists').map(([id, w]) => [id, { name: w.name, kind: w.category === 'melee' ? 'melee' : 'weapon', tier: w.rarity }])),
   ...Object.fromEntries(Object.entries(AMMO_TYPES).map(([id, a]) => [`ammo_${id}`, { name: `Munición ${a.name}`, kind: 'ammo', ammo: id, amount: a.pack, tier: id === 'rocket' || id === 'bolt' ? 3 : 0 }])),
   bandage: { name: 'Venda', kind: 'heal', tier: 0 },
   medkit: { name: 'Botiquín', kind: 'heal', tier: 1 },
@@ -407,7 +416,8 @@ export const TIER_COLORS = ['#9ca3af', '#3b82f6', '#a855f7', '#eab308'];
 // Botín suelto en el suelo (fase 23): SOLO munición, vendas y casco 1. Todo lo demás (armas, lanzables,
 // miras, accesorios, mochilas, chalecos, cascos 2–3, botiquines y bebidas) sale de cajas con pregunta, de
 // la caja de botín de un caído o del lanzamiento aéreo: el cálculo es la llave del poder.
-export const LOOT_GROUND = ['ammo_9mm', 'ammo_556', 'ammo_762', 'ammo_12g', 'ammo_300', 'bandage', 'helmet1'];
+// (7A) el cuchillo también puede salir en el suelo
+export const LOOT_GROUND = ['ammo_9mm', 'ammo_556', 'ammo_762', 'ammo_12g', 'ammo_300', 'bandage', 'helmet1', 'knife'];
 
 // Botín en el suelo por partida: cuántos por punto de zona y peso de cada objeto
 export const LOOT = {
@@ -421,7 +431,7 @@ export const LOOT = {
   // Armas de cajas o del botín: salen con esta fracción del cargador
   weaponMagFraction: 1 / 3,
   // Peso de cada objeto al sortear (los que no figuran pesan 1): la munición es escasa
-  weights: { ammo_9mm: 0.6, ammo_556: 0.4, ammo_762: 0.3, ammo_12g: 0.3, ammo_300: 0.15, bandage: 4, helmet1: 1.5 },
+  weights: { ammo_9mm: 0.6, ammo_556: 0.4, ammo_762: 0.3, ammo_12g: 0.3, ammo_300: 0.15, bandage: 4, helmet1: 1.5, knife: 0.5 },
 };
 
 // Curación con tiempo. Mientras cura se camina más lento; disparar o cambiar de arma la cancela.

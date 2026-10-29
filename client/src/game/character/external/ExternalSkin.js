@@ -121,6 +121,7 @@ export class ExternalSkin {
         o.rotation.z = -0.12 * stride;
         o.position.y = Math.abs(Math.sin(st.phase)) * 0.07 * stride;
         if (st.victory) o.rotation.y += Math.sin(st.victoryT * 5) * 0.5;
+        o.rotation.y += (st.slash ?? 0) * 0.9; // tajo con arma blanca
       }
     }
     this.mixer?.update(dt);

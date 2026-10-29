@@ -125,6 +125,33 @@ const THROWN = {
 const BUILDERS = {
   // Puños (Gulag sin aciertos): solo una venda en la mano
   fists: () => [piece(box(0.1, 0.09, 0.12), '#d8cfb8', { position: [0.02, 0, 0] })],
+  // Armas blancas (7A): mango en la mano, hoja hacia +x
+  knife: () => [
+    piece(box(0.11, 0.035, 0.03), '#3a2a1a', { position: [0, 0, 0] }),
+    piece(box(0.02, 0.06, 0.05), '#6b6f5a', { position: [0.065, 0, 0] }),
+    piece(box(0.17, 0.03, 0.008), '#c9ccd1', { position: [0.16, 0.004, 0] }),
+  ],
+  // Patecabra: navaja de punta larga y fina, cachas claras con remaches
+  patecabra: () => [
+    piece(box(0.12, 0.03, 0.026), '#d6c7a1', { position: [0, 0, 0] }),
+    piece(box(0.02, 0.02, 0.03), '#b8912a', { position: [-0.03, 0, 0] }),
+    piece(box(0.02, 0.02, 0.03), '#b8912a', { position: [0.03, 0, 0] }),
+    piece(box(0.2, 0.022, 0.006), '#e2e5ea', { position: [0.16, 0.003, 0] }),
+    piece(box(0.05, 0.012, 0.006), '#e2e5ea', { position: [0.285, 0.003, 0] }),
+  ],
+  // Machete: hoja ancha y larga, mango negro
+  machete: () => [
+    piece(box(0.13, 0.04, 0.035), '#1c1d1f', { position: [0, 0, 0] }),
+    piece(box(0.46, 0.07, 0.008), '#a7abb0', { position: [0.3, 0.012, 0] }),
+    piece(box(0.08, 0.05, 0.008), '#a7abb0', { position: [0.56, 0.02, 0], rotation: [0, 0, 0.25] }),
+  ],
+  // Katana: tsuka con ito, tsuba redonda y hoja larga apenas curva
+  katana: () => [
+    piece(box(0.24, 0.035, 0.03), '#2b2b4a', { position: [-0.02, 0, 0] }),
+    piece(cylinder(0.05, 0.05, 0.012, 10), '#b8912a', { position: [0.11, 0, 0], rotation: [0, 0, Math.PI / 2] }),
+    piece(box(0.4, 0.028, 0.007), '#d9dde3', { position: [0.32, 0.004, 0] }),
+    piece(box(0.38, 0.026, 0.007), '#d9dde3', { position: [0.7, 0.016, 0], rotation: [0, 0, 0.06] }),
+  ],
   ...Object.fromEntries(Object.entries(SPECS).map(([id, s]) => [id, () => gun(s)])),
   ...THROWN,
   grenade: THROWN.frag,

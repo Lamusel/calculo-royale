@@ -226,7 +226,7 @@ test('botín de cajas: curaciones al inventario, munición, armas y lo que no ca
   assert.equal(p.backpackLevel, 3);
   assert.equal(rollLoot(3).length >= 2, true);
   // Los paquetes con arma traen munición de su tipo
-  for (const combo of LOOT_TABLES[3]) if (WEAPONS[combo[0]]) assert.equal(combo[1], `ammo_${WEAPONS[combo[0]].ammo}`);
+  for (const combo of LOOT_TABLES[3]) if (WEAPONS[combo[0]] && WEAPONS[combo[0]].category !== 'melee') assert.equal(combo[1], `ammo_${WEAPONS[combo[0]].ammo}`);
 });
 
 test('correcciones 6.3: el arma de una caja trae un tercio del cargador y medio cargador de munición (6.5)', async () => {

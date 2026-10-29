@@ -107,6 +107,7 @@ export const BUTTONS = {
   GRENADE: 8, // lanzar granada
   AIM: 16, // apuntando con el francotirador: camina más lento
   JUMP: 32, // saltar del bus
+  MELEE: 64, // golpe cuerpo a cuerpo (V)
 };
 
 // Banderas de cada jugador en el snapshot

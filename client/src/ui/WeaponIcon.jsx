@@ -19,6 +19,11 @@ const PATHS = {
   crossbow: 'M6 7h26v2H6zM30 1l2 14M28 8h-6l-2 5h-4l1-5',
   gl: 'M6 5h20a4 4 0 0 1 0 6H18l-2 4h-4l1-4H6z',
   fists: 'M14 6h16v6H14zM14 6l2-3h4l1 3M22 6l1-3h4l1 3',
+  // Armas blancas (7A)
+  knife: 'M10 7h8v3h-8zM18 7h14l-6 3h-8z',
+  patecabra: 'M8 7h10v3H8zM18 7h18l-14 3h-4z',
+  machete: 'M8 7h8v3H8zM16 6h18l4 2-4 3H16z',
+  katana: 'M4 7h8v2H4zM12 6h2v4h-2zM14 7h26l4 1-4 1H14z',
   smoke: 'M18 8a6 6 0 0 1 12 0v6H18z', flash: 'M26 1 18 9h5l-2 6 8-8h-5z', molotov: 'M21 5h6v3l3 3v4H18v-4l3-3z',
   sensor: 'M18 8h12v6H18zM24 2v6', wall: 'M8 14c4-12 28-12 32 0', uav: 'M14 7h20v2H14zM10 5h6M32 5h6',
 };

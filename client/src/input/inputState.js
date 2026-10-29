@@ -47,6 +47,7 @@ export const actions = {
   phraseMenu: () => {},
   chat: () => {},
   chatOpen: () => {},
+  meleeLocal: () => {},
   requestAmmo: () => {},
   jump: () => {},
 };

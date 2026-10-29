@@ -18,6 +18,7 @@ export const newWeapon = (id, mag = null, att = null) => ({ id, mag: mag ?? WEAP
 // Inventario vacío y el de arranque: la M1911 con solo 3 balas
 export function emptyInventory(p) {
   p.weapons = [null, null, null];
+  p.melee = null; // arma blanca (ranura propia, 7A); sin ella, los puños
   p.active = SECONDARY;
   p.ammo = {};
   p.heals = { bandage: 0, medkit: 0, drink: 0 };
@@ -79,6 +80,7 @@ export function roomFor(p, item) {
   if (!def) return 0;
   switch (def.kind) {
     case 'weapon':
+    case 'melee':
       return 1;
     case 'ammo':
       return Math.max(0, ammoCap(p, def.ammo) - (p.ammo[def.ammo] ?? 0));
@@ -142,6 +144,11 @@ export function take(p, item, state = null, replace = null) {
           placeAttachment(p, slot, a, out.drops);
         }
       }
+      return { ...out, taken: 1, left: 0 };
+    }
+    case 'melee': {
+      if (p.melee) out.drops.push({ item: p.melee });
+      p.melee = item;
       return { ...out, taken: 1, left: 0 };
     }
     case 'ammo': {
@@ -227,6 +234,12 @@ export function detach(p, slot, attSlot) {
 // Devuelve lo que queda en el suelo: [{ item, state }]
 export function dropFromInventory(p, what) {
   switch (what?.kind) {
+    case 'melee': {
+      if (!p.melee) return [];
+      const item = p.melee;
+      p.melee = null;
+      return [{ item }];
+    }
     case 'weapon': {
       const w = p.weapons[what.slot];
       if (!w || w.id === 'fists') return [];
@@ -312,6 +325,7 @@ function overflow(p) {
 export function inventoryItems(p) {
   const out = [];
   for (const w of p.weapons ?? []) if (w && w.id !== 'fists') out.push({ item: w.id, state: { mag: w.mag, att: w.att } });
+  if (p.melee) out.push({ item: p.melee });
   for (const [type, n] of Object.entries(p.ammo ?? {})) if (n > 0) out.push({ item: `ammo_${type}`, state: { n } });
   if (p.armorLevel > 0) out.push({ item: `armor${p.armorLevel}`, state: { armor: p.armor } });
   if (p.helmetLevel > 0) out.push({ item: `helmet${p.helmetLevel}` });

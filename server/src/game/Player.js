@@ -36,6 +36,7 @@ export class Player {
   // Estadísticas de la partida (bajas y aciertos por tema); se reinician al iniciar
   resetStats() {
     this.kills = 0;
+    this.meleeKills = 0;
     this.stats = { byTopic: {}, byLevel: {}, failed: [], correct: 0, answered: 0 };
     this.fps = null;
     this.seenQuestions = new Set();
@@ -232,6 +233,7 @@ export class Player {
       armorLevel: this.armorLevel,
       armor: Math.ceil(this.armor),
       weapons: this.weapons.map((w) => w && { id: w.id, mag: w.mag, att: { ...w.att } }),
+      melee: this.melee ?? null,
       active: this.active,
       ammo: { ...this.ammo },
       heals: { ...this.heals },
