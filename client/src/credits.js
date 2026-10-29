@@ -12,8 +12,10 @@ export const CREDITS = {
     { role: 'Banco de preguntas', names: ['[Quién redactó y revisó las preguntas]'] },
     { role: 'Pruebas', names: ['[Compañeros que probaron el juego]'] },
     { role: 'Modelos externos', names: ['[Autores de 2B, Furina, Ghost y Luffy, con su licencia]'] },
+    // 7B: de dónde salen los sonidos y la música propios (assets/audio). Completar: autor o sitio y licencia
+    { role: 'Fuentes de audio', names: ['Por confirmar'] },
     { role: 'Agradecimientos', names: ['[A quién agradecer]'] },
   ],
-  tech: 'Hecho con React, Three.js (React Three Fiber), Socket.IO, KaTeX y Web Audio. Gráficos y sonidos generados por código.',
+  tech: 'Hecho con React, Three.js (React Three Fiber), Socket.IO, KaTeX y Web Audio. Gráficos generados por código; sonidos propios (ver Fuentes de audio) y, los que faltan, sintetizados.',
   year: '2026',
 };

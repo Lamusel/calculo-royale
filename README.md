@@ -590,6 +590,10 @@ Copiar `server/.env.example` a `server/.env` y `client/.env.example` a `client/.
 | `CR_TIME_SCALE` | server | **Solo pruebas.** Acelera la zona, el lanzamiento aéreo, bombardeos e intercepciones (ej. `12` = partida de ~1 min) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | server | Opcional: guardar resultados en Supabase (ver arriba) |
 
+### Fuentes de audio
+
+Fuentes de audio: por confirmar. Anota aquí (y en `client/src/credits.js`, sección "Fuentes de audio") de dónde salió cada sonido o música de `client/public/assets/audio/`: autor o sitio y licencia.
+
 ### Cómo agregar skins externas
 
 Las skins externas ("Personajes especiales" en el selector) salen de las carpetas reales: **una carpeta = una skin**. No hay espacios vacíos.
@@ -1102,3 +1106,4 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - 2026-10-29: **7B · audios cambiables y cortes.** Manifiesto con huella del contenido (`?v=hash`) en audio e imágenes de carga, el formato más liviano si hay dos con el mismo nombre, radios y variantes sin límite (la radio del camión en lista aleatoria, una tras otra). Los audios largos se cortan con fundido de 120 ms: tope por categoría (tabla `SOUND_MAX_MS`), recarga/humo/sensor/UAV/aturdidora al terminar su efecto, motores y radio al bajarse o alejarse, disparo nuevo corta el anterior del mismo tirador y, con el cupo lleno, se corta el menos importante y más lejano. Bucles sin el relleno del mp3. Casquillo al disparar, rebote de granada, bocina (botón "Bocina" o B al conducir, la oyen todos) y la radio del camión que el conductor apaga para todos.
 - 2026-10-29: **7B · cuerpo a cuerpo a mano.** La ranura de arma blanca ahora se puede elegir (tocarla o la tecla 4): muestra "Puños" si no tienes arma blanca y deja el modo cuerpo a cuerpo, donde el clic o el joystick derecho golpean (con toque rápido, al más cercano). V golpea siempre; 1, 2 y 3 vuelven a las armas de fuego. Los lanzables pasan a las teclas 5 a 0. Prueba: sin armas ni balas, el golpe a puños le baja vida a quien está a 1,5 m.
 - 2026-10-29: **7B · varias salas a la vez.** Un error en un evento se registra con su sala y no tumba el servidor; un error en el ciclo de una sala se registra y, si se repite ~1 s, la sala se cierra sola avisando a sus jugadores, sin afectar a las otras. Cada sala lleva sus propios objetos rotos y muros de espuma (antes eran compartidos entre salas). `puerta` sigue sin usarse: las casas tienen vanos, no puertas que se abran.
+- 2026-10-29: **7B · créditos.** Sección "Fuentes de audio" en `client/src/credits.js` (pantalla de Créditos) y en el README, con "Por confirmar" para completar.
