@@ -7,3 +7,6 @@ dist/
 .tunnel-url
 
 server/data/
+
+# Originales de audio (7B): los optimizados quedan en client/public/assets/audio
+audio-originales/

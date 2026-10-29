@@ -1,5 +1,135 @@
 {
-  "sfx": {},
-  "music": {},
+  "sfx": {
+    "aturdidora": [
+      "/assets/audio/sfx/aturdidora.mp3"
+    ],
+    "cambio-arma": [
+      "/assets/audio/sfx/cambio-arma.mp3"
+    ],
+    "casquillo": [
+      "/assets/audio/sfx/casquillo.mp3"
+    ],
+    "disparo-ametralladora": [
+      "/assets/audio/sfx/disparo-ametralladora.mp3"
+    ],
+    "disparo-ballesta": [
+      "/assets/audio/sfx/disparo-ballesta.mp3"
+    ],
+    "disparo-escopeta": [
+      "/assets/audio/sfx/disparo-escopeta.mp3"
+    ],
+    "disparo-francotirador": [
+      "/assets/audio/sfx/disparo-francotirador.mp3"
+    ],
+    "disparo-lanzacohetes": [
+      "/assets/audio/sfx/disparo-lanzacohetes.mp3"
+    ],
+    "disparo-lejano": [
+      "/assets/audio/sfx/disparo-lejano.mp3"
+    ],
+    "disparo-pistola": [
+      "/assets/audio/sfx/disparo-pistola.mp3"
+    ],
+    "disparo-rifle": [
+      "/assets/audio/sfx/disparo-rifle.mp3"
+    ],
+    "disparo-silenciado": [
+      "/assets/audio/sfx/disparo-silenciado.mp3"
+    ],
+    "disparo-subfusil": [
+      "/assets/audio/sfx/disparo-subfusil.mp3"
+    ],
+    "disparo-tirador": [
+      "/assets/audio/sfx/disparo-tirador.mp3"
+    ],
+    "estocada": [
+      "/assets/audio/sfx/estocada.mp3"
+    ],
+    "explosion-lejana": [
+      "/assets/audio/sfx/explosion-lejana.mp3"
+    ],
+    "explosion": [
+      "/assets/audio/sfx/explosion.mp3"
+    ],
+    "filo-impacto": [
+      "/assets/audio/sfx/filo-impacto.mp3"
+    ],
+    "fuego": [
+      "/assets/audio/sfx/fuego.mp3"
+    ],
+    "golpe": [
+      "/assets/audio/sfx/golpe.mp3"
+    ],
+    "granada-pin": [
+      "/assets/audio/sfx/granada-pin.mp3"
+    ],
+    "granada-rebote": [
+      "/assets/audio/sfx/granada-rebote.mp3"
+    ],
+    "humo": [
+      "/assets/audio/sfx/humo.mp3"
+    ],
+    "motor-camion": [
+      "/assets/audio/sfx/motor-camion.mp3"
+    ],
+    "motor-jeep": [
+      "/assets/audio/sfx/motor-jeep.mp3"
+    ],
+    "motor-lancha": [
+      "/assets/audio/sfx/motor-lancha.mp3"
+    ],
+    "motor-moto": [
+      "/assets/audio/sfx/motor-moto.mp3"
+    ],
+    "muro-espuma": [
+      "/assets/audio/sfx/muro-espuma.mp3"
+    ],
+    "recarga-cerrojo": [
+      "/assets/audio/sfx/recarga-cerrojo.mp3"
+    ],
+    "recarga": [
+      "/assets/audio/sfx/recarga.mp3"
+    ],
+    "sensor-pulso": [
+      "/assets/audio/sfx/sensor-pulso.mp3"
+    ],
+    "sin-balas": [
+      "/assets/audio/sfx/sin-balas.mp3"
+    ],
+    "tajo": [
+      "/assets/audio/sfx/tajo.mp3"
+    ],
+    "uav": [
+      "/assets/audio/sfx/uav.mp3"
+    ]
+  },
+  "music": {
+    "bus": [
+      "/assets/audio/music/bus.mp3"
+    ],
+    "duelo": [
+      "/assets/audio/music/duelo.mp3"
+    ],
+    "lobby": [
+      "/assets/audio/music/lobby.mp3"
+    ],
+    "partida": [
+      "/assets/audio/music/partida.mp3"
+    ],
+    "radio-camion": [
+      "/assets/audio/music/radio-camion-1.mp3",
+      "/assets/audio/music/radio-camion-2.mp3",
+      "/assets/audio/music/radio-camion-3.mp3"
+    ],
+    "resultados": [
+      "/assets/audio/music/resultados.mp3"
+    ],
+    "victoria": [
+      "/assets/audio/music/victoria.mp3"
+    ],
+    "zona": [
+      "/assets/audio/music/zona.mp3"
+    ]
+  },
   "voice": {}
 }
