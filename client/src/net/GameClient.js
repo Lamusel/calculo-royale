@@ -496,6 +496,14 @@ export class GameClient {
 
   // Se llama una vez por cuadro; escribe en `frame` para no crear objetos nuevos
   frame(now, frame) {
+    // FPS promedio cada 10 s en partida (estadísticas de balance del anfitrión)
+    this.fpsFrames = (this.fpsFrames ?? 0) + 1;
+    this.fpsAt ??= now;
+    if (now - this.fpsAt >= 10_000) {
+      if (this.phase === 'playing') this.socket.emit(EVENTS.CLIENT_FPS, Math.round((this.fpsFrames * 1000) / (now - this.fpsAt)));
+      this.fpsFrames = 0;
+      this.fpsAt = now;
+    }
     frame.me = this.predictor.render(now, currentAim());
     this.buffer.sample(now, frame);
     frame.meInfo = frame.others.get(this.myId) ?? null;

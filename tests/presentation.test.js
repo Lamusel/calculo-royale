@@ -16,7 +16,7 @@ import { direct, scorePlayers } from '../client/src/game/director.js';
 function makeRoom() {
   const sent = [];
   const io = {
-    to: () => ({ emit: (event, data) => sent.push({ event, data }), volatile: { emit() {} } }),
+    to: () => { const t = { emit: (event, data) => sent.push({ event, data }), volatile: { emit() {} }, except: () => t }; return t; },
     sockets: { sockets: new Map() },
   };
   let closed = false;

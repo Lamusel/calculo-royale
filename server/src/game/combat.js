@@ -140,6 +140,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
     attacker.longestKill = Math.max(attacker.longestKill ?? 0, Math.hypot(attacker.x - target.x, attacker.y - target.y));
   }
   game.kills.push([attackerId, target.id, weaponIndex]);
+  if (game.balance && game.room.phase === 'playing') game.balance.kills[WEAPON_IDS[weaponIndex] ?? '?'] = (game.balance.kills[WEAPON_IDS[weaponIndex] ?? '?'] ?? 0) + 1;
   return { dealt: amount, killed: true };
 }
 

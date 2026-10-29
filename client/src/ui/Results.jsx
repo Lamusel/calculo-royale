@@ -143,6 +143,11 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
                 ⬇ CSV
               </button>
             )}
+            {csv?.json && (spectator || isHost) && (
+              <button onClick={() => downloadCsv({ filename: csv.filename.replace(/\.csv$/, '.json'), csv: csv.json })} className="rounded bg-black/50 px-3 py-2 text-sm text-khaki-light" title="Resultados con estadísticas de balance">
+                ⬇ JSON
+              </button>
+            )}
             {spectator ? null : isHost ? (
               <button onClick={onReset} className="rounded bg-khaki px-4 py-2 font-bold text-olive-950">
                 Volver al lobby

@@ -36,7 +36,8 @@ export class Player {
   // Estadísticas de la partida (bajas y aciertos por tema); se reinician al iniciar
   resetStats() {
     this.kills = 0;
-    this.stats = { byTopic: {}, failed: [], correct: 0, answered: 0 };
+    this.stats = { byTopic: {}, byLevel: {}, failed: [], correct: 0, answered: 0 };
+    this.fps = null;
     this.seenQuestions = new Set();
     this.place = null; // posición final (1 = ganador)
     this.gulagUsed = false; // ya tuvo su oportunidad en el Gulag (una por partida)

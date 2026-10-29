@@ -49,6 +49,7 @@ export function startMatch(game, rand = Math.random) {
   game.finished = false;
   game.startingPlayers = aliveCount(game);
   game.weatherChanged = false;
+  game.balance = { kills: {}, gulagReturns: 0 };
   for (const event of game.zone.start(game.now)) announce(game, event);
 }
 

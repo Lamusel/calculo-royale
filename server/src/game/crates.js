@@ -158,6 +158,9 @@ export function recordStats(player, q, correct, chosen) {
   const s = player.stats;
   const t = (s.byTopic[q.tema] ??= { ok: 0, total: 0 });
   t.total++;
+  const level = ((s.byLevel ??= {})[`${q.tema}·${q.dificultad ?? 1}`] ??= { ok: 0, total: 0 });
+  level.total++;
+  if (correct) level.ok++;
   s.answered++;
   if (correct) {
     t.ok++;

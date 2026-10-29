@@ -181,6 +181,13 @@ export class RoomManager {
   }
 
   // Modo fácil (solo el host, en el lobby)
+  fps(socket, fps) {
+    const player = this.playerOf(socket);
+    const n = Number(fps);
+    if (!player || !(n > 0 && n < 500)) return;
+    player.fps = { sum: (player.fps?.sum ?? 0) + n, n: (player.fps?.n ?? 0) + 1 };
+  }
+
   chat(socket, data) {
     const room = this.roomOf(socket);
     const player = this.playerOf(socket);

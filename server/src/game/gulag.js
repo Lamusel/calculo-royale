@@ -126,6 +126,7 @@ function finish(game, fight) {
   if (fighters.some((p) => p.gulagBot)) game.room.broadcastInfo?.();
   if (winner && !winner.gulagBot) {
     winner.place = null;
+    if (game.balance) game.balance.gulagReturns++;
     // Nunca vuelve a puños: al menos la pistola con unas pocas balas (como al empezar)
     if (winner.weapons.every((w) => !w || w.id === 'fists')) {
       winner.weapons[SECONDARY] = newWeapon('m1911', GULAG.returnBullets);

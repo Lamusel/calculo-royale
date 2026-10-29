@@ -37,6 +37,29 @@ export async function saveResults(record, env = process.env, dir = LOCAL_DIR) {
 }
 
 // Registro de una partida a partir de la sala ya terminada
+// Estadísticas de balance (6.5): bajas por arma, acierto por tema y dificultad, regresos del Gulag,
+// duración y FPS promedio de los clientes
+export function balanceStats(room) {
+  const game = room.game;
+  const people = [...room.players.values()].filter((p) => !p.gulagBot);
+  const levels = {};
+  for (const p of people) {
+    for (const [key, { ok, total }] of Object.entries(p.stats.byLevel ?? {})) {
+      const l = (levels[key] ??= { ok: 0, total: 0 });
+      l.ok += ok;
+      l.total += total;
+    }
+  }
+  const fps = people.filter((p) => p.fps?.n).map((p) => p.fps.sum / p.fps.n);
+  return {
+    duracion_s: game?.matchStartedAt !== undefined ? Math.round((game.now - game.matchStartedAt) / 1000) : null,
+    bajas_por_arma: game?.balance?.kills ?? {},
+    acierto_por_tema_y_dificultad: Object.fromEntries(Object.entries(levels).map(([k, l]) => [k, { ...l, porcentaje: Math.round((l.ok / l.total) * 100) }])),
+    volvieron_del_gulag: game?.balance?.gulagReturns ?? 0,
+    fps_promedio: fps.length ? Math.round(fps.reduce((a, b) => a + b, 0) / fps.length) : null,
+  };
+}
+
 export function buildRecord(room, classStats) {
   return {
     codigo: room.code,
@@ -46,6 +69,7 @@ export function buildRecord(room, classStats) {
     ganador: room.results.ranking.find((r) => r.id === room.results.winnerId)?.name ?? null,
     ranking: room.results.ranking,
     por_tema: classStats.byTopic,
+    balance: balanceStats(room),
     jugadores: [...room.players.values()].map((p) => ({
       nombre: p.name,
       equipo: p.team ?? null,

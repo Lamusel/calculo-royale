@@ -29,10 +29,26 @@ export class SnapshotBuffer {
     else this.offset += (offset - this.offset) * 0.02;
 
     const byId = new Map();
-    for (const p of players) byId.set(p[0], p);
+    const seen = new Map();
+    for (const p of players) {
+      byId.set(p[0], p);
+      seen.set(p[0], tick);
+    }
+    // Interés por cercanía (6.5): los lejanos llegan 1 de cada 5 snapshots; mientras, quedan donde
+    // estaban (hasta 12 ticks; si se fue de la sala, desaparece solo)
+    const prev = this.snaps.at(-1);
+    if (prev) {
+      for (const [id, p] of prev.players) {
+        const at = prev.seen.get(id) ?? prev.tick;
+        if (!byId.has(id) && tick - at <= 12) {
+          byId.set(id, p);
+          seen.set(id, at);
+        }
+      }
+    }
     const grenadesById = new Map();
     for (const g of grenades) grenadesById.set(g[0], g);
-    this.snaps.push({ tick, t, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus, effects });
+    this.snaps.push({ tick, t, seen, players: byId, grenades: grenadesById, dummies, shots, explosions, crates, alarms, zone, airdrop, gulag, vehicles: new Map(vehicles.map((v) => [v[0], v])), bus, effects });
     while (this.snaps.length > 2 && this.snaps[0].t < t - BUFFER_MS) this.snaps.shift();
   }
 
