@@ -166,9 +166,10 @@ test('6.5: toda skin externa va tiesa (sin huesos ni clips) y el arma se ve en l
   setLoaderDeps(fakeLoader(mixamoModel()));
   const ch = new Character({ skin: 'prueba_1', color: '#f00' });
   assert.equal(ch.status, 'loading');
-  assert.ok(ch.procedural, 'mientras carga se ve el soldado base');
+  assert.ok(!ch.procedural && !ch.visualRoot.visible, '7A: mientras carga no se ve el soldado de reemplazo');
   await until(() => ch.status !== 'loading');
   assert.equal(ch.status, 'ready');
+  assert.ok(ch.visualRoot.visible);
   assert.equal(ch.external.mode, 'A', 'aunque el esqueleto sea compatible');
   assert.equal(ch.external.mixer, null);
   const ext = ch.external.mapping;

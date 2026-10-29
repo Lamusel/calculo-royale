@@ -159,3 +159,22 @@ test('siempre hay repetición si hubo alguna baja de un jugador, y no trae respu
   assert.ok(replay.frames.length > 5);
   assert.ok(!JSON.stringify(replay).includes('correcta'));
 });
+
+test('7A: las 3 mejores jugadas sin pisarse, en orden de la partida (lanzacohetes, arma blanca, atropello)', () => {
+  const room = makeRoom();
+  const [a, b, c, d, e, f] = addPlayers(room, 7);
+  start(room);
+  advance(room, 1000);
+  kill(room, c, a, 'rpg');
+  advance(room, 7000);
+  kill(room, d, b, 'katana');
+  advance(room, 7000);
+  kill(room, e, a, 'jeep');
+  advance(room, 7000);
+  kill(room, f, b); // baja simple: no entra entre las 3
+  advance(room, 2000);
+  const replay = room.game.recorder.take();
+  assert.equal(replay.kind, 'runover', 'la mejor arriba');
+  assert.deepEqual(replay.clips.map((c) => c.kind), ['rocket', 'melee', 'runover']);
+  for (const clip of replay.clips) assert.ok(clip.frames.length > 5);
+});

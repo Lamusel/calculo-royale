@@ -18,6 +18,7 @@ const handWorld = new THREE.Vector3();
 const HEAD_TOP = 0.12;
 const BACK_OFFSET = -0.18;
 const warned = new Set(); // un solo aviso por skin que falla
+const EXTERNAL_WAIT_MS = 3_000; // espera máxima de una skin externa antes de mostrar la base
 
 // Parte visual de un jugador:
 //   visualRoot
@@ -59,10 +60,19 @@ export class Character {
     this.dropExternal();
     this.applyWeaponOffset();
     if (this.entry.type === 'external') {
-      // Mientras carga se ve la skin procedural base
-      this.mountProcedural(FALLBACK_SKIN);
+      // 7A: mientras carga no se ve nadie (solo el anillo del jugador, que va aparte); si en 3 s no
+      // llegó, la skin procedural base hasta que llegue (o para siempre si falla)
+      this.procedural?.remove();
+      this.procedural = null;
+      this.visualRoot.visible = false;
       this.status = 'loading';
       const wanted = skinId;
+      clearTimeout(this.fallbackTimer);
+      this.fallbackTimer = setTimeout(() => {
+        if (this.skinId !== wanted || this.status !== 'loading') return;
+        this.mountProcedural(FALLBACK_SKIN);
+        this.visualRoot.visible = true;
+      }, EXTERNAL_WAIT_MS);
       loadSkinSystem()
         .then((m) => m.createSkinInstance(this.entry))
         .then((instance) => {
@@ -70,8 +80,10 @@ export class Character {
             loaderModule.then((m) => m.disposeSkinInstance(instance));
             return;
           }
+          clearTimeout(this.fallbackTimer);
           this.procedural?.remove();
           this.procedural = null;
+          this.visualRoot.visible = true;
           this.external = instance;
           this.rig.root.add(instance.object);
           instance.setShadows(this.shadows);
@@ -84,9 +96,14 @@ export class Character {
           if (this.skinId !== wanted) return;
           if (!warned.has(skinId)) console.warn('Skin asset missing:', skinId, err?.message ?? err);
           warned.add(skinId);
+          clearTimeout(this.fallbackTimer);
+          if (!this.procedural) this.mountProcedural(FALLBACK_SKIN);
+          this.visualRoot.visible = true;
           this.status = 'fallback';
         });
     } else {
+      clearTimeout(this.fallbackTimer);
+      this.visualRoot.visible = true;
       this.mountProcedural(skinId);
       this.status = 'ready';
     }
@@ -260,6 +277,7 @@ export class Character {
 
   // Libera la skin (React puede volver a montarla con setSkin: StrictMode monta dos veces)
   dispose() {
+    clearTimeout(this.fallbackTimer);
     this.procedural?.remove();
     this.procedural = null;
     this.dropExternal();

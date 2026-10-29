@@ -1,4 +1,4 @@
-import { DUEL, REPLAY, TICK_MS, WEAPON_IDS, isSniper } from '@calculo-royale/shared/constants';
+import { DUEL, REPLAY, TICK_MS, WEAPON_IDS, WEAPONS, isMelee, isSniper } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { zoneInequality } from '@calculo-royale/shared/zone';
 import { aliveCount, inMatch } from './combat.js';
@@ -57,12 +57,7 @@ export function sendKillCam(game, victim, attacker, weaponIndex) {
   if (game.room.phase !== 'playing' || victim.bot || !attacker || attacker === victim || !victim.socketId) return;
   const frames = game.recorder.frames.slice(-KILLCAM_TICKS);
   if (frames.length < 4) return;
-  const near = frames.map((f) => {
-    const copy = [...f];
-    const at = f[1].find((e) => e[0] === attacker.id);
-    copy[1] = at ? f[1].filter((e) => e[0] === victim.id || (Math.abs(e[1] - at[1]) < KILLCAM_RADIUS && Math.abs(e[2] - at[2]) < KILLCAM_RADIUS)) : f[1];
-    return copy;
-  });
+  const near = nearFocus(frames, attacker.id, KILLCAM_RADIUS);
   game.room.emitTo(victim, EVENTS.KILL_CAM, {
     kind: 'killcam',
     title: `${attacker.name} te eliminó`,
@@ -89,6 +84,10 @@ export function scoreKill(game, target) {
 
   const options = [{ kind: 'kill', score: 10, title: `${attacker.name} elimina a ${target.name}` }];
   if (weapon === 'jeep') options.push({ kind: 'runover', score: 70, title: `Atropello de ${attacker.name} a ${target.name}` });
+  // 7A: lanzacohetes, desde la tirolina y con arma blanca
+  if (weapon === 'rpg' || weapon === 'gl') options.push({ kind: 'rocket', score: 55, title: `${attacker.name} con el ${WEAPONS[weapon].name.toLowerCase()}` });
+  if (attacker.zip) options.push({ kind: 'zipline', score: 65, title: `${attacker.name} dispara desde la tirolina` });
+  if (isMelee(weapon)) options.push({ kind: 'melee', score: 50, title: `${attacker.name} a filo de ${WEAPONS[weapon].name.toLowerCase()}` });
   if (isSniper(weapon) && dist >= REPLAY.sniperDistance) {
     options.push({ kind: 'sniper', score: 50 + dist, title: `Francotirador: ${attacker.name} a ${Math.round(dist)} m` });
   }
@@ -103,6 +102,10 @@ export function scoreKill(game, target) {
   return { ...best, focusId: attacker.id, keyTick: game.tick };
 }
 
+// Grabador (7A): guarda las 3 mejores jugadas de la partida sin que se pisen entre sí. Cada candidata
+// espera su "después" (AFTER_TICKS) y se recorta de los últimos BUFFER_TICKS snapshots.
+const TOP = 3;
+const CLIP_TICKS = BEFORE_TICKS + AFTER_TICKS;
 export class Recorder {
   constructor() {
     this.reset();
@@ -110,41 +113,61 @@ export class Recorder {
 
   reset() {
     this.frames = []; // snapshots de los últimos BUFFER_TICKS
-    this.pending = null; // mejor jugada esperando su "después"
-    this.best = null; // mejor clip ya recortado
+    this.pending = []; // jugadas esperando su "después"
+    this.clips = []; // ya recortadas, de mayor a menor puntaje
   }
 
   push(snapshot) {
     this.frames.push(snapshot);
     while (this.frames.length > BUFFER_TICKS) this.frames.shift();
-    if (this.pending && snapshot[0] >= this.pending.keyTick + AFTER_TICKS) this.capture();
+    while (this.pending.length && snapshot[0] >= this.pending[0].keyTick + AFTER_TICKS) this.capture(this.pending.shift());
+  }
+
+  // ¿Entraría entre las 3 mejores? (si se pisa con otra, solo si le gana)
+  worth(candidate) {
+    const all = [...this.clips, ...this.pending];
+    const overlap = all.filter((c) => Math.abs(c.keyTick - candidate.keyTick) < CLIP_TICKS);
+    if (overlap.some((c) => c.score >= candidate.score)) return false;
+    return all.length - overlap.length < TOP || all.some((c) => c.score < candidate.score);
   }
 
   consider(candidate) {
-    if (!candidate) return;
-    const top = Math.max(this.best?.score ?? 0, this.pending?.score ?? 0);
-    if (candidate.score <= top) return;
-    // Si había otra esperando, se recorta ya con lo que tiene
-    if (this.pending) this.capture();
-    this.pending = candidate;
+    if (!candidate || !this.worth(candidate)) return;
+    this.pending = this.pending.filter((c) => Math.abs(c.keyTick - candidate.keyTick) >= CLIP_TICKS);
+    this.pending.push(candidate);
   }
 
-  capture() {
-    const p = this.pending;
-    this.pending = null;
-    if (!p || p.score <= (this.best?.score ?? 0)) return;
+  capture(p) {
+    if (!p) return;
     const frames = this.frames.filter((f) => f[0] >= p.keyTick - BEFORE_TICKS && f[0] <= p.keyTick + AFTER_TICKS);
-    if (frames.length >= 2) this.best = { ...p, frames };
+    if (frames.length < 2) return;
+    this.clips = this.clips.filter((c) => Math.abs(c.keyTick - p.keyTick) >= CLIP_TICKS || c.score > p.score);
+    if (this.clips.some((c) => Math.abs(c.keyTick - p.keyTick) < CLIP_TICKS)) return;
+    this.clips.push({ ...p, frames });
+    this.clips.sort((x, y) => y.score - x.score);
+    this.clips.length = Math.min(this.clips.length, TOP);
   }
 
-  // La repetición para enviar (o null): a 10 Hz, sin perder disparos ni explosiones
+  // Las repeticiones para enviar (o null): en orden de la partida, a 10 Hz, sin perder disparos ni
+  // explosiones y solo con los jugadores cerca del protagonista. Los campos de la mejor van arriba.
   take() {
-    if (this.pending) this.capture();
-    const best = this.best;
-    this.best = null;
-    if (!best) return null;
-    return { kind: best.kind, title: best.title, focusId: best.focusId, keyTick: best.keyTick, frames: downsample(best.frames, REPLAY.sendEvery) };
+    for (const p of this.pending.splice(0)) this.capture(p);
+    const clips = this.clips.splice(0);
+    if (!clips.length) return null;
+    const packed = clips.map((c) => ({ kind: c.kind, title: c.title, focusId: c.focusId, keyTick: c.keyTick, frames: downsample(nearFocus(c.frames, c.focusId), REPLAY.sendEvery) }));
+    return { ...packed[0], clips: [...packed].sort((x, y) => x.keyTick - y.keyTick) };
   }
+}
+
+// Solo los jugadores a menos de 70 m del protagonista (las repeticiones pesan mucho menos)
+export function nearFocus(frames, focusId, radius = 70) {
+  return frames.map((f) => {
+    const at = f[1].find((e) => e[0] === focusId);
+    if (!at) return f;
+    const copy = [...f];
+    copy[1] = f[1].filter((e) => Math.abs(e[1] - at[1]) < radius && Math.abs(e[2] - at[2]) < radius);
+    return copy;
+  });
 }
 
 // Se queda con 1 de cada `every` snapshots; los disparos (4) y explosiones (5) de los omitidos
