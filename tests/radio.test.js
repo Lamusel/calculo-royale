@@ -342,33 +342,6 @@ test('6.5: destrucción ligera: los barriles rojos explotan y encadenan, lo roto
   assert.ok(overlapsObstacle(red.x, red.y, 0.3));
 });
 
-test('6.5: interés por cercanía: los lejanos llegan 1 de cada 5 snapshots; el proyector recibe todo', async () => {
-  const { Room } = await import('../server/src/rooms/Room.js');
-  const sent = [];
-  const target = (to, except = []) => ({ volatile: { emit: (e, d) => sent.push({ to, except, d }) }, except: (list) => target(to, list), emit() {} });
-  const io = { to: (to) => target(to) };
-  const room = new Room('ABCD', io, () => {});
-  room.game.stop();
-  const [a, b] = [new Player({ id: 1, name: 'A', color: '#fff', token: 'a' }), new Player({ id: 2, name: 'B', color: '#fff', token: 'b' })];
-  for (const p of [a, b]) {
-    p.socketId = `s${p.id}`;
-    p.connected = true;
-    room.players.set(p.id, p);
-  }
-  room.phase = 'playing';
-  a.teleport(0, 0);
-  b.teleport(400, 0);
-  const snap = (tick) => [tick, [[1, 0, 0], [2, 400, 0]], [], [], [], [], '', [], [], [], [], [], [], []];
-  room.broadcastState(snap(7));
-  const toA = sent.find((s) => s.to === 's1');
-  assert.deepEqual(toA.d[1].map((e) => e[0]), [1], 'b está lejos: no va');
-  assert.ok(sent.some((s) => s.to === 'ABCD' && s.except.includes('s1')), 'el resto (proyector) recibe el completo');
-  sent.length = 0;
-  room.broadcastState(snap(10));
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].d[1].length, 2, 'cada 5 ticks va todo');
-});
-
 test('6.5: estadísticas de balance en el registro (bajas por arma, tema y dificultad, Gulag, duración, FPS)', async () => {
   const { balanceStats } = await import('../server/src/storage.js');
   const { recordStats } = await import('../server/src/game/crates.js');

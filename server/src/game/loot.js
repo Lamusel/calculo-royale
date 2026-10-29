@@ -97,6 +97,8 @@ export function nearestLoot(game, x, y, player = null) {
   let best = null;
   let bestDist = LOOT.pickupRadius;
   for (const e of game.loot?.values() ?? []) {
+    // Descarte rápido por caja (se llama por bot en cada tick, con ~1000 objetos en el mapa)
+    if (Math.abs(e.x - x) > bestDist || Math.abs(e.y - y) > bestDist) continue;
     if (player && !mayTake(game, player, e)) continue;
     const d = Math.hypot(e.x - x, e.y - y);
     if (d <= bestDist) {

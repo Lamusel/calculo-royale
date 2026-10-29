@@ -17,9 +17,6 @@ import { Game } from '../game/Game.js';
 import { Player } from '../game/Player.js';
 import { World } from '../game/World.js';
 
-const INTEREST_RADIUS = 150; // m (la niebla y la cámara no muestran más lejos)
-const INTEREST_EVERY = 5; // los lejanos a 4 Hz
-
 export class Room {
   constructor(code, io, onEmpty) {
     this.code = code;
@@ -276,21 +273,8 @@ export class Room {
 
   broadcastState(snapshot) {
     // volatile: si un cliente va atrasado se descarta el snapshot viejo en vez de acumularlo
-    // Interés por cercanía (6.5): en partida, a cada jugador en el suelo los que están a más de
-    // INTEREST_RADIUS le llegan solo 1 de cada INTEREST_EVERY snapshots (el cliente los mantiene).
-    // El proyector y los que caen, esperan o están en el Gulag reciben todo.
-    if (this.phase !== 'playing' || snapshot[0] % INTEREST_EVERY === 0) {
-      this.io.to(this.code).volatile.emit(EVENTS.STATE, snapshot);
-      return;
-    }
-    const filtered = [];
-    for (const p of this.players.values()) {
-      if (!p.socketId || !p.connected || !p.alive || p.deploying || p.arena != null) continue;
-      const near = snapshot[1].filter((e) => e[0] === p.id || (Math.abs(e[1] - p.x) < INTEREST_RADIUS && Math.abs(e[2] - p.y) < INTEREST_RADIUS) || (p.team != null && this.players.get(e[0])?.team === p.team));
-      this.io.to(p.socketId).volatile.emit(EVENTS.STATE, [snapshot[0], near, ...snapshot.slice(2)]);
-      filtered.push(p.socketId);
-    }
-    this.io.to(this.code).except(filtered).volatile.emit(EVENTS.STATE, snapshot);
+    // Un solo paquete para toda la sala (7A): filtrar por jugador obligaba a armar 40 paquetes por tick
+    this.io.to(this.code).volatile.emit(EVENTS.STATE, snapshot);
   }
 
   destroy() {
