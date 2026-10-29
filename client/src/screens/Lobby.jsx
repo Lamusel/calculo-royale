@@ -274,11 +274,66 @@ function ControlsHelp({ isTouch }) {
   );
 }
 
+// Tutorial de 1 minuto (6.5): la primera vez en el lobby, 6 tarjetas de ~10 s; se puede saltar
+const TUTORIAL_KEY = 'cr-tutorial-v1';
+const TUTORIAL_MS = 10_000;
+const tutorialSteps = (touch) => [
+  ['Moverse', touch ? 'Joystick izquierdo para caminar; el botón de salto para saltar.' : 'WASD para caminar, el mouse apunta y Espacio salta.'],
+  ['Disparar', touch ? 'Toca el joystick derecho: dispara al más cercano. Arrástralo para apuntar.' : 'Clic izquierdo dispara; clic derecho mantenido apunta con la mira.'],
+  ['Abrir caja', touch ? 'Junto a una caja toca Abrir y responde la pregunta: acertar da el botín.' : 'Junto a una caja pulsa E y responde la pregunta: acertar da el botín.'],
+  ['Obtener balas', touch ? 'Toca Balas y responde: es la forma principal de llenar la reserva.' : 'Pulsa B y responde: es la forma principal de llenar la reserva.'],
+  ['Tarjeta de zona', 'La zona segura es una desigualdad: el Mando la anuncia y la tarjeta dice si estás adentro.'],
+  ['Gulag', 'Si caes, vas al Gulag: responde y gana el duelo para volver a la partida.'],
+];
+function Tutorial({ isTouch }) {
+  const [step, setStep] = useState(() => {
+    try {
+      return localStorage.getItem(TUTORIAL_KEY) ? -1 : 0;
+    } catch {
+      return -1;
+    }
+  });
+  const steps = tutorialSteps(isTouch);
+  const done = () => {
+    setStep(-1);
+    try {
+      localStorage.setItem(TUTORIAL_KEY, '1');
+    } catch {
+      // Sin almacenamiento: se vuelve a ver la próxima vez
+    }
+  };
+  useEffect(() => {
+    if (step < 0) return undefined;
+    const id = setTimeout(() => (step + 1 < steps.length ? setStep(step + 1) : done()), TUTORIAL_MS);
+    return () => clearTimeout(id);
+  }, [step, steps.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (step < 0) return null;
+  const [title, text] = steps[step];
+  return (
+    <div role="dialog" className="absolute bottom-[7.5rem] left-1/2 z-40 w-[min(90vw,24rem)] -translate-x-1/2 rounded-lg border border-khaki-dark bg-black/80 p-3 text-stone-100 shadow-xl">
+      <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-khaki-light">
+        Tutorial {step + 1}/{steps.length} · {title}
+      </p>
+      <p className="mt-1 text-sm">{text}</p>
+      <div className="mt-2 flex justify-end gap-2 text-xs">
+        <button onClick={done} className="rounded bg-white/10 px-2 py-1 text-stone-300">
+          Saltar
+        </button>
+        <button onClick={() => (step + 1 < steps.length ? setStep(step + 1) : done())} className="rounded bg-khaki px-3 py-1 font-bold text-olive-950">
+          {step + 1 < steps.length ? 'Siguiente' : 'Listo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Panel del lobby jugable: la escena sigue viva detrás, todos pueden moverse mientras esperan
 export default function Lobby({ room, myId, isTouch, onSkin }) {
   const [showInvite, setShowInvite] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
   const [showSkins, setShowSkins] = useState(false);
+  // Configuración agrupada en un panel plegable (6.5); cerrado muestra un resumen
+  const [showConfig, setShowConfig] = useState(false);
   const me = room.players.find((p) => p.id === myId);
   const topicCount = room.topics?.length ?? Object.keys(TOPICS).length;
   const [error, setError] = useState('');
@@ -307,20 +362,27 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
           <button onClick={() => setShowSkins(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-khaki-light">
             Skin
           </button>
-          <button onClick={() => setShowTopics(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">
-            Temas {topicCount}/{Object.keys(TOPICS).length}
+          <button onClick={() => setShowConfig((o) => !o)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200" title="Configuración de la partida">
+            ⚙ {TEAM_MODES[room.teamMode ?? 'solo'].name} · {DURATIONS[room.duration ?? 'normal']?.name.split(' ')[0]} · {topicCount} temas {showConfig ? '▴' : '▾'}
           </button>
-          <WeatherPicker room={room} isHost={isHost} />
-          <DeployPicker room={room} isHost={isHost} />
-          <DurationPicker room={room} isHost={isHost} />
-          <TeamPicker room={room} isHost={isHost} myId={myId} />
-          <PresentationPicker room={room} isHost={isHost} />
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">
               Iniciar
             </button>
           )}
         </div>
+        {showConfig && (
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-lg bg-black/60 px-3 py-2 text-stone-100 backdrop-blur">
+            <TeamPicker room={room} isHost={isHost} myId={myId} />
+            <DurationPicker room={room} isHost={isHost} />
+            <button onClick={() => setShowTopics(true)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">
+              Temas {topicCount}/{Object.keys(TOPICS).length}
+            </button>
+            <WeatherPicker room={room} isHost={isHost} />
+            <DeployPicker room={room} isHost={isHost} />
+            <PresentationPicker room={room} isHost={isHost} />
+          </div>
+        )}
         <p className="rounded bg-black/45 px-3 py-1 text-center text-[11px] text-stone-200">
           {isHost ? 'Campo de entrenamiento · prueba la caja de práctica' : 'Esperando a que el anfitrión inicie…'}
         </p>
@@ -328,6 +390,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
       </div>
 
       <ControlsHelp isTouch={isTouch} />
+      <Tutorial isTouch={isTouch} />
 
       {showInvite && <BigInvite room={room} url={url} onClose={() => setShowInvite(false)} />}
       {showTopics && <TopicPicker room={room} isHost={isHost} onClose={() => setShowTopics(false)} />}

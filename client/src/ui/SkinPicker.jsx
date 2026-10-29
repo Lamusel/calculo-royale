@@ -1,17 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS, SKIN_RARITIES } from '@calculo-royale/shared/skins';
 import { getSkinEntry, listSkins, rarityColor, skinInitials } from '../game/character/skins/index.js';
 import { loadProgress, loadSkin, saveSkin, unlockedSkins } from '../achievements.js';
+import { cachedPortrait, proceduralPortrait } from './portraits.js';
 
 // Retrato 2D de una skin: el PNG de client/public/assets/skins/portraits/<id>.png, o si no hay
 // (o falla al cargar) una tarjeta con el color de la rareza y las iniciales. Nunca carga un GLB.
+// Las procedurales usan su retrato generado (portraits.js, una vez y en caché).
 export function SkinPortrait({ skin, className = '' }) {
   const [broken, setBroken] = useState(false);
+  const procedural = skin.type !== 'external' && !skin.portrait;
+  const [generated, setGenerated] = useState(() => (procedural ? cachedPortrait(skin.id) : null));
+  useEffect(() => {
+    if (!procedural) return undefined;
+    let alive = true;
+    setGenerated(cachedPortrait(skin.id));
+    proceduralPortrait(skin.id).then((url) => alive && setGenerated(url));
+    return () => {
+      alive = false;
+    };
+  }, [skin.id, procedural]);
   const color = rarityColor(skin.rarity);
-  if (skin.portrait && !broken) {
+  const src = skin.portrait ?? generated;
+  if (src && !broken) {
     return (
       <img
-        src={skin.portrait}
+        src={src}
         alt={skin.name}
         loading="lazy"
         draggable={false}

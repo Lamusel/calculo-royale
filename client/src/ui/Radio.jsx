@@ -10,9 +10,31 @@ const KIND_STYLE = {
   airdrop: 'border-yellow-400',
 };
 
-// Transmisión del centro de mando: una a la vez, por prioridad (messageQueue.js), bajo la barra superior
+// Banner grande solo para la zona (6.5); los demás avisos del Mando son toasts de 2,5 s en una esquina
+const BANNER = new Set(['zone', 'closing', 'final']);
+const TOAST_MS = 2_500;
+
 export function RadioFeed({ radio }) {
   const now = performance.now();
+  const toasts = radio.filter((m) => !BANNER.has(m.kind) && now - m.at < TOAST_MS).slice(-3);
+  return (
+    <>
+      <ZoneBanner radio={radio.filter((m) => BANNER.has(m.kind))} now={now} />
+      {toasts.length > 0 && (
+        <div className="pointer-events-none absolute bottom-[45%] right-3 z-30 flex w-[min(44vw,18rem)] flex-col items-end gap-1">
+          {toasts.map((m) => (
+            <div key={m.at} className={`rounded border-l-4 bg-black/75 px-2 py-1 text-xs text-stone-100 shadow ${KIND_STYLE[m.kind] ?? 'border-khaki'}`}>
+              <b className="text-khaki-light">📻 {m.title}:</b> <MathText text={m.text} />
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+// Transmisión de zona: una a la vez, por prioridad (messageQueue.js), bajo la barra superior
+function ZoneBanner({ radio, now }) {
   const current = currentMessage(radio, now);
   if (!current) return null;
   const last = current.message;
