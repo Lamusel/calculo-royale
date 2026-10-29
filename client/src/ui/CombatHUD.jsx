@@ -369,6 +369,24 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
 
   return (
     <>
+      {/* Marcador propio (7A): flecha en el borde con la distancia (la cámara mira al norte) */}
+      {client?.myMarker && me && self.alive && (() => {
+        const dx = client.myMarker.x - me.x;
+        const dy = client.myMarker.y - me.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 4) return null;
+        const a = -Math.atan2(dy, dx);
+        return (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-0 w-0" style={{ transform: `rotate(${a}rad)` }}>
+            <div className="absolute left-[min(40vw,38vh)] top-0 flex -translate-y-1/2 items-center gap-1">
+              <span className="block h-0 w-0 border-y-[7px] border-l-[12px] border-y-transparent border-l-orange-400 drop-shadow" />
+            </div>
+            <span className="absolute left-[min(40vw,38vh)] top-3 -translate-x-1/2 rounded bg-black/60 px-1 font-mono text-[10px] text-orange-200" style={{ transform: `rotate(${-a}rad)` }}>
+              {Math.round(d)} m
+            </span>
+          </div>
+        );
+      })()}
       {/* De dónde viene el daño: una marca roja en el borde, 1,2 s (la cámara siempre mira al norte) */}
       {client?.hurtFrom && me && performance.now() - client.hurtFrom.at < 1200 && Math.hypot(client.hurtFrom.x - me.x, client.hurtFrom.y - me.y) > 1 && (
         <div

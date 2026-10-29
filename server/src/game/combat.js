@@ -14,6 +14,7 @@ import { waterAt } from '@calculo-royale/shared/mapPlan';
 import { worldLimits } from '@calculo-royale/shared/mapLayout';
 import { isMelee, isSniper, MELEE, THROWABLES, vehicleType } from '@calculo-royale/shared/constants';
 import { meleeAttack } from './melee.js';
+import { sendKillCam } from './cine.js';
 import { activateUav, blastTactical, damageSensor, damageWall, detonateTactical, smokeBlocks } from './throwables.js';
 import { VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { damageVehicle, vehicleTargetId } from './vehicles.js';
@@ -95,7 +96,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   const finishing = Boolean(target.downed);
   if (finishing) {
     target.downed.hp -= amount;
-    if (target.downed.hp > 0) return { dealt: amount, killed: false };
+    if (target.downed.hp > 0) return { dealt: amount, killed: false, kind: HIT.hp };
     target.downed = null;
     amount = target.hp;
   }
@@ -103,7 +104,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   // Armas blancas: el chaleco absorbe solo una parte (7A)
   const absorbed = ignoreArmor || finishing ? 0 : Math.min(target.armor, melee ? amount * MELEE.armorAbsorb : amount);
   target.armor -= absorbed;
-  if (target.armor <= 0 && target.armorLevel > 0) {
+  const broke = target.armor <= 0 && target.armorLevel > 0;
+  if (broke) {
     target.armor = 0;
     target.armorLevel = 0;
   }
@@ -115,9 +117,10 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
     // De dónde vino el daño (indicador en el borde de la pantalla)
     target.hurtFrom = [Math.round(hitter.x), Math.round(hitter.y)];
   }
-  if (target.hp > 0) return { dealt: amount, killed: false };
+  const kind = broke ? HIT.broke : absorbed >= toHp && absorbed > 0 ? HIT.armor : HIT.hp;
+  if (target.hp > 0) return { dealt: amount, killed: false, kind };
   // En equipos: derribado en vez de muerto si le queda un compañero en pie
-  if (!finishing && game.tryDown?.(target, attackerId)) return { dealt: amount, killed: false, downed: true };
+  if (!finishing && game.tryDown?.(target, attackerId)) return { dealt: amount, killed: false, downed: true, kind: HIT.down };
 
   target.hp = 0;
   target.alive = false;
@@ -143,14 +146,20 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
     attacker.longestKill = Math.max(attacker.longestKill ?? 0, Math.hypot(attacker.x - target.x, attacker.y - target.y));
   }
   game.kills.push([attackerId, target.id, weaponIndex]);
+  sendKillCam(game, target, attacker, weaponIndex);
   if (game.balance && game.room.phase === 'playing') game.balance.kills[WEAPON_IDS[weaponIndex] ?? '?'] = (game.balance.kills[WEAPON_IDS[weaponIndex] ?? '?'] ?? 0) + 1;
-  return { dealt: amount, killed: true };
+  return { dealt: amount, killed: true, kind: HIT.down };
 }
+
+// Tipo de impacto para el color del número (7A): azul al chaleco, blanco a la vida, amarillo al romper
+// el chaleco, rojo al derribar o eliminar
+export const HIT = { hp: 0, armor: 1, broke: 2, down: 3 };
+export const hitPacket = (target, x, y, res) => [target.id, Math.round(res.dealt), x, y, res.killed ? 1 : 0, res.kind ?? HIT.hp];
 
 export function damageTarget(game, target, amount, attackerId, weaponIndex, opts = {}) {
   if (target.vehicle) {
     damageVehicle(game, target.vehicle, amount, attackerId);
-    return { dealt: amount, killed: false };
+    return { dealt: amount, killed: false, kind: HIT.armor };
   }
   if (target.dummy) {
     target.dummy.hp = Math.max(0, target.dummy.hp - amount);
@@ -250,8 +259,7 @@ export function fire(game, p, input) {
 
   for (const [target, amount] of damageByTarget) {
     // El número que ve el que dispara es el daño real (con el casco del otro ya descontado)
-    const { dealt, killed } = damageTarget(game, target, amount, p.id, weaponIndex);
-    game.room.emitTo(p, EVENTS.COMBAT_HIT, [target.id, Math.round(dealt), target.x, target.y, killed ? 1 : 0]);
+    game.room.emitTo(p, EVENTS.COMBAT_HIT, hitPacket(target, target.x, target.y, damageTarget(game, target, amount, p.id, weaponIndex)));
   }
   game.shots.push(encodeShot(p.id, weaponIndex, p.x, p.y, pellets, p.attachments?.muzzle === 'silencer' || Boolean(w.silent)));
   p.recoil = Math.min(RECOIL.max, p.recoil + recoilStep(id, p.attachments));
@@ -342,8 +350,8 @@ export function explode(game, g) {
     const d = Math.hypot(x - g.x, y - g.y);
     if (d > radius || !hasLineOfSight(g.x, g.y, x, y)) return;
     const amount = Math.round(damage * (1 - 0.8 * (d / radius)));
-    const { dealt, killed } = damageTarget(game, target, amount, g.ownerId, index);
-    if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, [target.id, Math.round(dealt), x, y, killed ? 1 : 0]);
+    const res = damageTarget(game, target, amount, g.ownerId, index);
+    if (owner) game.room.emitTo(owner, EVENTS.COMBAT_HIT, hitPacket(target, x, y, res));
   };
   for (const p of game.room.players.values()) {
     if (p.alive && !p.deploying) hurt({ id: p.id, player: p }, p.x, p.y);

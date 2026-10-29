@@ -264,6 +264,11 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   const [replayDone, setReplayDone] = useState(false);
   // Carga al entrar a la partida (skins de todos): { ready } o null
   const [matchLoading, setMatchLoading] = useState(null);
+  // Kill cam (7A): la manda el servidor al caer
+  const [killCam, setKillCam] = useState(null);
+  useEffect(() => {
+    if (client) client.onKillCam = setKillCam;
+  }, [client]);
   // Cambio de clima a mitad de partida: velo de 2 s para que no sea un corte brusco
   const [weatherFade, setWeatherFade] = useState(0);
   const roomPhase = useRef(rawRoom.phase);
@@ -365,6 +370,7 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-stone-900">
       {replaying && <Replay replay={client.replay} room={room} quality={profile} onDone={onReplayDone} />}
+      {killCam && room.phase === 'playing' && !replaying && <Replay replay={killCam} room={room} quality={profile} onDone={() => setKillCam(null)} />}
       {client && !replaying && (
         <Scene
           client={client}
@@ -377,6 +383,7 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
           stats={stats}
           weather={room.weather}
           windAngle={room.windAngle}
+          paused={Boolean(killCam && room.phase === 'playing')}
         />
       )}
       {stats && <DebugOverlay stats={stats} quality={profile} />}

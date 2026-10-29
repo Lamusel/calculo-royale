@@ -48,6 +48,33 @@ export function checkDuel(game) {
 // Durante la presentación nadie se mueve ni recibe daño
 export const duelFrozen = (game) => Boolean(game.duel && game.now < game.duel.introEndsAt);
 
+// ---- Kill cam (7A) ----
+// Al caer, la víctima recibe los últimos KILLCAM_MS siguiendo a quien la eliminó (con su nombre, arma y
+// vida restante). Solo van los jugadores a menos de KILLCAM_RADIUS del atacante: el paquete es chico.
+const KILLCAM_TICKS = Math.round(3_000 / TICK_MS);
+const KILLCAM_RADIUS = 70;
+export function sendKillCam(game, victim, attacker, weaponIndex) {
+  if (game.room.phase !== 'playing' || victim.bot || !attacker || attacker === victim || !victim.socketId) return;
+  const frames = game.recorder.frames.slice(-KILLCAM_TICKS);
+  if (frames.length < 4) return;
+  const near = frames.map((f) => {
+    const copy = [...f];
+    const at = f[1].find((e) => e[0] === attacker.id);
+    copy[1] = at ? f[1].filter((e) => e[0] === victim.id || (Math.abs(e[1] - at[1]) < KILLCAM_RADIUS && Math.abs(e[2] - at[2]) < KILLCAM_RADIUS)) : f[1];
+    return copy;
+  });
+  game.room.emitTo(victim, EVENTS.KILL_CAM, {
+    kind: 'killcam',
+    title: `${attacker.name} te eliminó`,
+    killer: attacker.name,
+    weapon: weaponIndex,
+    hp: Math.max(0, Math.round(attacker.hp)),
+    focusId: attacker.id,
+    keyTick: frames.at(-1)[0],
+    frames: downsample(near, REPLAY.sendEvery),
+  });
+}
+
 // ---- Repetición ----
 
 // Puntaje de una baja como jugada candidata (o null si no la hizo un jugador)

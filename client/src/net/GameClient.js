@@ -180,8 +180,8 @@ export class GameClient {
         this.latency = Date.now() - clientTime;
       },
       [EVENTS.PLAYER_SELF]: (self) => this.onSelf(self),
-      [EVENTS.COMBAT_HIT]: ([, amount, x, y, killed]) => {
-        this.effects.push({ type: 'damage', x, y, amount, killed: Boolean(killed) });
+      [EVENTS.COMBAT_HIT]: ([, amount, x, y, killed, kind = 0]) => {
+        this.effects.push({ type: 'damage', x, y, amount, killed: Boolean(killed), kind });
         sound.hit(Boolean(killed));
         // Golpe propio que conectó: el sonido del filo
         if (performance.now() - (this.lastShot.get(this.myId) ?? -1e9) < 400 && this.meleeReadyAt > performance.now()) sound.meleeHit(x, y);
@@ -191,6 +191,11 @@ export class GameClient {
       // Comodín 50/50: la opción quitada se deshabilita
       [EVENTS.CRATE_FIFTY]: ({ crateId, removed }) => {
         if (this.question?.crateId === crateId) this.question = { ...this.question, removed, fifty: false };
+      },
+      // Kill cam: los últimos segundos desde quien me eliminó
+      [EVENTS.KILL_CAM]: (cam) => {
+        this.killCam = cam;
+        this.onKillCam?.(cam);
       },
       [EVENTS.CRATE_QUESTION]: (question) => {
         this.question = { ...question, receivedAt: performance.now() };
@@ -818,6 +823,16 @@ export class GameClient {
 
   cancelQuestion() {
     this.socket.emit(EVENTS.CRATE_CANCEL);
+  }
+
+  // Marcador propio (7A, también en solitario): tocar el mapa táctico lo pone; tocarlo cerca otra vez lo quita.
+  // En equipo, además, se avisa a los compañeros
+  toggleMarker(x, y) {
+    if (this.myMarker && Math.hypot(this.myMarker.x - x, this.myMarker.y - y) < 25) this.myMarker = null;
+    else {
+      this.myMarker = { x: Math.round(x), y: Math.round(y) };
+      if (this.mates?.size) this.ping(x, y);
+    }
   }
 
   useFifty() {

@@ -40,6 +40,7 @@ const flashGeometry = new THREE.OctahedronGeometry(0.28, 0);
 const flashMaterial = basic('#fff3c4');
 const explosionGeometry = new THREE.IcosahedronGeometry(1, 1);
 
+const DAMAGE_COLORS = ['#ffffff', '#60a5fa', '#facc15', '#f87171'];
 const point = (x, y, lift = CHEST) => new THREE.Vector3(x, terrainHeight(x, y) + lift, -y);
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -173,7 +174,7 @@ export default function Effects({ client, quality }) {
         }));
       } else if (e.type === 'damage') {
         if (state.numbers.length >= MAX_NUMBERS) state.numbers.shift();
-        state.numbers.push({ pos: point(e.x, e.y, 2.4), at: now, text: String(e.amount), killed: e.killed });
+        state.numbers.push({ pos: point(e.x, e.y, 2.4), at: now, text: String(e.amount), killed: e.killed, kind: e.killed ? 3 : (e.kind ?? 0) });
         if (state.markers.length >= MAX_MARKERS) state.markers.shift();
         state.markers.push({ pos: point(e.x, e.y, 1.3), at: now, killed: e.killed });
       }
@@ -243,13 +244,14 @@ export default function Effects({ client, quality }) {
       sprite.visible = Boolean(n);
       if (!n) return;
       const t = (now - n.at) / 800;
-      if (sprite.userData.text !== n.text + n.killed) {
-        const { texture, aspect } = textTexture(n.text, { color: n.killed ? '#f87171' : '#fde047', size: 56 });
+      // Azul al chaleco, blanco a la vida, amarillo y grande al romper el chaleco, rojo al derribar o eliminar
+      if (sprite.userData.text !== n.text + n.kind) {
+        const { texture, aspect } = textTexture(n.text, { color: DAMAGE_COLORS[n.kind] ?? DAMAGE_COLORS[0], size: 56 });
         sprite.material.map = texture;
         sprite.material.needsUpdate = true;
-        sprite.userData = { text: n.text + n.killed, aspect };
+        sprite.userData = { text: n.text + n.kind, aspect };
       }
-      const size = n.killed ? 0.95 : 0.7;
+      const size = n.kind >= 2 ? 0.95 : 0.7;
       sprite.position.copy(n.pos).add({ x: 0, y: t * 1.4, z: 0 });
       sprite.scale.set(sprite.userData.aspect * size, size, 1);
       sprite.material.opacity = 1 - t * t;

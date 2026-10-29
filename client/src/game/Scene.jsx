@@ -271,7 +271,7 @@ function Sun({ sunRef, quality, intensity, color }) {
 }
 
 export default function Scene({
-  client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false, weather = 'despejado', windAngle = 0, followId = null,
+  client, roster, myId, phase, frameRef, quality, onFrame, stats, overview = false, weather = 'despejado', windAngle = 0, followId = null, paused = false,
 }) {
   const sun = useRef(null);
   // El clima solo rige durante la partida; el entrenamiento siempre es de día
@@ -285,6 +285,7 @@ export default function Scene({
       shadows
       camera={{ fov: CAMERA_FOV, near: 0.5, far: 1500, position: CAMERA_OFFSET.toArray() }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
+      frameloop={paused ? 'never' : 'always'}
     >
       <color attach="background" args={[look.sky]} />
       <fog attach="fog" args={[look.sky, ...fog]} />

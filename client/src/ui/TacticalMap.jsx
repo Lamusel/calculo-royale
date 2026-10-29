@@ -268,6 +268,24 @@ export function draw(ctx, size, data, detailed, view = FULL) {
       ctx.fill();
     }
   }
+  // Marcador propio: punto naranja con línea guía desde el jugador
+  if (data.marker) {
+    const me = data.me;
+    ctx.strokeStyle = 'rgba(251,146,60,0.85)';
+    ctx.lineWidth = 1.5;
+    if (me) {
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(X(me.x), Y(me.y));
+      ctx.lineTo(X(data.marker.x), Y(data.marker.y));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.arc(X(data.marker.x), Y(data.marker.y), 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   for (const pg of data.pings ?? []) {
     if (now - pg.at > 30_000) continue;
     ctx.strokeStyle = '#4ade80';
@@ -428,7 +446,7 @@ function useMapCanvas(frameRef, extra, size, detailed) {
       last = t;
       const f = frameRef.current;
       const x = extra.current;
-      draw(ctx, size, { ...f, ...x, mates: x.client?.mates, pings: x.client?.pings, teamColor: x.client?.teamColor }, detailed, detailed ? FULL : minimapView(f.follow ?? f.me));
+      draw(ctx, size, { ...f, ...x, mates: x.client?.mates, pings: x.client?.pings, teamColor: x.client?.teamColor, marker: x.client?.myMarker }, detailed, detailed ? FULL : minimapView(f.follow ?? f.me));
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
@@ -449,12 +467,12 @@ function BigMap({ frameRef, extra, onClose, radio }) {
         style={{ width: size, height: size }}
         className="rounded border border-khaki-dark"
         onPointerUp={(e) => {
-          // En equipo, tocar el mapa marca un punto para los compañeros (no cierra)
+          // Tocar el mapa pone (o quita) tu marcador; en equipo también lo ven tus compañeros (no cierra)
           const c = extra.current.client;
-          if (!c?.mates?.size) return;
+          if (!c) return;
           e.stopPropagation();
           const rect = e.currentTarget.getBoundingClientRect();
-          c.ping(((e.clientX - rect.left) / rect.width) * MAP_SIZE - MAP_HALF, MAP_HALF - ((e.clientY - rect.top) / rect.height) * MAP_SIZE);
+          c.toggleMarker(((e.clientX - rect.left) / rect.width) * MAP_SIZE - MAP_HALF, MAP_HALF - ((e.clientY - rect.top) / rect.height) * MAP_SIZE);
         }}
       />
       <div className="hidden max-w-xs flex-col gap-2 text-sm text-stone-200 md:flex">

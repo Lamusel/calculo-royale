@@ -47,7 +47,8 @@ export const EVENTS = {
   // S → C (solo al dueño): vida, chaleco, munición; solo cuando cambia.
   // C → S: el cliente lo pide al arrancar (puede haberse perdido el primero)
   PLAYER_SELF: 'player:self',
-  COMBAT_HIT: 'combat:hit', // S → C (solo a quien disparó): [objetivo, daño, x, y, mató]
+  COMBAT_HIT: 'combat:hit', // S → C (solo a quien disparó): [objetivo, daño, x, y, mató, tipo (0 vida, 1 chaleco, 2 rompió el chaleco, 3 derribo o baja)]
+  KILL_CAM: 'combat:killcam', // S → C (solo a la víctima): { title, killer, weapon, hp, focusId, keyTick, frames }
   COMBAT_KILL: 'combat:kill', // S → C (a todos): [asesino, víctima, índice del arma]
 
   // Cajas de suministro (se abren con INTERACT)

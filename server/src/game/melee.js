@@ -3,7 +3,7 @@ import { hasLineOfSight } from '@calculo-royale/shared/collision';
 import { DESTRUCTIBLES } from '@calculo-royale/shared/mapLayout';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { encodeShot } from '@calculo-royale/shared/codec';
-import { damageTarget, targetsAt } from './combat.js';
+import { damageTarget, hitPacket, targetsAt } from './combat.js';
 import { damageProp } from './destruction.js';
 
 // Cuerpo a cuerpo (7A): siempre disponible (V, "Golpear" o los puños en la mano en el Gulag). Usa el
@@ -42,8 +42,7 @@ export function meleeAttack(game, p, aim = p.aim, viewTick = game.tick, auto = f
     // Por la espalda: el otro mira hacia el mismo lado que el golpe
     const q = t.player;
     if (q && d > 0.01 && Math.cos(q.aim) * ((q.x - p.x) / d) + Math.sin(q.aim) * ((q.y - p.y) / d) > MELEE.backCos) amount *= w.backstab ?? 1;
-    const { dealt, killed } = damageTarget(game, t, amount, p.id, index, { melee: true });
-    game.room.emitTo(p, EVENTS.COMBAT_HIT, [t.id, Math.round(dealt), t.x, t.y, killed ? 1 : 0]);
+    game.room.emitTo(p, EVENTS.COMBAT_HIT, hitPacket(t, t.x, t.y, damageTarget(game, t, amount, p.id, index, { melee: true })));
   }
   // Sin nadie al alcance: lo rompible del frente (el machete corta cercas y madera de un golpe)
   if (!hits.length) {

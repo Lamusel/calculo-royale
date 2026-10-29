@@ -17,6 +17,9 @@ import { Game } from '../game/Game.js';
 import { Player } from '../game/Player.js';
 import { World } from '../game/World.js';
 
+// Preguntas que se reenvían al reconectar
+const ASKS = new Set([EVENTS.CRATE_QUESTION, EVENTS.AMMO_QUESTION, EVENTS.TRANSMISSION]);
+
 export class Room {
   constructor(code, io, onEmpty) {
     this.code = code;
@@ -107,6 +110,7 @@ export class Room {
     player.resetInputs();
     this.game.resendSelf(player.id);
     socket.data.roomCode = this.code;
+    if (this.phase === 'playing') this.resendAsks(player);
     socket.data.playerId = player.id;
     socket.join(this.code);
     this.broadcastInfo();
@@ -270,7 +274,24 @@ export class Room {
   }
 
   emitTo(player, event, data) {
+    if (ASKS.has(event)) (player.asks ??= {})[event] = { data, at: this.game.now };
     if (player.socketId) this.io.to(player.socketId).emit(event, data);
+  }
+
+  // Reconexión a mitad de pregunta (7A): caja, código del motor, Obtener balas, Gulag, reanimar o
+  // práctica: vuelve la misma pregunta con el tiempo que le quedaba
+  resendAsks(player) {
+    const pending = { [EVENTS.CRATE_QUESTION]: player.question ?? player.engineQuestion, [EVENTS.AMMO_QUESTION]: player.ammoQuestion, [EVENTS.TRANSMISSION]: player.transmission };
+    for (const [event, ask] of Object.entries(player.asks ?? {})) {
+      const live = pending[event];
+      if (!live) continue;
+      const left = ask.data.timeLimitMs - (this.game.now - ask.at);
+      if (left < 500) continue;
+      const removed = event === EVENTS.CRATE_QUESTION ? live.removed : undefined;
+      this.emitTo(player, event, { ...ask.data, timeLimitMs: left, ...(removed !== undefined ? { removed, fifty: false } : {}) });
+      player.asks[event].at = ask.at; // el reloj sigue siendo el de la pregunta original
+      player.asks[event].data = ask.data;
+    }
   }
 
   broadcastState(snapshot) {

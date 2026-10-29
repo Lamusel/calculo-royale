@@ -449,3 +449,37 @@ test('7A: repaso con pasos, comodín 50/50 una vez en cajas de dificultad 3+ y d
   assert.notEqual(a.question.removed, a.question.q.correcta);
   assert.equal(useFifty(room.game, a), false, 'una vez por partida');
 });
+
+test('7A: kill cam a la víctima, tipo de impacto para el color y reenvío de la pregunta al reconectar', async () => {
+  const { HIT } = await import('../server/src/game/combat.js');
+  const { Room } = await import('../server/src/rooms/Room.js');
+  const room = makeRoom();
+  const [a, b] = addPlayers(room, 3);
+  start(room);
+  advance(room, 1000);
+  // Chaleco: azul; lo rompe: amarillo; elimina: rojo
+  b.armor = 25;
+  b.armorLevel = 1;
+  assert.equal(damagePlayer(room.game, b, 10, a.id, 0).kind, HIT.armor);
+  assert.equal(damagePlayer(room.game, b, 30, a.id, 0).kind, HIT.broke);
+  assert.equal(damagePlayer(room.game, b, 10, a.id, 0).kind, HIT.hp);
+  room.emitted.length = 0;
+  damagePlayer(room.game, b, 500, a.id, 0, { ignoreArmor: true });
+  const cam = room.emitted.find((e) => e.event === EVENTS.KILL_CAM);
+  assert.ok(cam && cam.to === b.id && cam.data.focusId === a.id && cam.data.frames.length >= 2);
+  // Reconexión: la misma pregunta con el tiempo que quedaba
+  const real = new Room('ZZZZ', { to: () => ({ emit() {}, volatile: { emit() {} } }) }, () => {});
+  real.game.stop();
+  const p = new Player({ id: 9, name: 'R', color: '#fff', token: 'r' });
+  p.socketId = 's9';
+  real.players.set(9, p);
+  real.phase = 'playing';
+  p.ammoQuestion = { id: 1 };
+  real.emitTo(p, EVENTS.AMMO_QUESTION, { id: 1, timeLimitMs: 20_000 });
+  real.game.now += 8000;
+  const sent = [];
+  real.io = { to: () => ({ emit: (e, d) => sent.push({ e, d }) }) };
+  real.resendAsks(p);
+  assert.equal(sent[0].e, EVENTS.AMMO_QUESTION);
+  assert.equal(sent[0].d.timeLimitMs, 12_000);
+});
