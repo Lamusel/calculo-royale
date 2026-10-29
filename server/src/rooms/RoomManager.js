@@ -1,3 +1,4 @@
+import { useFifty } from '../game/crates.js';
 import { shuffleTeams, teamPing } from '../game/teams.js';
 import { DEPLOY_MODES, DURATIONS, NAME_MAX_LENGTH, TEAM_MODES, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
@@ -181,6 +182,11 @@ export class RoomManager {
   }
 
   // Modo fácil (solo el host, en el lobby)
+  fifty(socket) {
+    const player = this.playerOf(socket);
+    if (player) useFifty(this.roomOf(socket).game, player);
+  }
+
   fps(socket, fps) {
     const player = this.playerOf(socket);
     const n = Number(fps);

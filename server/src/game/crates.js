@@ -6,7 +6,7 @@ import { take } from '@calculo-royale/shared/inventory';
 import { dropAround } from './loot.js';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { SUPPLY_CRATES, TRAINING } from '@calculo-royale/shared/mapLayout';
-import { drawQuestion } from '../questions/QuestionBank.js';
+import { drawQuestion, explanationSteps } from '../questions/QuestionBank.js';
 
 // Cajas de suministro con candado de código: la pregunta ABCD es el código.
 // La pregunta (con su respuesta correcta) vive solo aquí, en player.question.
@@ -138,8 +138,9 @@ export function nearestCrate(game, x, y) {
 export function openCrate(game, player, crate) {
   if (player.question || crate.state !== CRATE_STATE.CLOSED) return false;
   const rarity = RARITIES[crate.rarity];
-  const q = drawQuestion({ topics: game.room.topics, difficulty: rarity.difficulty, seen: player.seenQuestions, easy: game.room.easy });
-  player.question = { crateId: crate.id, q, expiresAt: game.now + rarity.timeMs };
+  const { topic, difficulty } = adaptiveDifficulty(player, game.room.topics, rarity.difficulty);
+  const q = drawQuestion({ topics: topic ? [topic] : game.room.topics, difficulty, seen: player.seenQuestions, easy: game.room.easy });
+  player.question = { crateId: crate.id, q, expiresAt: game.now + rarity.timeMs, rarityDifficulty: rarity.difficulty };
   crate.state = CRATE_STATE.BUSY;
   crate.busyBy = player.id;
   game.room.emitTo(player, EVENTS.CRATE_QUESTION, {
@@ -150,7 +151,40 @@ export function openCrate(game, player, crate) {
     opciones: q.opciones,
     timeLimitMs: rarity.timeMs,
     loot: rarity.loot,
+    fifty: rarity.difficulty >= 3 && !player.fiftyUsed && !game.room.easy, // comodín disponible
   });
+  return true;
+}
+
+// Dificultad adaptativa (7A): con el porcentaje del jugador en el tema (sorteado aquí), si falla mucho
+// la pregunta baja un nivel (mínimo 1) y si acierta todo sube uno (máximo la de la caja + 1). El botín
+// lo sigue mandando la rareza. Devuelve { topic, difficulty } y anota el ajuste para los resultados.
+export function adaptiveDifficulty(player, topics, base, rand = Math.random) {
+  const list = topics?.length ? topics : null;
+  if (!list) return { topic: null, difficulty: base };
+  const topic = list[Math.floor(rand() * list.length)];
+  const t = player.stats.byTopic[topic];
+  let difficulty = base;
+  if (t && t.total >= 2) {
+    const rate = t.ok / t.total;
+    if (rate <= 0.34) difficulty = Math.max(1, base - 1);
+    else if (rate === 1) difficulty = Math.min(base + 1, 4);
+  }
+  if (difficulty !== base) (player.stats.adjusted ??= {})[topic] = difficulty < base ? 'bajó' : 'subió';
+  return { topic, difficulty };
+}
+
+// Comodín 50/50 (7A): una vez por partida en una caja de dificultad 3 o 4, quita una opción incorrecta
+export function useFifty(game, player) {
+  const question = player.question;
+  if (!question || player.fiftyUsed || question.rarityDifficulty < 3 || game.room.easy) return false;
+  const q = question.q;
+  const wrong = q.opciones.map((_, i) => i).filter((i) => i !== q.correcta);
+  if (!wrong.length) return false;
+  player.fiftyUsed = true;
+  const removed = wrong[Math.floor(Math.random() * wrong.length)];
+  question.removed = removed;
+  game.room.emitTo(player, EVENTS.CRATE_FIFTY, { crateId: question.crateId, removed });
   return true;
 }
 
@@ -163,6 +197,10 @@ export function recordStats(player, q, correct, chosen) {
   level.total++;
   if (correct) level.ok++;
   s.answered++;
+  // Repaso (7A): todas las preguntas que le salieron, con los pasos de la explicación
+  if ((s.history ??= []).length < 80) {
+    s.history.push({ tema: q.tema, dificultad: q.dificultad ?? 1, enunciado: q.enunciado, opciones: q.opciones, correcta: q.correcta, elegida: chosen, ok: correct, pasos: explanationSteps(q) });
+  }
   if (correct) {
     t.ok++;
     s.correct++;

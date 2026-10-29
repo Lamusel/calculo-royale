@@ -7,7 +7,7 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 // Candado de código de una caja de suministro (o código del motor de un jeep, con title): la pregunta ABCD es el código.
 // Las opciones responden al levantar el dedo (pointerup): funciona aunque otro dedo esté en
 // la pantalla y evita elegir por accidente al apoyar el pulgar.
-export function LockModal({ question, onAnswer, onCancel }) {
+export function LockModal({ question, onAnswer, onCancel, onFifty, fiftyUsed = false }) {
   const [chosen, setChosen] = useState(null);
   const [now, setNow] = useState(performance.now());
   const rarity = RARITIES[question.rarity];
@@ -34,6 +34,17 @@ export function LockModal({ question, onAnswer, onCancel }) {
             </span>
           )}
           <span className="truncate text-xs text-stone-300">{question.tema}</span>
+          {/* Comodín 50/50 (7A): una vez por partida en cajas de dificultad 3 o 4 */}
+          {!question.title && question.rarity >= 2 && (
+            <button
+              onPointerUp={() => question.fifty && onFifty?.()}
+              disabled={!question.fifty}
+              className={`rounded px-2 py-0.5 text-[11px] font-bold ${question.fifty ? 'bg-orange-500 text-black' : 'bg-black/40 text-stone-500 line-through'}`}
+              title={question.fifty ? 'Quita una opción incorrecta (una vez por partida)' : 'Comodín 50/50 ya usado'}
+            >
+              50/50{!question.fifty && (fiftyUsed || question.removed !== undefined) ? ' usado' : ''}
+            </button>
+          )}
           <button
             onPointerUp={onCancel}
             className="ml-auto rounded bg-black/40 px-2.5 py-1 text-xs text-stone-200"
@@ -57,14 +68,14 @@ export function LockModal({ question, onAnswer, onCancel }) {
           {question.opciones.map((option, i) => (
             <button
               key={i}
-              disabled={chosen !== null}
+              disabled={chosen !== null || question.removed === i}
               onPointerUp={() => {
-                if (chosen !== null) return;
+                if (chosen !== null || question.removed === i) return;
                 setChosen(i);
                 onAnswer(i);
               }}
               className={`flex min-h-[4.25rem] items-center gap-3 rounded-md border px-3 py-2 text-left text-lg transition sm:min-h-[5rem] sm:text-xl ${
-                chosen === i ? 'border-khaki bg-khaki/25' : 'border-white/15 bg-black/35 active:bg-khaki/20'
+                chosen === i ? 'border-khaki bg-khaki/25' : question.removed === i ? 'border-white/5 bg-black/20 opacity-30 line-through' : 'border-white/15 bg-black/35 active:bg-khaki/20'
               }`}
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-khaki text-lg font-bold text-olive-950">{LETTERS[i]}</span>

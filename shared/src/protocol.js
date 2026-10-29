@@ -53,6 +53,7 @@ export const EVENTS = {
   // Cajas de suministro (se abren con INTERACT)
   // S → C: { crateId, rarity, tema, enunciado, opciones, timeLimitMs } — nunca la respuesta correcta
   CRATE_QUESTION: 'crate:question',
+  CRATE_FIFTY: 'crate:fifty', // C → S: usar el comodín 50/50 · S → C { crateId, removed }
   CRATE_ANSWER: 'crate:answer', // C → S: { crateId, index }
   CRATE_CANCEL: 'crate:cancel', // C → S
 

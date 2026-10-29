@@ -37,7 +37,8 @@ export class Player {
   resetStats() {
     this.kills = 0;
     this.meleeKills = 0;
-    this.stats = { byTopic: {}, byLevel: {}, failed: [], correct: 0, answered: 0 };
+    this.stats = { byTopic: {}, byLevel: {}, failed: [], history: [], adjusted: {}, correct: 0, answered: 0 };
+    this.fiftyUsed = false; // comodín 50/50 (una vez por partida)
     this.fps = null;
     this.seenQuestions = new Set();
     this.place = null; // posición final (1 = ganador)
@@ -251,6 +252,7 @@ export class Player {
       speedFactor: this.speedFactor,
       reloadLeft: this.reloadUntil ? Math.max(0, this.reloadUntil - now) : 0,
       streak: this.streak,
+      fiftyUsed: this.fiftyUsed,
       hurtFrom: this.hurtFrom ?? null,
       radar: this.radarUntil > now,
       answering: this.question ? this.question.crateId : null,

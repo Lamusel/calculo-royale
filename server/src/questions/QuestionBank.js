@@ -88,3 +88,26 @@ export function drawQuickQuestion(rand = Math.random, easy = false, topics = ALL
   const g = list[Math.floor(rand() * list.length)];
   return shuffleOptions(g.generar(rand, optionCount(g.dificultad)), rand);
 }
+
+// Explicación paso a paso (7A): 2 a 4 pasos cortos. Se parte la explicación en sus pausas (; : y punto
+// seguido) fuera de las fórmulas $…$, y el último paso dice cuál era la respuesta correcta.
+export function explanationSteps(q) {
+  const text = String(q.explicacion ?? '').trim();
+  const parts = [];
+  let cur = '';
+  let math = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '$') math = !math;
+    cur += c;
+    if (!math && (c === ';' || c === ':' || c === '.') && (text[i + 1] === ' ' || i === text.length - 1)) {
+      if (cur.replace(/[;:.\s]/g, '')) parts.push(cur.replace(/[;:]$/, '').trim());
+      cur = '';
+    }
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  // Más de 3 pedazos: los últimos se juntan en el tercero
+  const steps = parts.length > 3 ? [...parts.slice(0, 2), parts.slice(2).join(' ')] : parts;
+  const answer = q.opciones?.[q.correcta];
+  return [...steps.filter(Boolean), ...(answer !== undefined ? [`Respuesta: ${answer}`] : [])].slice(0, 4);
+}

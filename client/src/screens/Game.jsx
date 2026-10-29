@@ -179,7 +179,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       <AmmoToast result={client.ammoResult} />
       {view.radarLeft > 0 && <RadarOverlay me={view.me} others={view.others} myId={myId} secondsLeft={view.radarLeft} />}
       {view.question && (
-        <LockModal question={view.question} onAnswer={(i) => client.answer(i)} onCancel={() => client.cancelQuestion()} />
+        <LockModal question={view.question} onAnswer={(i) => client.answer(i)} onCancel={() => client.cancelQuestion()} onFifty={() => client.useFifty()} fiftyUsed={Boolean(view.self?.fiftyUsed)} />
       )}
       {view.crateResult && <CrateResult result={view.crateResult} onClose={() => (client.crateResult = null)} />}
       {room.phase === 'playing' && <DuelIntro client={client} roster={room.players} />}

@@ -64,6 +64,7 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.QUICK_PHRASE, (index) => rooms.phrase(socket, index));
   socket.on(EVENTS.CHAT_SEND, (data) => rooms.chat(socket, data));
   socket.on(EVENTS.CLIENT_FPS, (fps) => rooms.fps(socket, fps));
+  socket.on(EVENTS.CRATE_FIFTY, () => rooms.fifty(socket));
   socket.on(EVENTS.ROOM_CHAT, (on) => rooms.setChat(socket, on));
   socket.on(EVENTS.ROOM_DEPLOY, (mode) => rooms.setDeploy(socket, mode));
   socket.on(EVENTS.ROOM_DURATION, (duration) => rooms.setDuration(socket, duration));

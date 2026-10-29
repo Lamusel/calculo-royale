@@ -5,7 +5,7 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GULAG, OPERATOR, SCORE, TICK_MS, WEAPONS } from '@calculo-royale/shared/constants';
-import { EVENTS } from '@calculo-royale/shared/protocol';
+import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { GULAG_ARENAS, GULAG_HALF } from '@calculo-royale/shared/mapLayout';
 import { insideZone } from '@calculo-royale/shared/zone';
 import { damagePlayer } from '../server/src/game/combat.js';
@@ -417,4 +417,35 @@ test('7A: cuerpo a cuerpo validado en el servidor: alcance, cadencia, espalda, c
   meleeAttack(room.game, a, 0);
   assert.ok(fence.broken);
   room.game.resetWorld();
+});
+
+test('7A: repaso con pasos, comodín 50/50 una vez en cajas de dificultad 3+ y dificultad adaptativa por tema', async () => {
+  const { adaptiveDifficulty, openCrate, recordStats, useFifty } = await import('../server/src/game/crates.js');
+  const room = makeRoom();
+  room.topics = ['lagrange'];
+  const [a] = addPlayers(room, 1);
+  start(room);
+  // Falla mucho Lagrange: baja un nivel; si acierta todo, sube uno (máximo la caja + 1)
+  const q = { tema: 'lagrange', dificultad: 3, enunciado: 'x', opciones: ['$1$', '$2$'], correcta: 0, explicacion: 'Se iguala: $x=1$; listo.' };
+  recordStats(a, q, false, 1);
+  recordStats(a, q, false, 1);
+  assert.equal(adaptiveDifficulty(a, ['lagrange'], 3).difficulty, 2);
+  assert.equal(adaptiveDifficulty(a, ['lagrange'], 1).difficulty, 1, 'mínimo 1');
+  assert.equal(a.stats.adjusted.lagrange, 'bajó');
+  a.resetStats();
+  recordStats(a, q, true, 0);
+  recordStats(a, q, true, 0);
+  assert.equal(adaptiveDifficulty(a, ['lagrange'], 3).difficulty, 4);
+  // El historial guarda todo con 2 a 4 pasos y la respuesta
+  assert.equal(a.stats.history.length, 2);
+  const steps = a.stats.history[0].pasos;
+  assert.ok(steps.length >= 2 && steps.length <= 4 && steps.at(-1) === 'Respuesta: $1$', JSON.stringify(steps));
+  // 50/50: solo en caja de dificultad 3 o 4 y una vez por partida
+  const epic = room.game.crates.find((c) => c.rarity === 2) ?? room.game.crates[0];
+  epic.rarity = 2;
+  epic.state = CRATE_STATE.CLOSED;
+  assert.ok(openCrate(room.game, a, epic));
+  assert.ok(useFifty(room.game, a));
+  assert.notEqual(a.question.removed, a.question.q.correcta);
+  assert.equal(useFifty(room.game, a), false, 'una vez por partida');
 });

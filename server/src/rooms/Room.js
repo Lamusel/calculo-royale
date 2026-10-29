@@ -217,7 +217,9 @@ export class Room {
   }
 
   sendPrivateResults(player) {
-    this.emitTo(player, EVENTS.RESULTS_SELF, { byTopic: player.stats.byTopic, failed: player.stats.failed });
+    // Solo su dueño: el repaso de todas sus preguntas (falladas primero) y en qué temas se ajustó la dificultad
+    const history = [...(player.stats.history ?? [])].sort((a, b) => Number(a.ok) - Number(b.ok));
+    this.emitTo(player, EVENTS.RESULTS_SELF, { byTopic: player.stats.byTopic, failed: player.stats.failed, history, adjusted: player.stats.adjusted ?? {} });
   }
 
   // El host devuelve a todos al campo de entrenamiento

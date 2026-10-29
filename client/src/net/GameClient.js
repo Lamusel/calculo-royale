@@ -188,6 +188,10 @@ export class GameClient {
         if (killed) sound.kill();
         vibrate(killed ? [30, 40, 30] : 12);
       },
+      // Comodín 50/50: la opción quitada se deshabilita
+      [EVENTS.CRATE_FIFTY]: ({ crateId, removed }) => {
+        if (this.question?.crateId === crateId) this.question = { ...this.question, removed, fifty: false };
+      },
       [EVENTS.CRATE_QUESTION]: (question) => {
         this.question = { ...question, receivedAt: performance.now() };
         this.lastCrateRarity = question.rarity;
@@ -814,6 +818,10 @@ export class GameClient {
 
   cancelQuestion() {
     this.socket.emit(EVENTS.CRATE_CANCEL);
+  }
+
+  useFifty() {
+    this.socket.emit(EVENTS.CRATE_FIFTY);
   }
 
   setPhase(phase) {

@@ -94,6 +94,36 @@ function TopicBars({ byTopic }) {
   );
 }
 
+// Repaso (7A): enunciado, lo que respondió, la correcta y la explicación paso a paso
+function ReviewQuestion({ q }) {
+  return (
+    <div className={`rounded border p-3 ${q.ok ? 'border-green-500/30 bg-black/30' : 'border-red-500/60 bg-red-950/20'}`}>
+      <p className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wider text-stone-400">
+        <span className={`rounded px-1.5 font-bold ${q.ok ? 'bg-green-800 text-green-100' : 'bg-red-800 text-red-100'}`}>{q.ok ? '✓ Acertaste' : '✗ Fallaste'}</span>
+        {TOPIC_NAMES[q.tema] ?? q.tema} · dificultad {q.dificultad}
+      </p>
+      <MathText text={q.enunciado} className="block text-sm sm:text-base" />
+      <div className="mt-2 grid grid-cols-2 gap-1.5 text-sm">
+        {q.opciones.map((o, i) => (
+          <div key={i} className={`flex items-center gap-2 rounded px-2 py-1 ${i === q.correcta ? 'bg-green-900/60 text-green-100' : i === q.elegida ? 'bg-red-900/60 text-red-100' : 'bg-black/20 text-stone-300'}`}>
+            <b>{LETTERS[i]}</b> <MathText text={o} />
+            {i === q.correcta && <span className="ml-auto text-[10px] uppercase">correcta</span>}
+            {i === q.elegida && i !== q.correcta && <span className="ml-auto text-[10px] uppercase">tu respuesta</span>}
+          </div>
+        ))}
+      </div>
+      {q.elegida === null || q.elegida < 0 ? <p className="mt-1 text-xs text-orange-300">Sin responder (se acabó el tiempo o cancelaste)</p> : null}
+      <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-sm text-stone-300">
+        {(q.pasos ?? []).map((p, i) => (
+          <li key={i}>
+            <MathText text={p} />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function FailedQuestion({ q }) {
   return (
     <div className="rounded border border-white/10 bg-black/30 p-3">
@@ -205,19 +235,32 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
           </div>
         </div>
         <p className="text-xs text-stone-400">
-          Puntos: 10 por cada puesto superado, 15 por baja y 5 por acierto (cajas, transmisiones e intercepciones).
+          Puntos: 10 por cada puesto superado, 15 por baja y 5 por acierto (cajas, Obtener balas, Gulag, reanimar, código del motor y práctica de espectador).
         </p>
 
-        {!spectator && <div className="flex flex-col gap-2">
-          <p className="font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">
-            Preguntas que fallaste ({mine?.failed?.length ?? 0})
-          </p>
-          {mine?.failed?.length ? (
-            mine.failed.map((q, i) => <FailedQuestion key={i} q={q} />)
-          ) : (
-            <p className="text-sm text-stone-400">Ninguna. ¡Bien!</p>
-          )}
-        </div>}
+        {!spectator && mine?.history ? (
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">
+              Repaso de tus preguntas ({mine.history.length}; {mine.history.filter((q) => !q.ok).length} falladas, primero)
+            </p>
+            {Object.keys(mine.adjusted ?? {}).length > 0 && (
+              <p className="text-sm text-stone-300">
+                Tu dificultad se ajustó en:{' '}
+                {Object.entries(mine.adjusted)
+                  .map(([t, dir]) => `${TOPIC_NAMES[t] ?? t} (${dir})`)
+                  .join(', ')}
+              </p>
+            )}
+            {mine.history.length ? mine.history.map((q, i) => <ReviewQuestion key={i} q={q} />) : <p className="text-sm text-stone-400">No te salió ninguna pregunta.</p>}
+          </div>
+        ) : (
+          !spectator && (
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">Preguntas que fallaste ({mine?.failed?.length ?? 0})</p>
+              {mine?.failed?.length ? mine.failed.map((q, i) => <FailedQuestion key={i} q={q} />) : <p className="text-sm text-stone-400">Ninguna. ¡Bien!</p>}
+            </div>
+          )
+        )}
       </div>
     </div>
   );
