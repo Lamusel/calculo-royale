@@ -5,7 +5,7 @@ import { attachWeapons, mountProcedural } from './proceduralSkin.js';
 import { createRig } from './rig.js';
 import { FALLBACK_SKIN, getSkinEntry } from './skins/index.js';
 import { WEAPON_IDS } from '@calculo-royale/shared/constants';
-import { attachmentGeometry, backpackGeometry, helmetGeometry } from '../models/gear.js';
+import { attachmentGeometry, backpackGeometry, hatGeometry, helmetGeometry } from '../models/gear.js';
 
 const DEG = Math.PI / 180;
 // El cargador de GLB se pide recién cuando alguien usa una skin externa (import dinámico)
@@ -138,6 +138,13 @@ export class Character {
     }
   }
 
+  // Accesorio de temporada (7A): solo en las skins procedurales; va por encima del casco
+  setHat(hat) {
+    if (hat === this.hat) return;
+    this.hat = hat;
+    this.buildGear();
+  }
+
   setVest(level) {
     if (level === this.vest) return;
     this.vest = level;
@@ -210,8 +217,7 @@ export class Character {
   buildGear() {
     for (const m of this.gearMeshes) m.removeFromParent();
     this.gearMeshes = [];
-    const g = this.gear;
-    if (!g) return;
+    const g = this.gear ?? { helmet: 0, backpack: 0 };
     const add = (geometry, parent) => {
       if (!geometry || !parent) return;
       const m = new THREE.Mesh(geometry, this.material);
@@ -231,6 +237,11 @@ export class Character {
     if (this.gearOnModel) {
       add(helmetGeometry(g.helmet), this.rig.sockets.HeadTopSocket);
       add(backpackGeometry(g.backpack), this.rig.sockets.BackSocket);
+    }
+    if (this.hat && !this.external) {
+      const before = this.gearMeshes.length;
+      add(hatGeometry(this.hat), this.rig.sockets.HeadTopSocket);
+      if (g.helmet && this.gearMeshes[before]) this.gearMeshes[before].position.y = 0.12;
     }
   }
 

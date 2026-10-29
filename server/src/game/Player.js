@@ -273,6 +273,6 @@ export class Player {
   }
 
   info() {
-    return { id: this.id, name: this.name, color: this.color, skin: this.skin, connected: this.connected, bot: this.bot || undefined, team: this.team ?? undefined, teamChoice: this.teamChoice ?? undefined };
+    return { id: this.id, name: this.name, color: this.color, skin: this.skin, hat: this.hat ?? undefined, connected: this.connected, bot: this.bot || undefined, team: this.team ?? undefined, teamChoice: this.teamChoice ?? undefined };
   }
 }

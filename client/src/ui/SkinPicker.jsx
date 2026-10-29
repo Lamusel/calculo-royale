@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS, SKIN_RARITIES } from '@calculo-royale/shared/skins';
 import { getSkinEntry, listSkins, rarityColor, skinInitials } from '../game/character/skins/index.js';
-import { loadProgress, loadSkin, saveSkin, unlockedSkins } from '../achievements.js';
+import { loadHat, loadProgress, loadSkin, saveHat, saveSkin, unlockedSkins } from '../achievements.js';
+import { HATS } from '@calculo-royale/shared/constants';
 import { cachedPortrait, proceduralPortrait } from './portraits.js';
 
 // Retrato 2D de una skin: el PNG de client/public/assets/skins/portraits/<id>.png, o si no hay
@@ -87,6 +88,7 @@ export default function SkinPicker({ onChoose, onClose }) {
   const unlocked = new Set(unlockedSkins(progress));
   const [current] = useState(loadSkin);
   const [selected, setSelected] = useState(current);
+  const [hat, setHat] = useState(loadHat);
   const skin = getSkinEntry(selected);
   const rarity = SKIN_RARITIES[skin.rarity];
   const isLocked = (s) => s.rarity === 'honor' && !unlocked.has(s.id);
@@ -115,17 +117,28 @@ export default function SkinPicker({ onChoose, onClose }) {
                 </p>
               )}
             </div>
+            {/* Accesorio de temporada (7A): solo para las skins del juego */}
+            <div className="flex flex-wrap items-center gap-1 text-[11px]">
+              <span className="text-stone-400">Accesorio:</span>
+              {[['', 'Ninguno'], ...Object.entries(HATS)].map(([id, name]) => (
+                <button key={id} disabled={skin.type === 'external'} onClick={() => setHat(id)} className={`rounded px-1.5 py-0.5 ${hat === id ? 'bg-orange-500 text-black' : 'bg-black/40 text-stone-200'} disabled:opacity-40`}>
+                  {name}
+                </button>
+              ))}
+              {skin.type === 'external' && <span className="text-stone-500">(solo skins del juego)</span>}
+            </div>
             <div className="mt-auto flex gap-2">
               <button
                 disabled={locked}
                 onClick={() => {
                   saveSkin(skin.id);
+                  saveHat(hat);
                   onChoose(skin.id);
                   onClose();
                 }}
                 className="flex-1 rounded bg-khaki py-2 text-sm font-bold text-olive-950 disabled:opacity-40"
               >
-                {selected === current ? 'Usando esta' : 'Usar esta skin'}
+                {selected === current && hat === loadHat() ? 'Usando esta' : 'Usar esta skin'}
               </button>
               <button onClick={onClose} className="rounded bg-black/40 px-3 py-2 text-sm">
                 Cerrar

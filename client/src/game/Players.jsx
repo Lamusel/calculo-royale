@@ -75,6 +75,7 @@ function SoldierAvatar({ player, isMe, mate = false, register, blobShadow }) {
   refs.character = character;
 
   useEffect(() => character.setSkin(player.skin), [character, player.skin]);
+  useEffect(() => character.setHat(player.hat ?? null), [character, player.hat]);
   useEffect(() => character.setColor(player.color), [character, player.color]);
   useEffect(() => character.setMaterial(player.connected ? modelMaterial : ghostMaterial), [character, player.connected]);
   // El jugador propio se dibuja después de su silueta (ver silhouetteMaterial)

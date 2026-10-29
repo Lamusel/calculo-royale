@@ -1,3 +1,4 @@
+import { themeAt } from './holidays.js';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -5,7 +6,7 @@ import { AIRDROP, RARITIES } from '@calculo-royale/shared/constants';
 import { CRATE_STATE } from '@calculo-royale/shared/protocol';
 import { terrainHeight } from '@calculo-royale/shared/terrain';
 import { CRATES, cratePosition } from './crateList.js';
-import { box, merge, modelMaterial, piece } from './models/build.js';
+import { box, merge, modelMaterial, piece, cylinder } from './models/build.js';
 import { parachuteGeometry } from './models/parachute.js';
 
 // Cajas de suministro militares: franja del color de la rareza y candado al frente.
@@ -33,6 +34,30 @@ const bodyGeometry = (rarity) => {
     piece(box(0.12, 0.12, 0.04), '#5b5f63', { position: [0, H * 0.55 + 0.15, D / 2 + 0.06] }),
   ]);
 };
+// Temáticas (7A): en la zona de Halloween las cajas son calabazas y en la de Navidad, regalos con moño
+// del color de su rareza. Mismo tamaño y candado al frente. Índice: rareza × 3 + tema (0, 1, 2)
+const THEMES = [null, 'halloween', 'christmas'];
+const pumpkinCrate = (rarity) =>
+  merge([
+    piece(new THREE.IcosahedronGeometry(0.62, 1), '#e8731a', { position: [0, 0.48, 0], scale: [1.15, 0.8, 0.85] }),
+    piece(box(W * 1.05, 0.12, D * 0.8), RARITIES[rarity].color, { position: [0, 0.48, 0] }),
+    piece(cylinder(0.06, 0.09, 0.28, 6), '#4b5a2a', { position: [0, 1.0, 0] }),
+    piece(box(0.2, 0.22, 0.08), '#2b2d30', { position: [0, 0.48, D / 2 + 0.06] }),
+  ]);
+const giftCrate = (rarity) => {
+  const ribbon = RARITIES[rarity].color;
+  return merge([
+    piece(box(W, H, D), rarity % 2 ? '#1f6b32' : '#b3202a', { position: [0, H / 2, 0] }),
+    piece(box(W + 0.03, H + 0.02, 0.14), ribbon, { position: [0, H / 2, 0] }),
+    piece(box(0.14, H + 0.02, D + 0.03), ribbon, { position: [0, H / 2, 0] }),
+    // Moño
+    piece(new THREE.TorusGeometry(0.14, 0.05, 6, 10), ribbon, { position: [-0.14, H + 0.12, 0], rotation: [0, Math.PI / 2, 0.5] }),
+    piece(new THREE.TorusGeometry(0.14, 0.05, 6, 10), ribbon, { position: [0.14, H + 0.12, 0], rotation: [0, Math.PI / 2, -0.5] }),
+    piece(box(0.2, 0.22, 0.08), '#2b2d30', { position: [0, H * 0.55, D / 2 + 0.06] }),
+  ]);
+};
+const crateGeometry = (rarity, theme) => (theme === 'halloween' ? pumpkinCrate(rarity) : theme === 'christmas' ? giftCrate(rarity) : bodyGeometry(rarity));
+
 const lidGeometry = merge([
   piece(box(W + 0.06, 0.12, D + 0.06), '#43512a', { position: [0, 0.06, D / 2 + 0.03] }),
   piece(box(W * 0.6, 0.04, 0.3), '#33401f', { position: [0, 0.13, D / 2] }),
@@ -55,8 +80,9 @@ export default function Crates({ frameRef }) {
   const beams = useRef([]);
   const glows = useRef(null);
   const glowMaterial = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, side: THREE.DoubleSide }), []);
-  const geometries = useMemo(() => RARITIES.map((_, i) => bodyGeometry(i)), []);
-  const byRarity = useMemo(() => RARITIES.map((_, r) => CRATES.map((c, i) => ({ c, i })).filter(({ c }) => c.rarity === r)), []);
+  const geometries = useMemo(() => RARITIES.flatMap((_, r) => THEMES.map((t) => crateGeometry(r, t))), []);
+  // Cada caja según su rareza y la temática de donde está
+  const byRarity = useMemo(() => geometries.map((_, k) => CRATES.map((c, i) => ({ c, i })).filter(({ c }) => c.rarity * 3 + THEMES.indexOf(themeAt(c.x, c.y)) === k)), [geometries]);
   const falling = useRef(null);
   const tmp = useMemo(() => ({ o: new THREE.Object3D(), color: new THREE.Color(), lid: new Map() }), []);
 
@@ -119,7 +145,8 @@ export default function Crates({ frameRef }) {
       tmp.lid.set(i, angle);
       o.position.set(c.x, h + H, -c.y - D / 2 - 0.03);
       o.rotation.set(angle, 0, 0);
-      o.scale.setScalar(1);
+      // Las calabazas no tienen tapa (el tallo hace de tapa)
+      o.scale.setScalar(themeAt(c.x, c.y) === 'halloween' ? 0 : 1);
       o.updateMatrix();
       lids.current.setMatrixAt(i, o.matrix);
       // Brillo por rareza: un halo en el suelo mientras la caja siga cerrada
@@ -175,7 +202,7 @@ export default function Crates({ frameRef }) {
         />
       ))}
       <group ref={falling} visible={false}>
-        <mesh geometry={geometries[AIRDROP.rarity]} material={modelMaterial} castShadow />
+        <mesh geometry={geometries[AIRDROP.rarity * 3]} material={modelMaterial} castShadow />
         <mesh geometry={lidGeometry} material={modelMaterial} position={[0, H, -D / 2 - 0.03]} />
         <mesh geometry={cratechute} material={modelMaterial} />
       </group>

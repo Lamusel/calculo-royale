@@ -505,3 +505,20 @@ test('7A: hormigas culonas: 20 por partida, se toman al pasar, 5 puntos cada una
   assert.ok(room.game.loot.size > lootBefore, 'caja dorada cerca');
   assert.equal(score(1, 2, 0, 0, 3) - score(1, 2, 0, 0, 0), 15);
 });
+
+test('7A: el accesorio de temporada viaja con la skin y el servidor solo acepta los conocidos', async () => {
+  const { RoomManager } = await import('../server/src/rooms/RoomManager.js');
+  const io = { to: () => ({ emit() {}, volatile: { emit() {} } }) };
+  const rm = new RoomManager(io);
+  const s = { id: 'H', data: {}, join() {}, leave() {}, emit() {} };
+  rm.create(s, { name: 'Ana' });
+  const room = rm.roomOf(s);
+  room.game.stop();
+  const p = rm.playerOf(s);
+  rm.setSkin(s, { skin: p.skin, hat: 'bruja', unlocked: [] });
+  assert.equal(p.hat, 'bruja');
+  assert.equal(p.toInfo?.().hat ?? room.players.get(p.id).hat, 'bruja');
+  rm.setSkin(s, { skin: p.skin, hat: 'corona', unlocked: [] });
+  assert.equal(p.hat, null, 'desconocido: sin accesorio');
+  room.destroy();
+});

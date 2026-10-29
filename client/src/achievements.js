@@ -1,3 +1,4 @@
+import { HATS } from '@calculo-royale/shared/constants';
 import { ACHIEVEMENTS, DEFAULT_SKIN, SKIN_IDS, SKINS } from '@calculo-royale/shared/skins';
 
 // Progreso de logros y skin elegida, guardados en este navegador (sin base de datos).
@@ -55,6 +56,24 @@ export function loadSkin(storage = globalThis.localStorage) {
 export function saveSkin(id, storage = globalThis.localStorage) {
   try {
     storage.setItem(SKIN_KEY, id);
+  } catch {
+    // es solo una comodidad
+  }
+}
+
+// Accesorio de temporada (7A): '' | 'bruja' | 'calabaza' | 'navidad'
+const HAT_KEY = 'cr-hat';
+export function loadHat(storage = globalThis.localStorage) {
+  try {
+    const hat = storage.getItem(HAT_KEY) ?? '';
+    return HATS[hat] ? hat : '';
+  } catch {
+    return '';
+  }
+}
+export function saveHat(hat, storage = globalThis.localStorage) {
+  try {
+    storage.setItem(HAT_KEY, HATS[hat] ? hat : '');
   } catch {
     // es solo una comodidad
   }

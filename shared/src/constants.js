@@ -264,6 +264,8 @@ export const TEAM_COLORS = [
 ];
 export const teamName = (n) => `Equipo ${TEAM_COLORS[(n - 1) % TEAM_COLORS.length]?.[0] ?? n}`;
 export const teamColor = (n) => TEAM_COLORS[(n - 1) % TEAM_COLORS.length]?.[1] ?? '#ffffff';
+// Accesorios opcionales de temporada (7A) para las skins procedurales
+export const HATS = { bruja: 'Gorro de bruja', calabaza: 'Máscara de calabaza', navidad: 'Gorro navideño' };
 export const TEAM_MODES = { solo: { name: 'Solitario', size: 1 }, duos: { name: 'Dúos', size: 2 }, squads: { name: 'Escuadras', size: 4 } };
 // Reanimación en equipo (dúos y escuadras): tiempo de la pregunta
 export const TEAM_REVIVE = { questionMs: 20_000 };

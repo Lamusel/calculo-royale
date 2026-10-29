@@ -57,6 +57,15 @@ const busGeometry = merge([
   piece(cylinder(0.12, 0.12, 1.0, 6), DARK, { position: [-L / 2 - 0.45, BODY_Y + 0.3, 0], rotation: [0, 0, Math.PI / 2] }),
 ]);
 
+// Temáticas (7A): calabaza en el techo y luces de colores que se encienden por turnos
+const pumpkinGeometry = merge([
+  piece(new THREE.IcosahedronGeometry(0.42, 1), '#e8731a', { position: [1.8, BODY_Y + 1.6, -0.3], scale: [1.2, 0.85, 1.2] }),
+  piece(cylinder(0.05, 0.07, 0.2, 6), '#4b5a2a', { position: [1.8, BODY_Y + 2.0, -0.3] }),
+]);
+const BULB_COLORS = ['#ff3b3b', '#3bff6b', '#3b8bff', '#ffd83b', '#ff3bd8'];
+const bulbGeometry = new THREE.IcosahedronGeometry(0.1, 0);
+const BULBS = [-1, 1].flatMap((side) => Array.from({ length: 14 }, (_, i) => [-L / 2 + 0.3 + (i * (L - 0.6)) / 13, BODY_Y + 1.12, side * (W / 2 + 0.05)]));
+
 const propellerGeometry = merge([0, 1, 2].map((i) => piece(box(0.12, 2.2, 0.35), DARK, { rotation: [(i / 3) * Math.PI * 2, 0, 0], position: [0, 0, 0] })));
 
 // ¿Hay una imagen propia para los costados? Vite lo decide al compilar: si el archivo no existe no se
@@ -97,6 +106,8 @@ export default function Bus({ frameRef }) {
   return (
     <group ref={group} visible={false}>
       <mesh geometry={busGeometry} material={modelMaterial} castShadow />
+      <mesh geometry={pumpkinGeometry} material={modelMaterial} castShadow />
+      <BusLights />
       <mesh ref={propeller} geometry={propellerGeometry} material={modelMaterial} position={[-L / 2 - 1.0, BODY_Y + 0.3, 0]} />
       {sideMaterial &&
         [-1, 1].map((side) => (
@@ -106,4 +117,30 @@ export default function Bus({ frameRef }) {
         ))}
     </group>
   );
+}
+
+// Luces del bus: cambian de color por turnos (instanciadas)
+function BusLights() {
+  const ref = useRef(null);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false }), []);
+  const o = useMemo(() => new THREE.Object3D(), []);
+  const at = useRef(-1);
+  useFrame(() => {
+    const step = Math.floor(performance.now() / 400);
+    if (step === at.current || !ref.current) return;
+    const first = at.current < 0;
+    at.current = step;
+    const c = new THREE.Color();
+    BULBS.forEach((p, i) => {
+      if (first) {
+        o.position.set(...p);
+        o.updateMatrix();
+        ref.current.setMatrixAt(i, o.matrix);
+      }
+      ref.current.setColorAt(i, c.set(BULB_COLORS[(i + step) % BULB_COLORS.length]));
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+    ref.current.instanceColor.needsUpdate = true;
+  });
+  return <instancedMesh ref={ref} args={[bulbGeometry, material, BULBS.length]} frustumCulled={false} />;
 }

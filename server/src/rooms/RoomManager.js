@@ -1,6 +1,6 @@
 import { useFifty } from '../game/crates.js';
 import { shuffleTeams, teamPing } from '../game/teams.js';
-import { DEPLOY_MODES, DURATIONS, NAME_MAX_LENGTH, TEAM_MODES, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, DURATIONS, HATS, NAME_MAX_LENGTH, TEAM_MODES, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { canUseSkin } from '@calculo-royale/shared/skins';
@@ -244,8 +244,10 @@ export class RoomManager {
     const player = this.playerOf(socket);
     if (!room || !player || room.phase !== 'lobby') return;
     const unlocked = Array.isArray(data?.unlocked) ? data.unlocked.map(String) : [];
-    if (!canUseSkin(data?.skin, unlocked) || player.skin === data.skin) return;
+    const hat = HATS[data?.hat] ? data.hat : null;
+    if (!canUseSkin(data?.skin, unlocked) || (player.skin === data.skin && (player.hat ?? null) === hat)) return;
     player.skin = data.skin;
+    player.hat = hat;
     room.broadcastInfo();
   }
 

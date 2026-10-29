@@ -30,6 +30,7 @@ import Training from './Training.jsx';
 import Vehicles from './Vehicles.jsx';
 import Weather, { weatherLook } from './Weather.jsx';
 import Ants from './Ants.jsx';
+import Holidays from './Holidays.jsx';
 import ZoneMesh from './ZoneMesh.jsx';
 
 // Cámara 3/4 (fase 24): inclinación y distancias en CAMERA (shared/constants.js). Campo de visión
@@ -309,6 +310,7 @@ export default function Scene({
       {phase === 'lobby' && <Training frameRef={frameRef} />}
       <Crates frameRef={frameRef} />
       {phase === 'playing' && <Ants client={client} />}
+      {!overview && <Holidays quality={quality} />}
       <ZoneMesh frameRef={frameRef} />
       <GulagArenas frameRef={frameRef} />
       <Vehicles client={client} frameRef={frameRef} quality={quality} />

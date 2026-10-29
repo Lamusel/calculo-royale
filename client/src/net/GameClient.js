@@ -16,7 +16,7 @@ import { actions, currentAim, inputState, press, readInput, resetInput } from '.
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 import { LootStore } from './lootStore.js';
-import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
+import { loadHat, loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
 import { playVoice, setListener, sound, stopWorldAudio, updateBusHum, updateWorldAudio } from '../audio/sound.js';
 import { ambienceMix } from '../audio/mix.js';
 import { insideZone } from '@calculo-royale/shared/zone';
@@ -694,7 +694,7 @@ export class GameClient {
 
   // Avisa al servidor qué skin usar (con las de honor desbloqueadas en este navegador)
   sendSkin(skin) {
-    this.socket.emit(EVENTS.PLAYER_SKIN, { skin, unlocked: unlockedSkins(loadProgress()) });
+    this.socket.emit(EVENTS.PLAYER_SKIN, { skin, hat: loadHat(), unlocked: unlockedSkins(loadProgress()) });
   }
 
   achieve(type, value) {

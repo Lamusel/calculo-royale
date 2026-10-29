@@ -81,6 +81,33 @@ const BACKPACKS = {
   ],
 };
 
+// Accesorios de temporada (7A): sobre la cabeza (HeadTopSocket), solo en las skins procedurales
+const HAT_PIECES = {
+  bruja: () => [
+    piece(cylinder(0.32, 0.32, 0.03, 14), '#1c1424', { position: [0, 0.02, 0] }),
+    piece(cylinder(0.02, 0.17, 0.42, 10), '#1c1424', { position: [-0.04, 0.24, 0], rotation: [0, 0, 0.25] }),
+    piece(cylinder(0.175, 0.175, 0.05, 10), '#7c3aed', { position: [0, 0.06, 0] }),
+  ],
+  calabaza: () => [
+    piece(box(0.34, 0.3, 0.36), '#e8731a', { position: [0.02, -0.12, 0] }),
+    piece(box(0.02, 0.06, 0.06), '#ffd36b', { position: [0.2, -0.08, 0.08] }),
+    piece(box(0.02, 0.06, 0.06), '#ffd36b', { position: [0.2, -0.08, -0.08] }),
+    piece(box(0.02, 0.04, 0.2), '#ffd36b', { position: [0.2, -0.2, 0] }),
+    piece(cylinder(0.03, 0.04, 0.1, 6), '#4b5a2a', { position: [0, 0.07, 0] }),
+  ],
+  navidad: () => [
+    piece(cylinder(0.2, 0.2, 0.07, 12), '#f8fafc', { position: [0, 0.02, 0] }),
+    piece(cylinder(0.03, 0.18, 0.32, 10), '#c81e1e', { position: [-0.06, 0.2, 0], rotation: [0, 0, 0.5] }),
+    piece(cylinder(0.05, 0.05, 0.06, 8), '#f8fafc', { position: [-0.17, 0.33, 0] }),
+  ],
+};
+export function hatGeometry(id) {
+  if (!HAT_PIECES[id]) return null;
+  const key = `hat|${id}`;
+  if (!cache.has(key)) cache.set(key, merge(HAT_PIECES[id]()));
+  return cache.get(key);
+}
+
 export function helmetGeometry(level) {
   if (!HELMETS[level]) return null;
   const key = `helmet|${level}`;

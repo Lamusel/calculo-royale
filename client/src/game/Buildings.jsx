@@ -1,3 +1,4 @@
+import { themeAt } from './holidays.js';
 import { useBrokenVersion } from './destruction.js';
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -191,6 +192,15 @@ const barrelModel = (body = '#4a5a32', band = '#353f24') =>
     piece(cylinder(1.04, 1.04, 0.07, 12), band, { position: [0, 0.7, 0] }),
     piece(cylinder(0.9, 0.9, 0.02, 12), '#3a4428', { position: [0, 1.0, 0] }),
   ]);
+// Calabaza tallada con la cara encendida (en Halloween reemplaza a los barriles rojos)
+const pumpkinModel = () =>
+  merge([
+    piece(new THREE.IcosahedronGeometry(0.5, 1), '#e8731a', { position: [0, 0.42, 0], scale: [1.15, 0.85, 1.15] }),
+    piece(cylinder(0.05, 0.07, 0.2, 6), '#4b5a2a', { position: [0, 0.86, 0] }),
+    piece(box(0.04, 0.1, 0.1), '#ffd36b', { position: [0.57, 0.5, 0.14] }),
+    piece(box(0.04, 0.1, 0.1), '#ffd36b', { position: [0.57, 0.5, -0.14] }),
+    piece(box(0.04, 0.07, 0.34), '#ffd36b', { position: [0.57, 0.3, 0] }),
+  ]);
 const rockModel = () => {
   const g = new THREE.DodecahedronGeometry(1, 0); // ya viene sin índices
   const colors = new Float32Array(g.attributes.position.count * 3);
@@ -230,18 +240,20 @@ function fenceGeometry(fences) {
 function Props() {
   const crates = useMemo(() => OBSTACLES.filter((o) => o.kind === 'crate'), []);
   const barrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel' && !o.red), []);
-  const redBarrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel' && o.red), []);
+  const redBarrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel' && o.red && themeAt(o.x, o.y) !== 'halloween'), []);
+  const pumpkinBarrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel' && o.red && themeAt(o.x, o.y) === 'halloween'), []);
   // Destrucción ligera: al romperse algo, se re-ubican las instancias (lo roto con escala 0)
   const version = useBrokenVersion();
   const rocks = useMemo(() => OBSTACLES.filter((o) => o.kind === 'rock'), []);
   const fences = useMemo(() => OBSTACLES.filter((o) => o.kind === 'fence'), []);
-  const models = useMemo(() => ({ crate: crateModel(), barrel: barrelModel(), red: barrelModel('#9b2222', '#5c1414'), rock: rockModel() }), []);
+  const models = useMemo(() => ({ crate: crateModel(), barrel: barrelModel(), red: barrelModel('#9b2222', '#5c1414'), pumpkin: pumpkinModel(), rock: rockModel() }), []);
 
   return (
     <>
       <ChunkedInstances items={crates} geometry={models.crate} place={PLACE.crate} version={version} />
       <ChunkedInstances items={barrels} geometry={models.barrel} place={PLACE.barrel} version={version} />
       <ChunkedInstances items={redBarrels} geometry={models.red} place={PLACE.barrel} version={version} />
+      <ChunkedInstances items={pumpkinBarrels} geometry={models.pumpkin} place={PLACE.pumpkin} version={version} />
       <ChunkedInstances items={rocks} geometry={models.rock} place={PLACE.rock} />
       <Chunked items={fences} render={(list) => <FenceChunk items={list} version={version} />} />
     </>
@@ -260,6 +272,11 @@ const PLACE = {
     m.scale.set(o.r, o.height + 0.1, o.r);
     if (o.broken) m.scale.setScalar(0);
     m.rotation.set(0, 0, 0);
+  },
+  pumpkin: (o, m) => {
+    m.position.set(o.x, terrainHeight(o.x, o.y), -o.y);
+    m.scale.setScalar(o.broken ? 0 : 1.3);
+    m.rotation.set(0, o.x * 3.1, 0);
   },
   rock: (o, m) => {
     m.position.set(o.x, terrainHeight(o.x, o.y) + o.r * 0.3, -o.y);
@@ -290,7 +307,11 @@ export default function Buildings({ frameRef, pitchDeg }) {
   const materials = useMemo(() => {
     const m = new Map();
     for (const b of [...houses, ...containers]) m.set(b.id, new THREE.MeshLambertMaterial({ vertexColors: true }));
-    for (const h of houses) m.set(`${h.id}-roof`, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    for (const h of houses) {
+      // Navidad (7A): escarcha en los techos de su zona
+      const frosted = themeAt((h.bounds.minX + h.bounds.maxX) / 2, (h.bounds.minY + h.bounds.maxY) / 2) === 'christmas';
+      m.set(`${h.id}-roof`, new THREE.MeshLambertMaterial({ vertexColors: true, emissive: frosted ? '#7d8794' : '#000000' }));
+    }
     return m;
   }, [houses, containers]);
 
