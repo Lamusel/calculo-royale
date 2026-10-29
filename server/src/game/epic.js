@@ -20,7 +20,7 @@ export function updateLeader(game) {
   if (id === game.leaderId) return;
   game.leaderId = id;
   if (best) {
-    radio(game, 'leader', 'Objetivo de alto valor', `${best.name} lidera con ${liveScore(best)} puntos. Botín épico para quien lo elimine.`, 6000);
+    radio(game, 'leader', 'Objetivo de alto valor', `${best.name} lidera con ${liveScore(best)} puntos. Botín épico para quien lo elimine.`, 6000, 'lider-marcado');
   }
 }
 

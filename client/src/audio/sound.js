@@ -1,15 +1,16 @@
-import { ATTACHMENTS } from '@calculo-royale/shared/constants';
+import { ATTACHMENTS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { onSettings, settings } from '../settings.js';
 import MANIFEST from './audio-manifest.json' with { type: 'json' };
-import { allowVoice, channelLevel, duckLevel, SHOT_VOICES, spatial } from './mix.js';
+import { allowVoice, categoryLevel, channelLevel, duckLevel, SHOT_VOICES, spatial } from './mix.js';
 import { createMusic } from './music.js';
 
 // Audio del juego con Web Audio. El contexto se crea con el primer toque o tecla (los navegadores
 // no dejan sonar antes). Tres canales con su volumen (Música, Efectos y Voz) bajo el general y
 // "Silenciar todo" (Opciones). Los efectos son sintetizados; si existe un archivo propio
-// (client/public/assets/audio/sfx/<nombre>.mp3, ver audio-manifest.json) se usa ese.
-// Todo lo que suena en el mapa usa la posición del oyente para el volumen y el paneo.
-// (La voz del Mando se retiró en la fase 30: la radio es texto con beep y estática.)
+// (client/public/assets/audio/<nombre>.mp3|ogg|wav, con variantes nombre-2…; ver audio-manifest.json)
+// se usa ese. Todo lo que suena en el mapa usa la posición del oyente para el volumen y el paneo.
+// 7A: bucles (motores, clima, río, fuego, ambiente por zona, radio del camión) y voz grabada del
+// Mando (voz/<frase>.mp3) con filtro de radio y ducking. Sin archivo de voz no se habla: solo texto.
 
 let ctx = null;
 let sfxBus = null; // canal de efectos (volumen del canal × ducking)
@@ -17,7 +18,8 @@ let musicBus = null;
 let noise = null;
 let music = null;
 let voices = 0;
-const speaking = false; // sin voz del Mando no hay ducking
+let speaking = false; // la voz grabada del Mando está sonando (ducking)
+let voiceBus = null;
 const listener = { x: 0, y: 0 };
 const buffers = new Map(); // ruta → Promise<AudioBuffer | null>
 
@@ -25,6 +27,7 @@ function applyLevels(s = settings) {
   if (!ctx) return;
   sfxBus.gain.setTargetAtTime(channelLevel(s, 'sfx') * duckLevel('sfx', speaking), ctx.currentTime, 0.08);
   musicBus.gain.setTargetAtTime(channelLevel(s, 'music') * duckLevel('music', speaking), ctx.currentTime, 0.2);
+  voiceBus?.gain.setTargetAtTime(channelLevel(s, 'voice'), ctx.currentTime, 0.1);
 }
 
 export function unlockAudio() {
@@ -37,8 +40,10 @@ export function unlockAudio() {
   ctx = new AC();
   sfxBus = ctx.createGain();
   musicBus = ctx.createGain();
+  voiceBus = ctx.createGain();
   sfxBus.connect(ctx.destination);
   musicBus.connect(ctx.destination);
+  voiceBus.connect(ctx.destination);
   sfxBus.gain.value = 0;
   musicBus.gain.value = 0;
   applyLevels();
@@ -47,11 +52,16 @@ export function unlockAudio() {
   noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const data = noise.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  music = createMusic(ctx, musicBus, noise, (moment) => (MANIFEST.music[moment] ? loadBuffer(MANIFEST.music[moment]) : null));
+  music = createMusic(ctx, musicBus, noise, (moment) => (MANIFEST.music[moment] ? loadBuffer(pick(MANIFEST.music[moment])) : null));
   if (pendingMoment) music.setMoment(pendingMoment);
 }
 
 applyLevels();
+
+// Una variante al azar (nombre, nombre-2, nombre-3…)
+const pick = (list) => (Array.isArray(list) ? list[Math.floor(Math.random() * list.length)] : list);
+export const hasFile = (name) => Boolean(MANIFEST.sfx[name]?.length);
+export const hasMusic = (name) => Boolean(MANIFEST.music[name]?.length);
 
 // Archivo propio: se descarga una vez (la primera vez suena el sintetizado mientras tanto)
 function loadBuffer(path) {
@@ -75,8 +85,9 @@ export function setListener(x, y) {
 
 // Salida de un sonido en el canal de efectos: ganancia y paneo según dónde ocurre (o centrado si
 // es de la interfaz). priority: 0 relleno, 1 normal, 2 importante (ver allowVoice).
-function output(level, at = null, priority = 1) {
+function output(level, at = null, priority = 1, name = '') {
   if (!ctx || !allowVoice(voices, priority)) return null;
+  level *= categoryLevel(name);
   const { gain, pan } = at ? spatial(at.x - listener.x, at.y - listener.y) : { gain: 1, pan: 0 };
   if (gain * level < 0.01) return null;
   const g = ctx.createGain();
@@ -90,16 +101,16 @@ function output(level, at = null, priority = 1) {
 }
 
 // Si hay archivo propio para `name` y ya cargó, suena ese y devuelve true
-function playFile(name, out) {
-  const path = MANIFEST.sfx[name];
-  if (!path) return false;
-  const buffer = loaded.get(path);
-  if (!buffer) {
-    loadBuffer(path).then((b) => b && loaded.set(path, b));
-    return false;
-  }
+function playFile(name, out, rate = 1) {
+  const list = MANIFEST.sfx[name];
+  if (!list?.length) return false;
+  // Todas las variantes se piden la primera vez; suena una al azar de las ya cargadas
+  for (const path of list) if (!loaded.has(path)) loadBuffer(path).then((b) => b && loaded.set(path, b));
+  const ready = list.filter((p) => loaded.get(p));
+  if (!ready.length) return false;
   const src = ctx.createBufferSource();
-  src.buffer = buffer;
+  src.buffer = loaded.get(pick(ready));
+  src.playbackRate.value = rate;
   src.connect(out);
   src.start();
   return true;
@@ -140,10 +151,13 @@ function tone(dest, { type = 'sine', freq = 440, to = null, attack = 0.005, deca
 }
 
 // Efecto con nombre: archivo propio si lo hay, si no la versión sintetizada
-function effect(name, { level = 0.5, at = null, priority = 1 }, synth) {
-  const out = output(level, at, priority);
+// far: nombre del archivo para cuando suena lejos (disparo-lejano, explosion-lejana), si existe
+const FAR = 32;
+function effect(name, { level = 0.5, at = null, priority = 1, far = null }, synth) {
+  const distant = far && at && hasFile(far) && Math.hypot(at.x - listener.x, at.y - listener.y) > FAR;
+  const out = output(distant ? level * 1.6 : level, at, priority, name);
   if (!out) return;
-  if (!playFile(name, out)) synth(out);
+  if (!playFile(distant ? far : name, out)) synth(out);
 }
 
 // Nombres de efecto (para los archivos propios): ver la sección "Sonido" del README
@@ -153,14 +167,20 @@ export const SFX_NAMES = [
   'tomar', 'cambio-arma', 'sin-balas', 'fuera-zona', 'cuenta', 'pregunta', 'tiempo', 'avion', 'aterrizaje', 'jeep-arranque',
   'jeep-choque', 'radar', 'logro', 'clic',
 ];
-const SHOT_NAMES = ['disparo-pistola', 'disparo-escopeta', 'disparo-rifle', 'disparo-francotirador'];
+// Archivo de disparo por categoría (y las especiales por arma)
+const SHOT_FILE = { pistol: 'disparo-pistola', smg: 'disparo-subfusil', ar: 'disparo-rifle', shotgun: 'disparo-escopeta', dmr: 'disparo-tirador', sniper: 'disparo-francotirador', lmg: 'disparo-ametralladora', special: 'disparo-lanzacohetes' };
+const shotName = (weapon) => {
+  const id = WEAPON_IDS[weapon];
+  if (id === 'crossbow') return 'disparo-ballesta';
+  return SHOT_FILE[WEAPONS[id]?.category] ?? 'disparo-pistola';
+};
 
 export const sound = {
   // Con silenciador: más bajo, más seco y solo se oye de cerca
   shot(weapon, x, y, silent = false) {
     const v = SHOT_VOICES[weapon] ?? SHOT_VOICES[0];
     if (silent && Math.hypot(x - listener.x, y - listener.y) > ATTACHMENTS.silencerHearRadius) return;
-    effect(SHOT_NAMES[weapon] ?? SHOT_NAMES[0], { level: silent ? v.level * 0.3 : v.level, at: { x, y }, priority: 2 }, (out) => {
+    effect(silent ? 'disparo-silenciado' : shotName(weapon), { level: silent ? v.level * 0.3 : v.level, at: { x, y }, priority: 2, far: silent ? null : 'disparo-lejano' }, (out) => {
       noiseBurst(out, { filter: silent ? v.filter * 0.5 : v.filter, decay: silent ? v.decay * 0.5 : v.decay, peak: 0.9, sweepTo: v.filter * 0.25 });
       if (!silent) tone(out, { freq: v.thump, to: v.thump * 0.4, decay: v.decay * 0.8, peak: 0.6 });
     });
@@ -172,23 +192,24 @@ export const sound = {
       if (id === 'fists') tone(out, { freq: 140, to: 60, decay: 0.08, peak: 0.5 });
     });
   },
-  reload() {
-    effect('recarga', { level: 0.35 }, (out) => {
+  reload(bolt = false) {
+    effect(bolt ? 'recarga-cerrojo' : 'recarga', { level: 0.35 }, (out) => {
       noiseBurst(out, { filter: 4500, type: 'highpass', decay: 0.04, peak: 0.6 });
       noiseBurst(out, { filter: 3500, type: 'highpass', decay: 0.05, peak: 0.7, start: 0.35 });
     });
   },
   grenadeThrow() {
-    effect('granada', { level: 0.4 }, (out) => noiseBurst(out, { filter: 600, type: 'bandpass', q: 2, attack: 0.05, decay: 0.3, peak: 0.7, sweepTo: 2400 }));
+    effect('granada-pin', { level: 0.4 }, (out) => noiseBurst(out, { filter: 600, type: 'bandpass', q: 2, attack: 0.05, decay: 0.3, peak: 0.7, sweepTo: 2400 }));
   },
   explosion(x, y) {
-    effect('explosion', { level: 1, at: { x, y }, priority: 2 }, (out) => {
+    effect('explosion', { level: 1, at: { x, y }, priority: 2, far: 'explosion-lejana' }, (out) => {
       noiseBurst(out, { filter: 1200, decay: 0.9, peak: 1, sweepTo: 90 });
       tone(out, { freq: 70, to: 30, decay: 0.8, peak: 0.9 });
     });
   },
-  footstep(x, y) {
-    effect('paso', { level: 0.12, at: { x, y }, priority: 0 }, (out) => noiseBurst(out, { filter: 500 + Math.random() * 300, decay: 0.06, peak: 0.6 }));
+  // surface: pasto | tierra | madera | asfalto | agua (mix.js: surfaceAt)
+  footstep(x, y, surface = 'pasto') {
+    effect(surface === 'agua' ? 'salpicar' : `paso-${surface}`, { level: 0.12, at: { x, y }, priority: 0 }, (out) => noiseBurst(out, { filter: 500 + Math.random() * 300, decay: 0.06, peak: 0.6 }));
   },
   lockOpen() {
     effect('candado-abierto', { level: 0.4, priority: 2 }, (out) => {
@@ -267,7 +288,7 @@ export const sound = {
     effect('pregunta', { level: 0.3, priority: 2 }, (out) => [784, 1046].forEach((f, i) => tone(out, { type: 'triangle', freq: f, decay: 0.12, peak: 0.35, start: i * 0.07 })));
   },
   timeWarning() {
-    effect('tiempo', { level: 0.25, priority: 2 }, (out) => tone(out, { type: 'square', freq: 1200, decay: 0.04, peak: 0.25 }));
+    effect('tic-tac', { level: 0.25, priority: 2 }, (out) => tone(out, { type: 'square', freq: 1200, decay: 0.04, peak: 0.25 }));
   },
   plane() {
     effect('avion', { level: 0.45, priority: 2 }, (out) => noiseBurst(out, { filter: 200, type: 'lowpass', attack: 1.2, decay: 2.8, peak: 0.8, sweepTo: 600 }));
@@ -279,13 +300,13 @@ export const sound = {
     });
   },
   jeepStart() {
-    effect('jeep-arranque', { level: 0.45 }, (out) => {
+    effect('arranque', { level: 0.45 }, (out) => {
       tone(out, { type: 'sawtooth', freq: 30, to: 70, attack: 0.05, decay: 0.6, peak: 0.5 });
       noiseBurst(out, { filter: 500, decay: 0.5, peak: 0.4 });
     });
   },
   jeepCrash(x, y) {
-    effect('jeep-choque', { level: 0.6, at: { x, y }, priority: 2 }, (out) => {
+    effect('choque-vehiculo', { level: 0.6, at: { x, y }, priority: 2 }, (out) => {
       noiseBurst(out, { filter: 2000, decay: 0.3, peak: 0.9, sweepTo: 400 });
       tone(out, { type: 'square', freq: 150, to: 60, decay: 0.25, peak: 0.4 });
     });
@@ -295,6 +316,41 @@ export const sound = {
   },
   achievement() {
     effect('logro', { level: 0.45, priority: 2 }, (out) => [523, 659, 784, 1046].forEach((f, i) => tone(out, { type: 'triangle', freq: f, decay: 0.25, peak: 0.4, start: i * 0.1 })));
+  },
+  // --- 7A: más nombres de la lista (todos con versión sintetizada) ---
+  meleeHit(x, y) {
+    effect('filo-impacto', { level: 0.4, at: { x, y }, priority: 2 }, (out) => noiseBurst(out, { filter: 1600, type: 'bandpass', q: 2, decay: 0.07, peak: 0.8 }));
+  },
+  woodBreak(x, y) {
+    effect('madera-rompe', { level: 0.55, at: { x, y }, priority: 1 }, (out) => {
+      for (let i = 0; i < 3; i++) noiseBurst(out, { filter: 900 - i * 200, type: 'bandpass', q: 1.2, decay: 0.09, peak: 0.8, start: i * 0.05 });
+      tone(out, { freq: 160, to: 70, decay: 0.15, peak: 0.4 });
+    });
+  },
+  // Lanzables al activarse: humo, fuego (el bucle va aparte), aturdidora, muro, sensor y UAV
+  tactical(kind, x, y) {
+    const name = { smoke: 'humo', fire: 'fuego', flash: 'aturdidora', wall: 'muro-espuma', sensor: 'sensor-pulso', uav: 'uav' }[kind];
+    if (!name) return;
+    effect(name, { level: 0.45, at: x === undefined ? null : { x, y }, priority: 1 }, (out) => {
+      if (kind === 'flash') tone(out, { type: 'sine', freq: 3200, decay: 0.6, peak: 0.4 });
+      else if (kind === 'sensor' || kind === 'uav') [0, 0.12].forEach((t) => tone(out, { type: 'sine', freq: 1700, decay: 0.08, peak: 0.3, start: t }));
+      else noiseBurst(out, { filter: kind === 'wall' ? 500 : 1400, type: 'bandpass', attack: 0.04, decay: 0.5, peak: 0.6, sweepTo: 300 });
+    });
+  },
+  vehicleBoom(x, y) {
+    effect('explosion-vehiculo', { level: 1, at: { x, y }, priority: 2, far: 'explosion-lejana' }, (out) => {
+      noiseBurst(out, { filter: 900, decay: 1.2, peak: 1, sweepTo: 70 });
+      tone(out, { freq: 55, to: 25, decay: 1, peak: 0.9 });
+    });
+  },
+  brake(x, y) {
+    effect('frenazo', { level: 0.35, at: { x, y }, priority: 1 }, (out) => noiseBurst(out, { filter: 2600, type: 'bandpass', q: 6, attack: 0.03, decay: 0.45, peak: 0.6, sweepTo: 1800 }));
+  },
+  padLaunch() {
+    effect('plataforma-salto', { level: 0.5, priority: 1 }, (out) => tone(out, { type: 'sine', freq: 180, to: 900, decay: 0.5, peak: 0.5 }));
+  },
+  ant(x, y) {
+    effect('hormiga', { level: 0.4, at: { x, y }, priority: 1 }, (out) => [1568, 1976].forEach((f, i) => tone(out, { type: 'triangle', freq: f, decay: 0.07, peak: 0.3, start: i * 0.06 })));
   },
   click() {
     effect('clic', { level: 0.15 }, (out) => tone(out, { type: 'sine', freq: 1800, decay: 0.02, peak: 0.3 }));
@@ -308,7 +364,7 @@ export function setMusicMoment(moment) {
   music?.setMoment(moment);
 }
 
-// Motores continuos: el jeep más cercano que se mueve y el bus mientras vas en él
+// Zumbido continuo del bus mientras vas en él
 function continuous() {
   let node = null;
   return {
@@ -343,15 +399,151 @@ function continuous() {
   };
 }
 
-const engine = continuous();
-export function updateEngine(nearest) {
-  if (!nearest) return engine.update(null);
-  const { gain, pan } = spatial(nearest.x - listener.x, nearest.y - listener.y);
-  engine.update({ freq: 38 + Math.abs(nearest.speed) * 5, gain: gain * 0.25, pan });
-}
-
 const busHum = continuous();
 // Zumbido grave del bus de despliegue mientras vas adentro
 export function updateBusHum(inBus) {
   busHum.update(inBus ? { freq: 46, gain: 0.12, filter: 260 } : null);
+}
+
+// --- Bucles (7A): volumen, tono y posición los fija el juego en cada cuadro ---
+// params: { name, level, at?, rate?, music? (archivo de music/), synth?: { type: 'noise' | 'engine', filter, q, freq } }
+// Si existe el archivo (o una variante) suena en bucle; si no, la versión sintetizada (o nada sin synth).
+const loops = new Map(); // clave → { src, gain, pan, filter, file, name }
+
+function makeLoop(params) {
+  const list = (params.music ? MANIFEST.music : MANIFEST.sfx)[params.name];
+  const path = list && pick(list);
+  const buffer = path && loaded.get(path);
+  if (path && !buffer) loadBuffer(path).then((b) => b && loaded.set(path, b));
+  if (!buffer && !params.synth) return null;
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  const pan = ctx.createStereoPanner();
+  gain.connect(pan).connect(sfxBus);
+  let src;
+  let filter = null;
+  if (buffer) {
+    src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    src.connect(gain);
+  } else if (params.synth.type === 'engine') {
+    src = ctx.createOscillator();
+    src.type = 'sawtooth';
+    filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = params.synth.filter ?? 420;
+    src.connect(filter).connect(gain);
+  } else {
+    src = ctx.createBufferSource();
+    src.buffer = noise;
+    src.loop = true;
+    filter = ctx.createBiquadFilter();
+    filter.type = params.synth.kind ?? 'lowpass';
+    filter.frequency.value = params.synth.filter ?? 800;
+    filter.Q.value = params.synth.q ?? 0.7;
+    src.connect(filter).connect(gain);
+  }
+  src.start();
+  return { src, gain, pan, filter, file: Boolean(buffer), path, name: params.name };
+}
+
+export function setLoop(key, params) {
+  if (!ctx) return;
+  let cur = loops.get(key);
+  if (cur && params && (cur.name !== params.name || (!cur.file && cur.path && loaded.get(cur.path)))) {
+    // Cambió el sonido o ya llegó el archivo: se rehace (el viejo se apaga suave)
+    setLoop(key, null);
+    cur = null;
+  }
+  const { gain: g, pan: p } = params?.at ? spatial(params.at.x - listener.x, params.at.y - listener.y) : { gain: 1, pan: 0 };
+  const level = params ? params.level * g * categoryLevel(params.name) : 0;
+  if (level < 0.003) {
+    if (cur) {
+      cur.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.25);
+      setTimeout(() => cur.src.stop(), 1200);
+      loops.delete(key);
+    }
+    return;
+  }
+  if (!cur) {
+    cur = makeLoop(params);
+    if (!cur) return;
+    loops.set(key, cur);
+  }
+  cur.gain.gain.setTargetAtTime(level, ctx.currentTime, 0.4);
+  cur.pan.pan.setTargetAtTime(p, ctx.currentTime, 0.1);
+  const rate = params.rate ?? 1;
+  if (cur.file) cur.src.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.1);
+  else if (params.synth?.type === 'engine') cur.src.frequency.setTargetAtTime((params.synth.freq ?? 40) * rate, ctx.currentTime, 0.1);
+}
+
+const ENGINE_FREQ = { jeep: 38, moto: 72, truck: 27, boat: 46 };
+
+// Todo lo que suena en bucle según el mundo. w: { engine: vehículo más cercano en marcha | null,
+// maxSpeed, weather, outside (fuera de la zona), fire (el más cercano) | null, ambience (mix.js),
+// radio (camión con conductor) | null, zipline, swimming, air }
+export function updateWorldAudio(w) {
+  if (!ctx) return;
+  const v = w.engine;
+  setLoop('motor', v && { name: `motor-${v.type ?? 'jeep'}`, at: v, level: 0.35, rate: 0.75 + Math.min(1, Math.abs(v.speed) / (w.maxSpeed || 14)) * 0.8, synth: { type: 'engine', freq: ENGINE_FREQ[v.type] ?? 38 } });
+  setLoop('lluvia', w.weather === 'lluvia' && { name: 'lluvia', level: 0.45, synth: { kind: 'highpass', filter: 2800 } });
+  setLoop('viento', (w.weather === 'arena' || w.air) && { name: 'viento', level: w.air ? 0.5 : 0.4, synth: { kind: 'bandpass', filter: 500, q: 0.6 } });
+  setLoop('tormenta', w.outside && { name: 'tormenta-zona', level: 0.55, synth: { kind: 'lowpass', filter: 170 } });
+  setLoop('fuego', w.fire && { name: 'fuego', at: w.fire, level: 0.5, synth: { kind: 'bandpass', filter: 1200, q: 0.8 } });
+  const a = w.ambience ?? {};
+  setLoop('amb-campo', { name: 'ambiente-campo', level: (a.campo ?? 0) * 0.22, synth: { kind: 'lowpass', filter: 380 } });
+  setLoop('amb-bosque', { name: 'ambiente-bosque', level: (a.bosque ?? 0) * 0.2, synth: { kind: 'bandpass', filter: 2300, q: 3 } });
+  setLoop('amb-ciudad', { name: 'ambiente-ciudad', level: (a.ciudad ?? 0) * 0.28, synth: { kind: 'lowpass', filter: 160 } });
+  setLoop('rio', { name: 'rio', level: (a.rio ?? 0) * 0.4, synth: { kind: 'bandpass', filter: 700, q: 0.8 } });
+  // Radio del camión: solo con archivo (music/radio-camion-1..3), en el camión y apagable
+  setLoop('radio', w.radio && { name: 'radio-camion', music: true, at: w.radio, level: 0.55 });
+  setLoop('tirolina', w.zipline && { name: 'tirolina', level: 0.35, synth: { kind: 'bandpass', filter: 3000, q: 3 } });
+  setLoop('nadar', w.swimming && { name: 'nadar', level: 0.3, synth: { kind: 'bandpass', filter: 600, q: 1 } });
+}
+
+export function stopWorldAudio() {
+  for (const key of [...loops.keys()]) setLoop(key, null);
+}
+
+// --- Voz grabada del Mando (7A): voz/<frase>.mp3 con filtro de radio; la música y los efectos bajan
+// mientras habla. Sin archivo, no suena nada (la radio sigue siendo texto). Hasta 2 en espera.
+const voiceQueue = [];
+let radioCurve = null;
+export function playVoice(name) {
+  const path = MANIFEST.voice?.[name];
+  if (!ctx || !path) return false;
+  if (speaking) {
+    if (voiceQueue.length < 2 && !voiceQueue.includes(name)) voiceQueue.push(name);
+    return true;
+  }
+  speaking = true;
+  loadBuffer(path).then((buffer) => {
+    if (!buffer) {
+      speaking = false;
+      return;
+    }
+    applyLevels();
+    radioCurve ??= Float32Array.from({ length: 256 }, (_, i) => Math.tanh(((i / 128 - 1) * 2.2)) / Math.tanh(2.2));
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const low = ctx.createBiquadFilter();
+    low.type = 'highpass';
+    low.frequency.value = 350;
+    const high = ctx.createBiquadFilter();
+    high.type = 'lowpass';
+    high.frequency.value = 3200;
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = radioCurve;
+    src.connect(low).connect(high).connect(shaper).connect(voiceBus);
+    noiseBurst(voiceBus, { filter: 2500, type: 'highpass', decay: 0.12, peak: 0.25 });
+    src.onended = () => {
+      speaking = false;
+      applyLevels();
+      const next = voiceQueue.shift();
+      if (next) playVoice(next);
+    };
+    src.start(ctx.currentTime + 0.1);
+  });
+  return true;
 }

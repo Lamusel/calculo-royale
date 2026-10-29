@@ -42,7 +42,7 @@ export function checkDuel(game) {
   const circle = duelCircle(game.zone.current, a, b);
   game.zone.forceFinal(circle, game.now, DUEL.introMs, DUEL.shrinkMs);
   game.room.broadcast(EVENTS.MATCH_DUEL, { ids: game.duel.ids, introMs: DUEL.introMs });
-  radio(game, 'duel', 'Duelo final', `${a.name} contra ${b.name}. Última zona: $${zoneInequality(circle)}$.`, 8000);
+  radio(game, 'duel', 'Duelo final', `${a.name} contra ${b.name}. Última zona: $${zoneInequality(circle)}$.`, 8000, 'duelo-final');
 }
 
 // Durante la presentación nadie se mueve ni recibe daño

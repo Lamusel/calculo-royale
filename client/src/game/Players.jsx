@@ -1,3 +1,4 @@
+import { surfaceAt } from '../audio/mix.js';
 import { VEHICLE_TYPES, vehicleType, WEAPON_IDS } from '@calculo-royale/shared/constants';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -235,7 +236,7 @@ export default function Players({ client, roster, myId, frameRef, quality, night
         dt,
         (x, y) => {
           if (quality.particles > 0.5) client.effects.push({ type: 'dust', x, y });
-          if (!client.spectator) sound.footstep(x, y);
+          if (!client.spectator) sound.footstep(x, y, surfaceAt(x, y));
         },
       );
 

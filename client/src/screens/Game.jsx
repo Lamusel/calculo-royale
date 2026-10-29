@@ -7,7 +7,7 @@ import { createQualityController, initialQuality } from '../game/quality.js';
 import { onSettings, settings } from '../settings.js';
 import Scene from '../game/Scene.jsx';
 import { loadSkinSystem } from '../game/character/Character.js';
-import { sound, unlockAudio } from '../audio/sound.js';
+import { sound, unlockAudio, playVoice } from '../audio/sound.js';
 import { useMusic } from '../audio/useMusic.js';
 import { isExternalSkin } from '../game/character/skins/index.js';
 import { debugSkinsEnabled } from '../game/character/debug.js';
@@ -253,6 +253,8 @@ export default function Game(props) {
   );
 }
 
+let welcomed = false; // la voz de bienvenida suena una vez por sesión
+
 function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   // En equipos, cada jugador toma el color de su equipo (anillo, nombre, minimapa, killfeed)
   const room = useMemo(() => (rawRoom.players.some((p) => p.team != null) ? { ...rawRoom, players: rawRoom.players.map((p) => (p.team != null ? { ...p, color: teamColor(p.team) } : p)) } : rawRoom), [rawRoom]);
@@ -261,6 +263,8 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   const [replayDone, setReplayDone] = useState(false);
   // Cambio de clima a mitad de partida: velo de 2 s para que no sea un corte brusco
   const [weatherFade, setWeatherFade] = useState(0);
+  const roomPhase = useRef(rawRoom.phase);
+  roomPhase.current = rawRoom.phase;
   const lastWeather = useRef(room.weather);
   useEffect(() => {
     if (lastWeather.current !== room.weather && room.phase === 'playing') setWeatherFade(performance.now());
@@ -305,7 +309,10 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   }, [client, room.phase]);
   const onReplayDone = useCallback(() => setReplayDone(true), []);
   useMusic(client, room, myId);
-  if (client) client.easy = Boolean(room.easy);
+  if (client) {
+    client.easy = Boolean(room.easy);
+    client.weather = room.weather;
+  }
   // Al terminar la partida, primero la repetición (en lugar de la escena en vivo: un solo WebGL)
   const replaying = room.phase === 'results' && Boolean(client?.replay) && !replayDone;
 
@@ -314,6 +321,7 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
     // Además, un clic suave en cada botón de la interfaz
     const unlock = (e) => {
       unlockAudio();
+      if (!welcomed && roomPhase.current === 'lobby') welcomed = playVoice('bienvenida') || welcomed;
       if (e.target instanceof Element && e.target.closest('button')) sound.click();
     };
     addEventListener('pointerdown', unlock);

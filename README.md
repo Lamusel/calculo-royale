@@ -621,14 +621,77 @@ Las skins externas ("Personajes especiales" en el selector) salen de las carpeta
 
 **Probar rendimiento:** `/skins/stress?calidad=media&clima=noche` muestra 40 personajes (una de cada tres con skin externa) con FPS, llamadas de dibujo, triángulos, geometrías y texturas. `?debugSkins=1` en el juego muestra esqueletos, cajas y sockets, y un panel con la skin, el modo y los triángulos de cada jugador.
 
-### Sonido (archivos propios opcionales)
+### Sonido, música y voz (archivos propios opcionales)
 
-Todo suena sin archivos (efectos sintetizados y música procedural). Para reemplazar un sonido, pon un `.mp3` (o `.ogg`, `.wav`, `.m4a`) con el nombre exacto y corre `npm run dev` o `npm run build` (el manifiesto `scripts/audio-manifest.js` anota los que existen; el juego nunca pide los que faltan):
+Todo suena sin archivos (efectos y bucles sintetizados, música procedural). Para reemplazar un sonido, pon un `.mp3`, `.ogg` o `.wav` con el nombre exacto y corre `npm run dev` o `npm run build` (el manifiesto `scripts/audio-manifest.js` anota los que existen; el juego nunca pide los que faltan).
 
-- **Efectos** en `client/public/assets/audio/sfx/<nombre>.mp3`: `disparo-pistola`, `disparo-escopeta`, `disparo-rifle`, `disparo-francotirador`, `recarga`, `granada`, `explosion`, `paso`, `candado-abierto`, `candado-fallido`, `sirena`, `radio`, `salto`, `paracaidas`, `impacto`, `baja`, `dano`, `curar`, `curado`, `tomar`, `cambio-arma`, `sin-balas`, `fuera-zona`, `cuenta`, `pregunta`, `tiempo`, `avion`, `aterrizaje`, `jeep-arranque`, `jeep-choque`, `radar`, `logro`, `clic`. Cortos (menos de 1,5 s) y sin silencio al principio.
-- **Música** en `client/public/assets/audio/music/<momento>.mp3` (se repite en bucle): `lobby`, `bus`, `partida`, `zona` (la zona se cierra o estás caído), `duelo`, `victoria` y `resultados`.
+- **Dónde:** efectos en `client/public/assets/audio/<nombre>.mp3` (también sirve la carpeta vieja `sfx/`), música en `music/` y voz en `voz/`.
+- **Variantes:** `golpe.mp3`, `golpe-2.mp3`, `golpe-3.mp3`… suenan al azar en cada uso.
+- **Bucles:** motores, fuego, río, lluvia, viento, tormenta, ambientes, tirolina, nado y radio del camión se repiten solos; el juego les cambia el volumen, el tono (el motor sube con la velocidad) y la posición. Que empiecen y terminen sin corte (loop limpio).
+- **Espacial:** todo lo que pasa en el mapa suena según dónde está (volumen y lado). Los disparos y explosiones a más de 32 m usan `disparo-lejano` y `explosion-lejana` si existen.
+- **Ambiente por zona:** mezcla suave entre `ambiente-campo`, `ambiente-bosque`, `ambiente-ciudad` y `rio` según dónde está el jugador.
+- **Volumen por categoría:** armas y explosiones al frente; ambientes, motores, pasos e interfaz más bajos. Además, los canales Música, Efectos y Voz de Opciones.
+- **Duración:** los efectos sueltos cortos (menos de 1,5 s) y sin silencio al principio.
 
-Los efectos suenan en el canal Efectos (con volumen y paneo según dónde ocurren) y la música en el canal Música; los dos bajan solos mientras habla el Mando. La voz usa la del sistema en español (es-CO, si no es-MX, si no es-ES): en Windows y Android suele venir instalada; si el navegador no tiene ninguna, el Mando solo se lee en pantalla.
+**Nombres que el juego reconoce:**
+
+| Grupo | Nombres |
+|---|---|
+| Armas | `disparo-pistola`, `disparo-subfusil`, `disparo-rifle`, `disparo-escopeta`, `disparo-tirador`, `disparo-francotirador`, `disparo-ametralladora`, `disparo-silenciado`, `disparo-lanzacohetes` (lanzacohetes y lanzagranadas), `disparo-ballesta`, `disparo-lejano`, `recarga`, `recarga-cerrojo` (francotiradores), `sin-balas`, `cambio-arma`, `casquillo` (reservado) |
+| Cuerpo a cuerpo | `golpe` (puños), `tajo` (machete y katana), `estocada` (cuchillo y patecabra), `filo-impacto` (cuando el golpe conecta) |
+| Lanzables | `granada-pin`, `granada-rebote` (reservado), `explosion`, `explosion-lejana`, `humo`, `fuego` (bucle de la molotov), `aturdidora`, `muro-espuma`, `sensor-pulso`, `uav` |
+| Vehículos | `motor-jeep`, `motor-moto`, `motor-camion`, `motor-lancha` (bucles), `arranque`, `frenazo`, `choque-vehiculo`, `explosion-vehiculo`, `bocina` (reservado: todavía no hay botón de bocina) |
+| Movimiento | `paso-pasto`, `paso-tierra`, `paso-madera` (dentro de casas), `paso-asfalto` (carreteras), `nadar` (bucle), `salpicar`, `tirolina` (bucle), `plataforma-salto`, `paracaidas`, `aterrizaje`, `puerta` (reservado: las casas no tienen puertas que se abran), `madera-rompe` |
+| Ambiente (bucles) | `ambiente-campo`, `ambiente-bosque`, `ambiente-ciudad`, `rio`, `viento` (tormenta de arena y caída libre), `lluvia`, `tormenta-zona` (fuera de la zona) |
+| Preguntas e interfaz | `pregunta`, `candado-abierto`, `candado-fallido`, `tic-tac` (últimos 5 s de una pregunta), `clic`, `tomar`, `logro`, `baja`, `impacto`, `dano`, `curar`, `curado`, `hormiga` |
+| Otros que ya existían | `sirena`, `radio` (beep del Mando), `salto` (saltar del bus), `fuera-zona`, `cuenta`, `avion`, `radar` |
+
+**Música** en `music/` (en bucle): `lobby`, `bus`, `partida`, `zona` (la zona se cierra o estás caído), `duelo`, `victoria`, `resultados` y `radio-camion-1`, `radio-camion-2`, `radio-camion-3` (suena una al azar desde el camión en marcha, espacial; botón 📻 para apagarla).
+
+**Voz grabada del Mando** en `voz/` (la voz sintetizada no vuelve). Suena con filtro de radio y la música y los efectos bajan mientras habla. La desigualdad de la zona sigue solo en el texto, así que las frases no la dicen. Lista exacta y lo que debe decir cada una:
+
+| Archivo | Frase |
+|---|---|
+| `bienvenida` | "Aquí Mando. Bienvenido al campo de entrenamiento: practica mientras llega el resto." |
+| `despliegue` | "Aquí Mando. Todos al bus. Salten cuando quieran y buena suerte." |
+| `zona-nueva` | "Aquí Mando. Nueva zona segura marcada en el mapa. Muévanse." |
+| `zona-cerrando` | "Aquí Mando. La zona se está cerrando: quien quede afuera recibe daño." |
+| `zona-moviendose` | "Aquí Mando. La zona se desplaza. Síganla." |
+| `lanzamiento-aereo` | "Aquí Mando. Lanzamiento aéreo en camino: caja dorada marcada en el mapa." |
+| `lider-marcado` | "Aquí Mando. Tenemos un objetivo de alto valor. Botín épico para quien lo elimine." |
+| `duelo-final` | "Aquí Mando. Quedan dos. Duelo final." |
+| `gulag-ganador` | "Aquí Mando. Ganaste en el Gulag: vuelves al combate." |
+| `victoria` | "Aquí Mando. ¡Victoria! Una integral para cenar." |
+| `eliminado` | "Aquí Mando. Te eliminaron. Sigue atento desde la radio." |
+| `entrando-city` | "Entrando a Ciudad Central." |
+| `entrando-base` | "Entrando a Base militar." |
+| `entrando-airfield` | "Entrando al Aeródromo." |
+| `entrando-dam` | "Entrando a la Represa." |
+| `entrando-stadium` | "Entrando al Estadio." |
+| `entrando-terminal` | "Entrando a la Terminal de buses." |
+| `entrando-market` | "Entrando a la Plaza de mercado." |
+| `entrando-hospital` | "Entrando al Hospital." |
+| `entrando-university` | "Entrando a la Universidad." |
+| `entrando-industrial` | "Entrando a la Zona industrial." |
+| `entrando-suburb` | "Entrando al Barrio residencial." |
+| `entrando-canyon` | "Entrando al Cañón." |
+| `entrando-farm` | "Entrando a la Granja." |
+| `entrando-gas` | "Entrando a la Gasolinera." |
+| `entrando-dock` | "Entrando al Muelle." |
+| `entrando-quarry` | "Entrando a la Cantera." |
+| `entrando-forest` | "Entrando al Campamento del bosque." |
+| `entrando-cemetery` | "Entrando al Cementerio." |
+| `entrando-lookout` | "Entrando al Mirador." |
+| `entrando-antenna` | "Entrando a la Antena de radio." |
+| `entrando-sawmill` | "Entrando al Aserradero." |
+| `entrando-coffee` | "Entrando a la Hacienda cafetera." |
+| `entrando-station` | "Entrando a la Estación de tren." |
+| `entrando-ranch1` | "Entrando al Rancho del Río." |
+| `entrando-ranch2` | "Entrando al Rancho La Vía." |
+| `entrando-ranch3` | "Entrando al Rancho del Norte." |
+| `entrando-ranch4` | "Entrando a las Casas del Camino." |
+| `entrando-ranch5` | "Entrando al Rancho Viejo." |
+| `entrando-ranch6` | "Entrando al Rancho del Este." |
 
 ### Probar desde el celular (recomendado: túnel)
 
@@ -1019,3 +1082,4 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - 2026-10-28: **cierre 6.5.** Snapshots con interés por cercanía (los que están a más de 150 m van 1 de cada 5; el proyector recibe todo) y estadísticas de balance en el JSON de resultados (⬇ JSON del anfitrión). Carga contra Render (Oregón, plan gratis) con 40 clientes por 120 s: CPU 14 % (máx. 14,9 %), RSS 94 MB, tick promedio 21 ms (picos de hasta 300 ms), ping p50 219 ms y p95 409 ms, snapshots p50 51 ms; 0 desconexiones.
 - 2026-10-28: **7A · estabilidad.** El interés por cercanía de la 6.5 mandaba 40 paquetes distintos por tick: vuelve el snapshot único por sala, y el botín cercano de los bots descarta por caja. Carga contra Render con 40 clientes y 120 s: tick 21 ms → 4,2 ms de promedio, ping p95 409 → 281 ms, CPU 14 → 11 %, 0 desconexiones; quedan picos aislados de ~100 ms (el recorte de CPU del plan gratis de Render).
 - 2026-10-28: **7A · cuerpo a cuerpo.** Golpe siempre disponible (V, o "Golpear" en celular con un enemigo a 2 m) validado en el servidor (cadencia, alcance, cono y línea de vista), ranura propia de arma blanca: cuchillo (suelo), patecabra (rara), machete (épica, corta cercas y madera) y katana (legendaria, tajo a dos); por la espalda pega más y el chaleco absorbe solo el 40 %. Modelos propios en la mano, tajo animado (giro del cuerpo en las externas), sonidos `golpe`/`tajo`/`estocada`, iconos en el killfeed y medalla "Filo". En el Gulag los puños usan el mismo golpe.
+- 2026-10-29: **7A · soporte de audio y voz.** Manifiesto con .mp3/.ogg/.wav en assets/audio/ (y sfx/), variantes nombre-2… al azar, music/ y voz/; disparos por categoría (antes solo 4), lejanos con disparo-lejano/explosion-lejana, volumen por categoría; bucles con volumen, tono y posición (motores por tipo con el tono según la velocidad, lluvia, viento, tormenta-zona, fuego, tirolina, nado) y ambiente por zona (campo, bosque, ciudad, río) en mezcla suave; radio del camión espacial con botón 📻; voz grabada del Mando con filtro de radio, ducking y cola. Lista exacta de nombres y frases en el README.

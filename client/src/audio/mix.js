@@ -1,4 +1,6 @@
 import { WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { AREAS, riverY, waterAt } from '@calculo-royale/shared/mapPlan';
+import { distanceToRoads, HOUSES, TREES } from '@calculo-royale/shared/mapLayout';
 // Reglas de mezcla (sin Web Audio, para poder probarlas): volumen y paneo según dónde suena
 // algo respecto al jugador.
 
@@ -67,4 +69,47 @@ export function musicMoment({ phase, deploying, duel, closing, winner, alive = t
   if (duel) return 'duelo';
   if (closing || !alive) return 'zona';
   return 'partida';
+}
+
+// --- 7A: volumen por categoría, superficie al caminar y ambiente por zona ---
+
+// Volumen por categoría: armas y explosiones al frente; ambiente, motores y pasos de fondo
+const CATEGORY = [
+  [/^(disparo|explosion|granada)/, 1],
+  [/^(ambiente|rio|viento|lluvia|tormenta)/, 0.45],
+  [/^(motor|radio-camion)/, 0.6],
+  [/^(paso|nadar|salpicar|aterrizaje)/, 0.8],
+  [/^(golpe|tajo|estocada|filo)/, 0.9],
+  [/^(clic|tomar|pregunta|logro|tic-tac|hormiga)/, 0.7],
+];
+export const categoryLevel = (name = '') => CATEGORY.find(([re]) => re.test(name))?.[1] ?? 1;
+
+// Superficie bajo los pies: agua, madera (dentro de una casa), asfalto (carretera), tierra o pasto
+const insideHouse = (x, y) => HOUSES.some((h) => Math.abs(x - h.x) < h.w / 2 && Math.abs(y - h.y) < h.h / 2);
+export function surfaceAt(x, y) {
+  if (waterAt(x, y)) return 'agua';
+  if (insideHouse(x, y)) return 'madera';
+  const road = distanceToRoads(x, y);
+  if (road < 4) return 'asfalto';
+  return road < 7 || Math.abs(y - riverY(x)) < 40 ? 'tierra' : 'pasto';
+}
+
+// Zonas con ruido de ciudad
+const URBAN = ['city', 'market', 'suburb', 'university', 'terminal', 'hospital', 'industrial', 'station', 'stadium', 'gas'];
+const near = (a, x, y, fade) => {
+  const dx = Math.max(0, Math.abs(x - a.x) - a.w / 2);
+  const dy = Math.max(0, Math.abs(y - a.y) - a.h / 2);
+  return Math.max(0, 1 - Math.hypot(dx, dy) / fade);
+};
+
+// Mezcla de ambientes (0 a 1, suman 1): ciudad, bosque (árboles cerca), río (distancia al cauce) y campo
+export function ambienceMix(x, y) {
+  const ciudad = Math.max(0, ...URBAN.map((id) => AREAS[id] && near(AREAS[id], x, y, 40)));
+  let trees = 0;
+  for (const t of TREES) if (Math.abs(t.x - x) < 30 && Math.abs(t.y - y) < 30) trees++;
+  const bosque = Math.min(1, trees / 14) * (1 - ciudad);
+  const rio = Math.max(0, 1 - Math.abs(y - riverY(x)) / 70) * (1 - ciudad);
+  const campo = Math.max(0, 1 - ciudad - bosque - rio * 0.5);
+  const total = ciudad + bosque + rio + campo || 1;
+  return { ciudad: ciudad / total, bosque: bosque / total, rio: rio / total, campo: campo / total };
 }

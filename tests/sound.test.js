@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HEARING, masterLevel, SHOT_VOICES, spatial } from '../client/src/audio/mix.js';
-import { sound, updateEngine } from '../client/src/audio/sound.js';
+import { playVoice, setLoop, sound, updateWorldAudio } from '../client/src/audio/sound.js';
+import { ambienceMix, categoryLevel, surfaceAt } from '../client/src/audio/mix.js';
 import { WEAPON_IDS } from '@calculo-royale/shared/constants';
 
 test('más lejos suena más bajo; fuera del alcance no suena; el este suena a la derecha', () => {
@@ -35,5 +36,18 @@ test('cada arma de fuego tiene su timbre; el francotirador es el más fuerte', (
 
 test('sin Web Audio (o antes del primer toque) los sonidos no hacen nada ni fallan', () => {
   for (const [name, fn] of Object.entries(sound)) assert.doesNotThrow(() => fn(0, 0, 0), name);
-  assert.doesNotThrow(() => updateEngine({ x: 0, y: 0, speed: 10 }));
+  assert.doesNotThrow(() => updateWorldAudio({ engine: { x: 0, y: 0, speed: 10, type: 'moto' }, weather: 'lluvia', ambience: ambienceMix(0, 0) }));
+  assert.doesNotThrow(() => setLoop('x', { name: 'rio', level: 1 }));
+  assert.equal(playVoice('zona-nueva'), false, 'sin archivo de voz no habla');
+});
+
+test('7A: ambiente por zona, superficie de los pasos y volumen por categoría', () => {
+  const city = ambienceMix(0, 0);
+  assert.ok(city.ciudad > 0.6, JSON.stringify(city));
+  const river = ambienceMix(-300, -110 + 45 * Math.sin(200 / 160));
+  assert.ok(river.rio > river.ciudad);
+  for (const m of [city, river, ambienceMix(450, -420)]) assert.ok(Math.abs(m.ciudad + m.bosque + m.rio + m.campo - 1) < 1e-9);
+  assert.equal(surfaceAt(0, -110 + 45 * Math.sin(500 / 160)), 'agua');
+  assert.ok(['pasto', 'tierra', 'asfalto', 'madera'].includes(surfaceAt(300, 400)));
+  assert.ok(categoryLevel('ambiente-bosque') < categoryLevel('disparo-rifle'));
 });

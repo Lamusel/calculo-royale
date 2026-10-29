@@ -9,15 +9,23 @@ import { allowVoice, channelLevel, duckLevel, MAX_VOICES, musicMoment } from '..
 import { chordOf, degreeNote, MOMENTS } from '../client/src/audio/music.js';
 import { buildAudioManifest } from '../scripts/audio-manifest.js';
 
-test('manifiesto de audio: solo los archivos que existen', () => {
+test('manifiesto de audio: solo los que existen, mp3/ogg/wav, variantes agrupadas y voz', () => {
   const root = mkdtempSync(join(tmpdir(), 'audio-'));
-  mkdirSync(join(root, 'sfx'), { recursive: true });
-  mkdirSync(join(root, 'music'), { recursive: true });
+  for (const d of ['sfx', 'music', 'voz']) mkdirSync(join(root, d), { recursive: true });
   writeFileSync(join(root, 'sfx', 'explosion.mp3'), '');
   writeFileSync(join(root, 'sfx', 'notas.txt'), '');
+  writeFileSync(join(root, 'golpe.wav'), '');
+  writeFileSync(join(root, 'golpe-2.ogg'), '');
   writeFileSync(join(root, 'music', 'duelo.ogg'), '');
-  assert.deepEqual(buildAudioManifest(root), { sfx: { explosion: '/assets/audio/sfx/explosion.mp3' }, music: { duelo: '/assets/audio/music/duelo.ogg' } });
-  assert.deepEqual(buildAudioManifest(join(root, 'nada')), { sfx: {}, music: {} });
+  writeFileSync(join(root, 'music', 'radio-camion-1.mp3'), '');
+  writeFileSync(join(root, 'music', 'radio-camion-2.mp3'), '');
+  writeFileSync(join(root, 'voz', 'zona-nueva.mp3'), '');
+  assert.deepEqual(buildAudioManifest(root), {
+    sfx: { explosion: ['/assets/audio/sfx/explosion.mp3'], golpe: ['/assets/audio/golpe-2.ogg', '/assets/audio/golpe.wav'] },
+    music: { duelo: ['/assets/audio/music/duelo.ogg'], 'radio-camion': ['/assets/audio/music/radio-camion-1.mp3', '/assets/audio/music/radio-camion-2.mp3'] },
+    voice: { 'zona-nueva': '/assets/audio/voz/zona-nueva.mp3' },
+  });
+  assert.deepEqual(buildAudioManifest(join(root, 'nada')), { sfx: {}, music: {}, voice: {} });
   rmSync(root, { recursive: true, force: true });
 });
 

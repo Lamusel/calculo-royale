@@ -134,7 +134,7 @@ function finish(game, fight) {
     }
     // Elige en el mapa dónde caer (6 s) y baja en paracaídas
     startReturnPick(game, winner, airdropSpot(game.zone.current));
-    radio(game, 'gulag', 'Gulag', `Aquí Mando. ${winner.name} ganó en el Gulag y vuelve al combate en paracaídas.`, 6000);
+    radio(game, 'gulag', 'Gulag', `Aquí Mando. ${winner.name} ganó en el Gulag y vuelve al combate en paracaídas.`, 6000, 'gulag-ganador');
   } else if (winner) {
     radio(game, 'gulag', 'Gulag', 'Aquí Mando. El guardia del Gulag ganó: nadie regresa de esa arena.', 5000);
   }

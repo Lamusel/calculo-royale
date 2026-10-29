@@ -1,3 +1,4 @@
+import { hasMusic } from '../audio/sound.js';
 import { useEffect, useState } from 'react';
 import {
   AMMO_TYPES, ARMOR_ABSORB, BACKPACK, GRENADE, MAX_HP, vehicleType, RESPAWN_MS, THROWABLE_IDS, THROWABLES, TIER_COLORS, WEAPON_IDS, WEAPONS,
@@ -22,8 +23,9 @@ const HEAL_LABEL = { bandage: 'Vendándote', medkit: 'Usando botiquín', drink: 
 const SLOT_KEYS = ['1', '2', '3'];
 
 // Vida del jeep y asiento (mientras vas en uno)
-function JeepBar({ vehicle }) {
+function JeepBar({ vehicle, client }) {
   const hp = Math.max(0, (vehicle.hp ?? 0) / vehicleType(vehicle).hp);
+  const [, refresh] = useState(0);
   return (
     <div className="flex w-56 items-center gap-2 sm:w-72">
       <span className="w-10 text-right font-mono text-[10px] text-orange-300">{vehicleType(vehicle).name}</span>
@@ -31,6 +33,19 @@ function JeepBar({ vehicle }) {
         <div className={`h-full transition-all ${hp > 0.35 ? 'bg-orange-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} />
       </div>
       <span className="font-mono text-[10px] text-stone-300">{vehicle.seat === 'driver' ? 'Conduces' : 'Pasajero'}</span>
+      {/* Radio del camión (7A): solo si hay música para ella; se apaga para uno mismo */}
+      {vehicle.type === 'truck' && client && hasMusic('radio-camion') && (
+        <TouchButton
+          onPress={() => {
+            client.truckRadioOff = !client.truckRadioOff;
+            refresh((n) => n + 1);
+          }}
+          className="pointer-events-auto rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-stone-200"
+          title="Radio del camión"
+        >
+          📻 {client.truckRadioOff ? 'Apagada' : 'Radio'}
+        </TouchButton>
+      )}
     </div>
   );
 }
@@ -391,7 +406,7 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
 
       {self.alive && (
         <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1.5">
-          {vehicle && <JeepBar vehicle={vehicle} />}
+          {vehicle && <JeepBar vehicle={vehicle} client={client} />}
           <HealthBar self={self} />
           {healing && (
             <div className="w-40">

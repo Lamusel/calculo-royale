@@ -1,14 +1,15 @@
 import { setDynamicObstacles } from '@calculo-royale/shared/collision';
 import { wallPieces } from '@calculo-royale/shared/throwables';
-import { GRENADE, isMelee, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, THROWABLE_IDS, TICK_MS, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
+import { GRENADE, isMelee, LOOT, MAP_HALF, PLAYER_RADIUS, RADAR_MS, THROWABLE_IDS, TICK_MS, vehicleType, WEAPON_IDS, WEAPONS } from '@calculo-royale/shared/constants';
 import { weaponWith } from '@calculo-royale/shared/inventory';
 import { RECOIL } from '@calculo-royale/shared/constants';
 import { GEAR_INFO } from '@calculo-royale/shared/gear';
-import { BUTTONS, EVENTS, PLAYER_FLAGS } from '@calculo-royale/shared/protocol';
+import { BUTTONS, EVENTS, PLAYER_FLAGS, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { decodeInput, decodeShot, encodeInput } from '@calculo-royale/shared/codec';
 import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
+import { waterAt } from '@calculo-royale/shared/mapPlan';
 import { seatPosition } from '@calculo-royale/shared/vehicle';
 import { applyBroken } from '../game/destruction.js';
 import { actions, currentAim, inputState, press, readInput, resetInput } from '../input/inputState.js';
@@ -16,7 +17,8 @@ import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
 import { LootStore } from './lootStore.js';
 import { loadProgress, loadSkin, recordEvent, unlockedSkins } from '../achievements.js';
-import { setListener, sound, updateBusHum, updateEngine } from '../audio/sound.js';
+import { playVoice, setListener, sound, stopWorldAudio, updateBusHum, updateWorldAudio } from '../audio/sound.js';
+import { ambienceMix } from '../audio/mix.js';
 import { insideZone } from '@calculo-royale/shared/zone';
 
 // Contador global: si se recrea el cliente sin recargar, las secuencias siguen creciendo
@@ -112,6 +114,10 @@ export class GameClient {
     this.crateResult = null; // último resultado (se muestra unos segundos)
     this.radarEndsAt = 0;
     this.radio = []; // transmisiones del mando recientes
+    this.heardEffects = new Set(); // lanzables que ya sonaron
+    this.vehicleStates = new Map(); // para oír cuando un vehículo explota
+    this.truckRadioOff = false; // botón de la radio del camión (7A)
+    this.weather = 'despejado';
     this.results = null; // ranking al terminar la partida
     this.privateResults = null; // aciertos por tema y preguntas falladas (solo mías)
     this.lastShot = new Map(); // id → momento del último disparo (retroceso del soldado)
@@ -157,7 +163,9 @@ export class GameClient {
           this.onZipline = Boolean(flags & PLAYER_FLAGS.ZIPLINE);
           const deploying = flags & PLAYER_FLAGS.IN_BUS ? 'bus' : flags & PLAYER_FLAGS.FALLING ? 'fall' : flags & PLAYER_FLAGS.PARACHUTE ? 'chute' : null;
           if (deploying !== this.deploying) {
-            if (deploying === 'fall') sound.jump();
+            // Sin pasar por el bus: lo lanzó una plataforma de salto
+            if (deploying === 'fall') (this.deploying ? sound.jump : sound.padLaunch)();
+            if (deploying === 'bus' && !this.deploying) playVoice('despliegue');
             if (deploying === 'chute') sound.parachute();
             if (!deploying && this.deploying === 'chute') sound.landing();
           }
@@ -175,6 +183,8 @@ export class GameClient {
       [EVENTS.COMBAT_HIT]: ([, amount, x, y, killed]) => {
         this.effects.push({ type: 'damage', x, y, amount, killed: Boolean(killed) });
         sound.hit(Boolean(killed));
+        // Golpe propio que conectó: el sonido del filo
+        if (performance.now() - (this.lastShot.get(this.myId) ?? -1e9) < 400 && this.meleeReadyAt > performance.now()) sound.meleeHit(x, y);
         if (killed) sound.kill();
         vibrate(killed ? [30, 40, 30] : 12);
       },
@@ -205,6 +215,7 @@ export class GameClient {
         this.radio.push({ ...message, at: performance.now() });
         sound.radio();
         if (message.kind === 'airdrop') sound.plane();
+        if (message.voice) playVoice(message.voice);
         if (this.radio.length > 6) this.radio.shift();
         vibrate(25);
       },
@@ -229,6 +240,9 @@ export class GameClient {
       },
       [EVENTS.GAME_OVER]: (results) => {
         this.results = results;
+        const winner = results.ranking?.find((r) => r.id === results.winnerId);
+        const me = results.ranking?.find((r) => r.id === this.myId);
+        if (winner && me && (winner.id === me.id || (me.team != null && me.team === winner.team))) playVoice('victoria');
       },
       [EVENTS.AMMO_QUESTION]: (q) => {
         this.ammoQuestion = { ...q, receivedAt: performance.now() };
@@ -268,7 +282,10 @@ export class GameClient {
       },
       // Destrucción ligera: lo roto se esconde y suelta 4 trozos
       [EVENTS.PROPS_BROKEN]: (ids) => {
-        for (const o of applyBroken(ids)) this.effects.push({ type: 'debris', x: o.x, y: o.y, red: Boolean(o.red) });
+        for (const o of applyBroken(ids)) {
+          this.effects.push({ type: 'debris', x: o.x, y: o.y, red: Boolean(o.red) });
+          if (!this.spectator) sound.woodBreak(o.x, o.y);
+        }
       },
       // Chat de texto: va a la misma lista que las frases rápidas
       [EVENTS.CHAT]: ({ id, text, team }) => {
@@ -358,7 +375,10 @@ export class GameClient {
         this.trauma = Math.min(1, this.trauma + (before - self.hp - self.armor) / 35);
         vibrate(40);
       }
-      if (prev.alive && !self.alive) vibrate([80, 60, 220]);
+      if (prev.alive && !self.alive) {
+        vibrate([80, 60, 220]);
+        if (this.phase === 'playing') playVoice('eliminado');
+      }
       if (!prev.alive && self.alive) this.predictor.forceSnap();
     }
     if (self.radar && !prev?.radar) {
@@ -372,7 +392,7 @@ export class GameClient {
     }
     if (prev && (self.active !== prev.active || selfWeaponId(self) !== selfWeaponId(prev))) sound.weaponSwitch();
     if (!self.radar) this.radarEndsAt = 0;
-    if (self.reloadLeft && !(prev?.reloadLeft > 0)) sound.reload();
+    if (self.reloadLeft && !(prev?.reloadLeft > 0)) sound.reload(WEAPONS[selfWeaponId(self)]?.category === 'sniper');
     this.self = self;
     this.reloadEndsAt = self.reloadLeft ? now + self.reloadLeft : 0;
     this.ammoCooldownEndsAt = self.ammoCooldownLeft ? now + self.ammoCooldownLeft : 0;
@@ -608,7 +628,48 @@ export class GameClient {
         nearest = v;
       }
     }
-    updateEngine(nearest);
+    // Bucles del mundo (7A): motor, clima, zona, fuego, ambiente por zona, radio del camión, tirolina y nado
+    const latest = this.buffer.latest;
+    let fire = null;
+    for (const e of latest?.effects ?? []) {
+      if (e[0] === 1 && (!fire || Math.hypot(e[2] - at.x, e[3] - at.y) < Math.hypot(fire.x - at.x, fire.y - at.y))) fire = { x: e[2], y: e[3] };
+      // Lanzable nuevo: su sonido al activarse
+      const key = `${e[0]}:${e[1]}`;
+      if (!this.heardEffects.has(key)) {
+        this.heardEffects.add(key);
+        sound.tactical(['smoke', 'fire', 'sensor', 'wall'][e[0]], e[2], e[3]);
+      }
+    }
+    if (this.heardEffects.size > 200) this.heardEffects.clear();
+    let radio = null;
+    for (const v of frame.vehicles?.values() ?? []) {
+      if (v.type === 'truck' && v.driver && !this.truckRadioOff && Math.hypot(v.x - at.x, v.y - at.y) < 70) radio = v;
+      // Vehículo que explota
+      const was = this.vehicleStates.get(v.id);
+      if (was !== undefined && was !== v.state && v.state === VEHICLE_STATE.DESTROYED) sound.vehicleBoom(v.x, v.y);
+      this.vehicleStates.set(v.id, v.state);
+    }
+    // Frenazo: el vehículo propio pierde mucha velocidad de golpe
+    const mine = this.vehicleId !== null ? frame.vehicles?.get(this.vehicleId) : null;
+    if (mine && (this.lastSpeed ?? 0) - Math.abs(mine.speed) > 3) sound.brake(mine.x, mine.y);
+    this.lastSpeed = mine ? Math.abs(mine.speed) : 0;
+    if (second !== this.ambienceSecond) {
+      this.ambienceSecond = second;
+      this.ambience = this.phase === 'lobby' ? { campo: 1 } : ambienceMix(at.x, at.y);
+    }
+    const z = frame.zone;
+    updateWorldAudio({
+      engine: nearest,
+      maxSpeed: nearest ? vehicleType(nearest).maxSpeed : 14,
+      weather: this.phase === 'playing' ? this.weather : 'despejado',
+      outside: Boolean(z?.length && this.alive && frame.me && !this.deploying && !insideZone({ cx: z[0], cy: z[1], p: z[2], q: z[3] }, frame.me.x, frame.me.y)),
+      fire: fire && Math.hypot(fire.x - at.x, fire.y - at.y) < 50 ? fire : null,
+      ambience: this.ambience,
+      radio,
+      zipline: this.onZipline,
+      swimming: Boolean(frame.me && waterAt(frame.me.x, frame.me.y) === 2),
+      air: this.deploying === 'fall' || this.deploying === 'chute',
+    });
   }
 
   // Avisa al servidor qué skin usar (con las de honor desbloqueadas en este navegador)
@@ -770,7 +831,7 @@ export class GameClient {
     clearInterval(this.inputTimer);
     clearInterval(this.pingTimer);
     updateBusHum(false);
-    updateEngine(null);
+    stopWorldAudio();
     for (const [event, handler] of Object.entries(this.handlers)) this.socket.off(event, handler);
     actions.switchWeapon = () => {};
     actions.interact = () => {};

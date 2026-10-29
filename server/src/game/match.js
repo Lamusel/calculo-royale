@@ -11,8 +11,9 @@ const ZONE_INDEX = WEAPON_IDS.indexOf('zone');
 // Solo para pruebas: CR_TIME_SCALE=10 hace la zona y el lanzamiento aéreo 10 veces más rápidos
 export const TIME_SCALE = Math.max(1, Number(globalThis.process?.env.CR_TIME_SCALE) || 1);
 
-export function radio(game, kind, title, text, durationMs = 9000) {
-  game.room.broadcast(EVENTS.RADIO_MESSAGE, { kind, title, text, durationMs });
+// voice: archivo de voz/ que la acompaña (7A; sin archivo, solo el texto)
+export function radio(game, kind, title, text, durationMs = 9000, voice = undefined) {
+  game.room.broadcast(EVENTS.RADIO_MESSAGE, { kind, title, text, durationMs, voice });
 }
 
 function announce(game, event) {
@@ -23,6 +24,8 @@ function announce(game, event) {
       'zone',
       `Zona ${event.phase + 1} de ${ZONE_PHASES.length}: se desplaza`,
       `Aquí Mando. La zona se desplaza hacia el ${dir}: ${zoneInequality(event.zone)}$. Muévanse, en ${Math.round(event.waitMs / 1000)} s empieza a correrse.`,
+      9000,
+      'zona-moviendose',
     );
   } else if (event.type === 'announce') {
     radio(
@@ -30,9 +33,11 @@ function announce(game, event) {
       'zone',
       `Zona ${event.phase + 1} de ${ZONE_PHASES.length}`,
       `Aquí Mando. Nueva zona segura: ${zoneInequality(event.zone)}$. Tienen ${Math.round(event.waitMs / 1000)} s.`,
+      9000,
+      'zona-nueva',
     );
   } else if (event.type === 'closing') {
-    radio(game, 'closing', 'La zona se está cerrando', `Fuera de $${zoneInequality(game.zone.target)}$ se recibe daño.`, 6000);
+    radio(game, 'closing', 'La zona se está cerrando', `Fuera de $${zoneInequality(game.zone.target)}$ se recibe daño.`, 6000, 'zona-cerrando');
   } else if (event.type === 'final') {
     radio(game, 'final', 'Última zona', 'La zona ya no se cierra más. Que gane el mejor.', 6000);
   }
@@ -81,6 +86,8 @@ function updateAirdrop(game) {
       'airdrop',
       'Lanzamiento aéreo',
       `Aquí Mando. Caja dorada (Todo o nada) cayendo en $(${x}, ${y})$, sector ${sectorOf(x, y)}. Aterriza en ${Math.round(AIRDROP.fallMs / TIME_SCALE / 1000)} s.`,
+      9000,
+      'lanzamiento-aereo',
     );
   }
   if (crate.active && !crate.landed && game.now >= crate.landAt) crate.landed = true;
@@ -130,5 +137,5 @@ export function changeWeather(game, rand = Math.random) {
   const options = Object.keys(WEATHERS).filter((w) => w !== game.room.weather);
   game.room.weather = options[Math.floor(rand() * options.length)];
   game.room.broadcastInfo?.();
-  radio(game, 'leader', 'Cambio de clima', `Aquí Mando. El clima cambia: ${WEATHERS[game.room.weather]}. Ajusten la visión.`, 4000);
+  radio(game, 'info', 'Cambio de clima', `Aquí Mando. El clima cambia: ${WEATHERS[game.room.weather]}. Ajusten la visión.`, 4000);
 }

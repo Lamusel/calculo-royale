@@ -138,7 +138,7 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
     attacker.killStreak = (attacker.killStreak ?? 0) + 1;
     if (game.room.phase === 'playing' && attacker.killStreak % 3 === 0 && attacker.alive) {
       activateUav(game, attacker);
-      game.room.emitTo(attacker, EVENTS.RADIO_MESSAGE, { kind: 'leader', title: 'Racha', text: '3 bajas seguidas: UAV gratis, marcados los 3 enemigos más cercanos.', durationMs: 3000 });
+      game.room.emitTo(attacker, EVENTS.RADIO_MESSAGE, { kind: 'info', title: 'Racha', text: '3 bajas seguidas: UAV gratis, marcados los 3 enemigos más cercanos.', durationMs: 3000 });
     }
     attacker.longestKill = Math.max(attacker.longestKill ?? 0, Math.hypot(attacker.x - target.x, attacker.y - target.y));
   }
