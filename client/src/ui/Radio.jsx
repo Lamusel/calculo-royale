@@ -22,8 +22,8 @@ export function RadioFeed({ radio }) {
       <ZoneBanner radio={radio.filter((m) => BANNER.has(m.kind))} now={now} />
       {toasts.length > 0 && (
         <div className="pointer-events-none absolute bottom-[45%] right-3 z-30 flex w-[min(44vw,18rem)] flex-col items-end gap-1">
-          {toasts.map((m) => (
-            <div key={m.at} className={`rounded border-l-4 bg-black/75 px-2 py-1 text-xs text-stone-100 shadow ${KIND_STYLE[m.kind] ?? 'border-khaki'}`}>
+          {toasts.map((m, i) => (
+            <div key={`${m.at}-${i}`} className={`rounded border-l-4 bg-black/75 px-2 py-1 text-xs text-stone-100 shadow ${KIND_STYLE[m.kind] ?? 'border-khaki'}`}>
               <b className="text-khaki-light">📻 {m.title}:</b> <MathText text={m.text} />
             </div>
           ))}

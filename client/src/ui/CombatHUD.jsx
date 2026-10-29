@@ -342,6 +342,16 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
 
   return (
     <>
+      {/* De dónde viene el daño: una marca roja en el borde, 1,2 s (la cámara siempre mira al norte) */}
+      {client?.hurtFrom && me && performance.now() - client.hurtFrom.at < 1200 && Math.hypot(client.hurtFrom.x - me.x, client.hurtFrom.y - me.y) > 1 && (
+        <div
+          key={`hurt-${client.hurtFrom.at}`}
+          className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-0 w-0 animate-[damage_1200ms_ease-out_forwards]"
+          style={{ transform: `rotate(${-Math.atan2(client.hurtFrom.y - me.y, client.hurtFrom.x - me.x)}rad)` }}
+        >
+          <div className="absolute left-[min(42vw,42vh)] top-0 h-24 w-3 -translate-y-1/2 rounded-full bg-red-600/80 shadow-[0_0_16px_rgba(220,38,38,0.9)]" />
+        </div>
+      )}
       {damageFlashAt > 0 && (
         <div key={damageFlashAt} className="pointer-events-none absolute inset-0 z-20 animate-[damage_400ms_ease-out_forwards] shadow-[inset_0_0_80px_rgba(220,38,38,0.65)]" />
       )}

@@ -1,6 +1,47 @@
 import { TOPIC_NAMES, teamColor, teamName } from '@calculo-royale/shared/constants';
 import { ClassTopics } from './HostPanel.jsx';
 import MathText from './MathText.jsx';
+import { SkinPortrait } from './SkinPicker.jsx';
+import { loadSkin } from '../achievements.js';
+import { getSkinEntry } from '../game/character/skins/index.js';
+
+// Apodo de la tarjeta (6.5) según el tema más fuerte; con aciertos parejos a medias, "Punto de silla"
+const NICKNAMES = {
+  lagrange: 'El Lagrangiano',
+  integrales_dobles: 'Integral andante',
+  derivadas_direccionales: 'Gradiente con patas',
+  maximos_minimos: 'Máximo absoluto',
+};
+export function playerCard(byTopic = {}) {
+  const rated = Object.entries(byTopic)
+    .filter(([, t]) => t.total > 0)
+    .map(([slug, t]) => ({ slug, rate: t.ok / t.total, total: t.total }))
+    .sort((a, b) => b.rate - a.rate || b.total - a.total);
+  if (!rated.length) return { strong: null, weak: null, nickname: 'Punto de silla' };
+  const strong = rated[0];
+  const weak = rated.length > 1 ? rated.at(-1) : null;
+  const ok = rated.reduce((n, t) => n + t.rate * t.total, 0) / rated.reduce((n, t) => n + t.total, 0);
+  const nickname = ok >= 0.4 && ok <= 0.6 && weak ? 'Punto de silla' : NICKNAMES[strong.slug] ?? 'Punto de silla';
+  return { strong: strong.slug, weak: weak?.slug ?? null, nickname };
+}
+
+function PlayerCard({ me, mine }) {
+  const card = playerCard(mine?.byTopic);
+  return (
+    <div className="flex items-center gap-3 rounded border border-khaki-dark bg-black/40 p-2">
+      <SkinPortrait skin={getSkinEntry(loadSkin())} className="aspect-[3/4] w-20 shrink-0 rounded" />
+      <div className="min-w-0 text-sm">
+        <p className="text-lg font-black text-khaki">“{card.nickname}”</p>
+        <p className="font-bold">{me.name}</p>
+        <p className="text-stone-300">
+          Puesto {me.place}° · {me.kills} bajas · {me.correct}/{me.answered} aciertos
+        </p>
+        {card.strong && <p className="text-xs text-green-300">Más fuerte: {TOPIC_NAMES[card.strong] ?? card.strong}</p>}
+        {card.weak && <p className="text-xs text-orange-300">Para repasar: {TOPIC_NAMES[card.weak] ?? card.weak}</p>}
+      </div>
+    </div>
+  );
+}
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
@@ -86,6 +127,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
   if (!results) return null;
   const winner = results.ranking.find((r) => r.id === results.winnerId);
   const me = results.ranking.find((r) => r.id === myId);
+  const won = Boolean(me && winner && (me.id === winner.id || (me.team != null && me.team === winner.team)));
   return (
     <div className="absolute inset-0 z-50 overflow-y-auto bg-black/80 p-3 text-stone-100 backdrop-blur-sm">
       <div className="mx-auto flex max-w-4xl flex-col gap-4">
@@ -110,6 +152,9 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
             )}
           </div>
         </div>
+
+        {won && <p className="text-center text-3xl font-black uppercase tracking-wider text-yellow-300 drop-shadow sm:text-5xl">¡Victoria! Una integral para cenar</p>}
+        {me && <PlayerCard me={me} mine={mine} />}
 
         <Medals medals={results.medals} myId={myId} />
 

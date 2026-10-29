@@ -317,3 +317,27 @@ test('6.5: chat corto con antispam, filtro, solo-equipo y apagado por el anfitri
   room.chatOff = true;
   assert.equal(sayChat(room, c, { text: 'hola' }, 9000), false);
 });
+
+test('6.5: destrucción ligera: los barriles rojos explotan y encadenan, lo roto sale de la colisión', async () => {
+  const { DESTRUCTIBLES } = await import('@calculo-royale/shared/mapLayout');
+  const { overlapsObstacle } = await import('@calculo-royale/shared/collision');
+  const { damageProp } = await import('../server/src/game/destruction.js');
+  const room = makeRoom();
+  addPlayers(room, 2);
+  start(room);
+  const red = DESTRUCTIBLES.find((o) => o.kind === 'barrel' && o.red);
+  assert.ok(overlapsObstacle(red.x, red.y, 0.3), 'antes choca');
+  damageProp(room.game, red, 10);
+  assert.ok(!red.broken, 'con poco daño sigue en pie');
+  damageProp(room.game, red, 100);
+  assert.equal(red.broken, true);
+  assert.ok(room.game.explosions.length > 0, 'el barril rojo explota');
+  assert.ok(room.broadcasts.some((b) => b.event === EVENTS.PROPS_BROKEN && b.data.includes(red.destId)));
+  const wall = DESTRUCTIBLES.find((o) => o.kind === 'fence');
+  damageProp(room.game, wall, 1000);
+  assert.ok(wall.broken);
+  // Al volver al lobby todo se arregla
+  room.game.resetWorld();
+  assert.ok(DESTRUCTIBLES.every((o) => !o.broken));
+  assert.ok(overlapsObstacle(red.x, red.y, 0.3));
+});

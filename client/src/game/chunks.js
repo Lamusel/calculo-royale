@@ -50,7 +50,7 @@ export function Chunked({ items, render }) {
 // Un InstancedMesh con los objetos de un bloque. place(item, object3D, i) ubica cada uno.
 const o3 = new THREE.Object3D();
 const tint = new THREE.Color();
-export function InstancedChunk({ items, geometry, place, castShadow = true }) {
+export function InstancedChunk({ items, geometry, place, castShadow = true, version = 0 }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     items.forEach((item, i) => {
@@ -62,14 +62,14 @@ export function InstancedChunk({ items, geometry, place, castShadow = true }) {
     ref.current.instanceMatrix.needsUpdate = true;
     if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
     ref.current.computeBoundingSphere();
-  }, [items, place]);
+  }, [items, place, version]);
   return createElement('instancedMesh', { ref, args: [geometry, modelMaterial, items.length], castShadow, receiveShadow: true });
 }
 
 // Instancing por bloques en una sola llamada
-export function ChunkedInstances({ items, geometry, place, castShadow }) {
+export function ChunkedInstances({ items, geometry, place, castShadow, version }) {
   return createElement(Chunked, {
     items,
-    render: (list) => createElement(InstancedChunk, { items: list, geometry, place, castShadow }),
+    render: (list) => createElement(InstancedChunk, { items: list, geometry, place, castShadow, version }),
   });
 }

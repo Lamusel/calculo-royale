@@ -6,7 +6,8 @@ import { helmetFactor } from '@calculo-royale/shared/gear';
 import { RECOIL } from '@calculo-royale/shared/constants';
 import { BUTTONS, dummyTargetId, EVENTS } from '@calculo-royale/shared/protocol';
 import { encodeShot } from '@calculo-royale/shared/codec';
-import { hasLineOfSight, overlapsObstacle, raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
+import { hasLineOfSight, lastRayHit, overlapsObstacle, raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
+import { blastProps, damageProp } from './destruction.js';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { JEEP } from '@calculo-royale/shared/constants';
 import { waterAt } from '@calculo-royale/shared/mapPlan';
@@ -107,7 +108,11 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   const toHp = amount - absorbed;
   target.hp -= toHp;
   const hitter = game.room.players.get(attackerId);
-  if (hitter && hitter !== target) hitter.damageDealt = (hitter.damageDealt ?? 0) + amount;
+  if (hitter && hitter !== target) {
+    hitter.damageDealt = (hitter.damageDealt ?? 0) + amount;
+    // De dónde vino el daño (indicador en el borde de la pantalla)
+    target.hurtFrom = [Math.round(hitter.x), Math.round(hitter.y)];
+  }
   if (target.hp > 0) return { dealt: amount, killed: false };
   // En equipos: derribado en vez de muerto si le queda un compañero en pie
   if (!finishing && game.tryDown?.(target, attackerId)) return { dealt: amount, killed: false, downed: true };
@@ -123,8 +128,15 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   if (game.room.phase === 'playing' && target.arena == null) target.place = aliveCount(game) + 1;
   game.onPlayerDeath?.(target);
   const attacker = game.room.players.get(attackerId);
+  target.killStreak = 0;
   if (attacker && attacker !== target) {
     attacker.kills++;
+    // Racha (6.5): cada 3 bajas seguidas sin morir, un UAV gratis
+    attacker.killStreak = (attacker.killStreak ?? 0) + 1;
+    if (game.room.phase === 'playing' && attacker.killStreak % 3 === 0 && attacker.alive) {
+      activateUav(game, attacker);
+      game.room.emitTo(attacker, EVENTS.RADIO_MESSAGE, { kind: 'leader', title: 'Racha', text: '3 bajas seguidas: UAV gratis, marcados los 3 enemigos más cercanos.', durationMs: 3000 });
+    }
     attacker.longestKill = Math.max(attacker.longestKill ?? 0, Math.hypot(attacker.x - target.x, attacker.y - target.y));
   }
   game.kills.push([attackerId, target.id, weaponIndex]);
@@ -192,6 +204,7 @@ export function fire(game, p, input) {
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     let dist = raycastObstacles(p.x, p.y, dx, dy, w.range);
+    const prop = lastRayHit();
     let hit = null;
     for (const t of targets) {
       const d = rayCircle(p.x, p.y, dx, dy, t.x, t.y, t.radius ?? PLAYER_RADIUS + HIT_LENIENCY);
@@ -220,6 +233,7 @@ export function fire(game, p, input) {
     if (hit?.wall) damageWall(game, hit.wall, w.damage);
     else if (hit?.sensor) damageSensor(game, hit.sensor, w.damage);
     else if (hit) damageByTarget.set(hit, (damageByTarget.get(hit) ?? 0) + w.damage);
+    else if (prop && dist < w.range) damageProp(game, prop, w.damage, p.id);
     // La flecha de la ballesta queda en el suelo y se puede recoger
     if (id === 'crossbow') game.dropLoot?.(p.x + dx * Math.max(0, dist - 0.8), p.y + dy * Math.max(0, dist - 0.8), [{ item: 'ammo_bolt', state: { n: 1 } }]);
     return { angle, dist };
@@ -302,7 +316,7 @@ export function throwGrenade(game, p, input) {
   });
 }
 
-function explode(game, g) {
+export function explode(game, g) {
   const kind = g.kind ?? 'frag';
   // Humo, aturdidora, molotov, sensor y muro: su efecto (sin daño de explosión)
   if (!BLASTS[kind]) {
@@ -313,6 +327,7 @@ function explode(game, g) {
   const index = WEAPON_IDS.indexOf(g.weapon ?? 'frag');
   game.explosions.push([Math.round(g.x * 100) / 100, Math.round(g.y * 100) / 100]);
   blastTactical(game, g.x, g.y, radius, damage);
+  blastProps(game, g.x, g.y, radius, damage, g.ownerId);
   const owner = game.room.players.get(g.ownerId);
   const hurt = (target, x, y) => {
     const d = Math.hypot(x - g.x, y - g.y);

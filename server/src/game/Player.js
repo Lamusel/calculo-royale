@@ -248,6 +248,7 @@ export class Player {
       speedFactor: this.speedFactor,
       reloadLeft: this.reloadUntil ? Math.max(0, this.reloadUntil - now) : 0,
       streak: this.streak,
+      hurtFrom: this.hurtFrom ?? null,
       radar: this.radarUntil > now,
       answering: this.question ? this.question.crateId : null,
       spectating: Boolean(this.operator),

@@ -259,6 +259,13 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
   const [client, setClient] = useState(null);
   const [banner, setBanner] = useState(false);
   const [replayDone, setReplayDone] = useState(false);
+  // Cambio de clima a mitad de partida: velo de 2 s para que no sea un corte brusco
+  const [weatherFade, setWeatherFade] = useState(0);
+  const lastWeather = useRef(room.weather);
+  useEffect(() => {
+    if (lastWeather.current !== room.weather && room.phase === 'playing') setWeatherFade(performance.now());
+    lastWeather.current = room.weather;
+  }, [room.weather, room.phase]);
   const frameRef = useRef({
     me: null, meInfo: null, others: new Map(), grenades: new Map(), dummies: [], crates: [], alarms: [], zone: [], airdrop: [],
   });
@@ -366,6 +373,7 @@ function GameScreen({ room: rawRoom, myId, sessionKey, onLeave }) {
         {client && (
           <ClientUI client={client} frameRef={frameRef} room={room} myId={myId} isTouch={isTouch} onLeave={onLeave} replaying={replaying} />
         )}
+        {weatherFade > 0 && <div key={weatherFade} className="pointer-events-none absolute inset-0 z-10 animate-[weatherfade_2s_ease-in-out_forwards] bg-stone-300" />}
         {room.phase === 'lobby' && <Lobby room={room} myId={myId} isTouch={isTouch} onSkin={(skin) => client?.sendSkin(skin)} />}
         {banner && <StartBanner />}
         {slowWarning && <SlowWarning onClose={() => setSlowWarning(false)} />}

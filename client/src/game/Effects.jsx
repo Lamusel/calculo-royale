@@ -31,6 +31,7 @@ const PARTICLES = {
   blood: { max: 40, geometry: new THREE.BoxGeometry(0.08, 0.08, 0.08), material: lambert('#7f1d1d') },
   dust: { max: 60, geometry: new THREE.IcosahedronGeometry(0.25, 0), material: lambert('#a08a63') },
   smoke: { max: 40, geometry: new THREE.IcosahedronGeometry(0.5, 0), material: lambert('#5d5c55') },
+  debris: { max: 48, geometry: new THREE.BoxGeometry(0.32, 0.12, 0.22), material: lambert('#7a5a32') },
 };
 
 const tracerGeometry = new THREE.BoxGeometry(0.06, 0.06, 1);
@@ -44,7 +45,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 function spawner(state, density) {
   return (kind, count, make) => {
-    const n = Math.max(kind === 'casing' || kind === 'shell' ? 1 : 0, Math.round(count * density));
+    const n = kind === 'debris' ? count : Math.max(kind === 'casing' || kind === 'shell' ? 1 : 0, Math.round(count * density));
     for (let i = 0; i < n; i++) {
       const list = state.particles[kind];
       if (list.length >= PARTICLES[kind].max) list.shift();
@@ -59,7 +60,7 @@ function stepParticle(p, kind, now, dt) {
   if (t >= 1) return false;
   p.v.y += (p.gravity ?? 0) * dt;
   p.pos.addScaledVector(p.v, dt);
-  if (kind === 'casing' || kind === 'shell') {
+  if (kind === 'casing' || kind === 'shell' || kind === 'debris') {
     const ground = terrainHeight(p.pos.x, -p.pos.z) + 0.03;
     if (p.pos.y < ground) {
       p.pos.y = ground;
@@ -154,6 +155,15 @@ export default function Effects({ client, quality }) {
           life: rand(1600, 2400),
         }));
         client.trauma = Math.min(1, client.trauma + 0.25);
+      } else if (e.type === 'debris') {
+        spawn('debris', 4, () => ({
+          pos: point(e.x + rand(-0.3, 0.3), e.y + rand(-0.3, 0.3), 0.6),
+          v: new THREE.Vector3(rand(-2.5, 2.5), rand(3, 5), rand(-2.5, 2.5)),
+          gravity: -12,
+          spin: rand(-8, 8),
+          born: now,
+          life: 3000,
+        }));
       } else if (e.type === 'dust') {
         spawn('dust', 1, () => ({
           pos: point(e.x + rand(-0.2, 0.2), e.y + rand(-0.2, 0.2), 0.1),

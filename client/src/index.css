@@ -70,3 +70,10 @@ html {
 .katex {
   max-width: 100%;
 }
+
+/* Cambio de clima (6.5): velo que sube y baja */
+@keyframes weatherfade {
+  0% { opacity: 0; }
+  45% { opacity: 0.7; }
+  100% { opacity: 0; }
+}

@@ -46,11 +46,15 @@ const FALL_HEIGHT = 40;
 // Paracaídas del lanzamiento aéreo (el mismo modelo del despliegue y la reanimación)
 const cratechute = parachuteGeometry({ hook: H });
 
+const glowGeometry = new THREE.RingGeometry(0.7, 1.15, 24).rotateX(-Math.PI / 2);
+
 export default function Crates({ frameRef }) {
   const bodies = useRef([]);
   const lids = useRef(null);
   const lights = useRef(null);
   const beams = useRef([]);
+  const glows = useRef(null);
+  const glowMaterial = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, side: THREE.DoubleSide }), []);
   const geometries = useMemo(() => RARITIES.map((_, i) => bodyGeometry(i)), []);
   const byRarity = useMemo(() => RARITIES.map((_, r) => CRATES.map((c, i) => ({ c, i })).filter(({ c }) => c.rarity === r)), []);
   const falling = useRef(null);
@@ -58,7 +62,10 @@ export default function Crates({ frameRef }) {
 
   // El color por instancia de las luces debe existir antes del primer dibujo
   useLayoutEffect(() => {
-    for (let i = 0; i < CRATES.length; i++) lights.current.setColorAt(i, tmp.color.set('#000000'));
+    for (let i = 0; i < CRATES.length; i++) {
+      lights.current.setColorAt(i, tmp.color.set('#000000'));
+      glows.current.setColorAt(i, tmp.color.set(RARITIES[CRATES[i].rarity].color));
+    }
   }, [tmp]);
 
   useFrame(({ camera }, delta) => {
@@ -102,6 +109,7 @@ export default function Crates({ frameRef }) {
       if (state === CRATE_STATE.HIDDEN || !c || far(c)) {
         lids.current.setMatrixAt(i, HIDDEN);
         lights.current.setMatrixAt(i, HIDDEN);
+        glows.current.setMatrixAt(i, HIDDEN);
         return;
       }
       const h = terrainHeight(c.x, c.y) - 0.05;
@@ -114,6 +122,13 @@ export default function Crates({ frameRef }) {
       o.scale.setScalar(1);
       o.updateMatrix();
       lids.current.setMatrixAt(i, o.matrix);
+      // Brillo por rareza: un halo en el suelo mientras la caja siga cerrada
+      o.position.set(c.x, h + 0.08, -c.y);
+      o.rotation.set(0, 0, 0);
+      o.scale.setScalar(state === CRATE_STATE.OPEN ? 0 : 1 + 0.15 * CRATES[i].rarity);
+      o.updateMatrix();
+      glows.current.setMatrixAt(i, o.matrix);
+      o.scale.setScalar(1);
 
       const blinking = state === CRATE_STATE.LOCKED || state === CRATE_STATE.BUSY;
       const on = blinking && Math.floor(now / 300) % 2 === 0;
@@ -129,6 +144,8 @@ export default function Crates({ frameRef }) {
       }
     });
     lids.current.instanceMatrix.needsUpdate = true;
+    glows.current.instanceMatrix.needsUpdate = true;
+    glowMaterial.opacity = 0.45 + 0.3 * Math.sin(now / 300);
     lights.current.instanceMatrix.needsUpdate = true;
     if (lights.current.instanceColor) lights.current.instanceColor.needsUpdate = true;
 
@@ -164,6 +181,7 @@ export default function Crates({ frameRef }) {
       </group>
       <instancedMesh ref={lids} args={[lidGeometry, modelMaterial, CRATES.length]} castShadow frustumCulled={false} />
       <instancedMesh ref={lights} args={[lightGeometry, lightMaterial, CRATES.length]} frustumCulled={false} />
+      <instancedMesh ref={glows} args={[glowGeometry, glowMaterial, CRATES.length]} frustumCulled={false} renderOrder={1} />
       {Array.from({ length: MAX_ALARMS }, (_, i) => (
         <group key={i} ref={(g) => (beams.current[i] = g)} visible={false}>
           <mesh geometry={beamGeometry} position-y={7}>

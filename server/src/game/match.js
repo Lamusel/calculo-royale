@@ -1,4 +1,4 @@
-import { AIRDROP, DURATIONS, MAP_HALF, WEAPON_IDS, ZONE_PHASES } from '@calculo-royale/shared/constants';
+import { AIRDROP, DURATIONS, MAP_HALF, WEAPON_IDS, WEATHERS, ZONE_PHASES } from '@calculo-royale/shared/constants';
 import { overlapsObstacle } from '@calculo-royale/shared/collision';
 import { CRATE_STATE, EVENTS } from '@calculo-royale/shared/protocol';
 import { insideZone, sectorOf, zoneInequality } from '@calculo-royale/shared/zone';
@@ -48,6 +48,7 @@ export function startMatch(game, rand = Math.random) {
   game.airdropDone = false;
   game.finished = false;
   game.startingPlayers = aliveCount(game);
+  game.weatherChanged = false;
   for (const event of game.zone.start(game.now)) announce(game, event);
 }
 
@@ -115,5 +116,18 @@ export function updateMatch(game, dt) {
     }
   }
   updateAirdrop(game);
+  changeWeather(game);
   checkVictory(game);
+}
+
+// Clima que cambia una vez a mitad de partida (6.5), anunciado por el Mando
+export function changeWeather(game, rand = Math.random) {
+  if (game.weatherChanged || !game.zone) return;
+  const elapsed = game.now - game.matchStartedAt;
+  if (elapsed < game.zone.msToEnd(game.now)) return;
+  game.weatherChanged = true;
+  const options = Object.keys(WEATHERS).filter((w) => w !== game.room.weather);
+  game.room.weather = options[Math.floor(rand() * options.length)];
+  game.room.broadcastInfo?.();
+  radio(game, 'leader', 'Cambio de clima', `Aquí Mando. El clima cambia: ${WEATHERS[game.room.weather]}. Ajusten la visión.`, 4000);
 }

@@ -51,10 +51,12 @@ export default function GroundLoot({ client }) {
   const meshes = useRef({});
   const ringMesh = useRef(null);
   const material = useMemo(() => new THREE.MeshLambertMaterial(), []);
-  const ringMaterial = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false }), []);
+  // Brillo por rareza (6.5): anillo aditivo que late, más grande cuanto más raro
+  const ringMaterial = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), []);
   const drawn = useRef(-1); // versión del botín ya dibujada
 
   useFrame(() => {
+    ringMaterial.opacity = 0.55 + 0.35 * Math.sin(performance.now() / 260);
     // La lista cambia muy de vez en cuando: se redibuja solo si subió su versión
     if (drawn.current === client.lootVersion) return;
     drawn.current = client.lootVersion;
@@ -82,7 +84,9 @@ export default function GroundLoot({ client }) {
       if (r < MAX) {
         o3.position.set(e.x, h + 0.04, -e.y);
         o3.rotation.set(0, 0, 0);
+        o3.scale.setScalar(1 + 0.3 * (e.item ? LOOT_ITEMS[e.item]?.tier ?? 0 : e.tier ?? 0));
         o3.updateMatrix();
+        o3.scale.setScalar(1);
         ringMesh.current.setMatrixAt(r, o3.matrix);
         ringMesh.current.setColorAt(r, color.set(ringColor(e)));
         r++;

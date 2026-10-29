@@ -26,6 +26,7 @@ export const EVENTS = {
   PHRASE: 'phrase', // S → C: { id, index }
   CHAT_SEND: 'chat:send', // C → S: { text, team } (team: solo a mi equipo)
   CHAT: 'chat', // S → C: { id, text, team }
+  PROPS_BROKEN: 'props:broken', // S → C: destId de todo lo roto (cajas de madera, barriles, cercas)
   ROOM_CHAT: 'room:chat', // C → S (solo host): true | false — chat encendido
   RESULTS_CSV: 'results:csv', // S → C (host y proyector): { filename, csv }
   // C → S: { skin, unlocked: [ids de honor desbloqueadas] } — solo en el lobby

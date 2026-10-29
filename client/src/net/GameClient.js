@@ -10,6 +10,7 @@ import { raycastObstacles, rayCircle } from '@calculo-royale/shared/collision';
 import { findAutoTarget, pelletAngles } from '@calculo-royale/shared/combat';
 import { TRAINING } from '@calculo-royale/shared/mapLayout';
 import { seatPosition } from '@calculo-royale/shared/vehicle';
+import { applyBroken } from '../game/destruction.js';
 import { actions, currentAim, inputState, press, readInput, resetInput } from '../input/inputState.js';
 import { angleDiff, SnapshotBuffer } from './interpolation.js';
 import { Predictor } from './prediction.js';
@@ -260,6 +261,10 @@ export class GameClient {
         const answered = Object.values(mine.byTopic ?? {}).reduce((n, t) => n + t.total, 0);
         if (this.results?.winnerId === this.myId && answered > 0 && mine.failed.length === 0) this.achieve('flawlessWin');
       },
+      // Destrucción ligera: lo roto se esconde y suelta 4 trozos
+      [EVENTS.PROPS_BROKEN]: (ids) => {
+        for (const o of applyBroken(ids)) this.effects.push({ type: 'debris', x: o.x, y: o.y, red: Boolean(o.red) });
+      },
       // Chat de texto: va a la misma lista que las frases rápidas
       [EVENTS.CHAT]: ({ id, text, team }) => {
         this.phrases.push({ id, text, team, at: performance.now() });
@@ -343,6 +348,7 @@ export class GameClient {
       if (self.hp + self.armor < before && self.alive) {
         sound.hurt();
         this.damageFlashAt = now;
+        if (self.hurtFrom) this.hurtFrom = { x: self.hurtFrom[0], y: self.hurtFrom[1], at: now };
         this.trauma = Math.min(1, this.trauma + (before - self.hp - self.armor) / 35);
         vibrate(40);
       }

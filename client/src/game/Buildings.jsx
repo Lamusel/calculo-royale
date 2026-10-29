@@ -1,3 +1,4 @@
+import { useBrokenVersion } from './destruction.js';
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -183,11 +184,11 @@ const crateModel = () =>
       piece(box(0.04, 1.02, 0.12), '#5f4626', { position: [s * 1.01, 0.5, 0] }),
     ]),
   ]);
-const barrelModel = () =>
+const barrelModel = (body = '#4a5a32', band = '#353f24') =>
   merge([
-    piece(cylinder(1, 1, 1, 12), '#4a5a32', { position: [0, 0.5, 0] }),
-    piece(cylinder(1.04, 1.04, 0.07, 12), '#353f24', { position: [0, 0.3, 0] }),
-    piece(cylinder(1.04, 1.04, 0.07, 12), '#353f24', { position: [0, 0.7, 0] }),
+    piece(cylinder(1, 1, 1, 12), body, { position: [0, 0.5, 0] }),
+    piece(cylinder(1.04, 1.04, 0.07, 12), band, { position: [0, 0.3, 0] }),
+    piece(cylinder(1.04, 1.04, 0.07, 12), band, { position: [0, 0.7, 0] }),
     piece(cylinder(0.9, 0.9, 0.02, 12), '#3a4428', { position: [0, 1.0, 0] }),
   ]);
 const rockModel = () => {
@@ -228,17 +229,21 @@ function fenceGeometry(fences) {
 
 function Props() {
   const crates = useMemo(() => OBSTACLES.filter((o) => o.kind === 'crate'), []);
-  const barrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel'), []);
+  const barrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel' && !o.red), []);
+  const redBarrels = useMemo(() => OBSTACLES.filter((o) => o.kind === 'barrel' && o.red), []);
+  // Destrucción ligera: al romperse algo, se re-ubican las instancias (lo roto con escala 0)
+  const version = useBrokenVersion();
   const rocks = useMemo(() => OBSTACLES.filter((o) => o.kind === 'rock'), []);
   const fences = useMemo(() => OBSTACLES.filter((o) => o.kind === 'fence'), []);
-  const models = useMemo(() => ({ crate: crateModel(), barrel: barrelModel(), rock: rockModel() }), []);
+  const models = useMemo(() => ({ crate: crateModel(), barrel: barrelModel(), red: barrelModel('#9b2222', '#5c1414'), rock: rockModel() }), []);
 
   return (
     <>
-      <ChunkedInstances items={crates} geometry={models.crate} place={PLACE.crate} />
-      <ChunkedInstances items={barrels} geometry={models.barrel} place={PLACE.barrel} />
+      <ChunkedInstances items={crates} geometry={models.crate} place={PLACE.crate} version={version} />
+      <ChunkedInstances items={barrels} geometry={models.barrel} place={PLACE.barrel} version={version} />
+      <ChunkedInstances items={redBarrels} geometry={models.red} place={PLACE.barrel} version={version} />
       <ChunkedInstances items={rocks} geometry={models.rock} place={PLACE.rock} />
-      <Chunked items={fences} render={(list) => <FenceChunk items={list} />} />
+      <Chunked items={fences} render={(list) => <FenceChunk items={list} version={version} />} />
     </>
   );
 }
@@ -247,11 +252,13 @@ const PLACE = {
   crate: (o, m) => {
     m.position.set(o.x, terrainHeight(o.x, o.y) - 0.15, -o.y);
     m.scale.set(o.w, o.height + 0.15, o.h);
+    if (o.broken) m.scale.setScalar(0);
     m.rotation.set(0, 0, 0);
   },
   barrel: (o, m) => {
     m.position.set(o.x, terrainHeight(o.x, o.y) - 0.1, -o.y);
     m.scale.set(o.r, o.height + 0.1, o.r);
+    if (o.broken) m.scale.setScalar(0);
     m.rotation.set(0, 0, 0);
   },
   rock: (o, m) => {
@@ -261,9 +268,12 @@ const PLACE = {
   },
 };
 
-function FenceChunk({ items }) {
-  const geometry = useMemo(() => fenceGeometry(items), [items]);
-  return <mesh geometry={geometry} material={modelMaterial} receiveShadow />;
+function FenceChunk({ items, version }) {
+  const geometry = useMemo(() => {
+    const standing = items.filter((o) => !o.broken);
+    return standing.length ? fenceGeometry(standing) : null;
+  }, [items, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  return geometry && <mesh geometry={geometry} material={modelMaterial} receiveShadow />;
 }
 
 export default function Buildings({ frameRef, pitchDeg }) {

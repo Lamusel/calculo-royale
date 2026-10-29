@@ -40,6 +40,7 @@ function candidates(minX, minY, maxX, maxY) {
       for (const i of list) {
         if (seen[i] === stamp) continue;
         seen[i] = stamp;
+        if (BOXES[i].o.broken) continue; // destrucción ligera: ya no choca
         found.push(BOXES[i]);
       }
     }
@@ -157,8 +158,12 @@ function rayBox(x, y, dx, dy, b) {
 }
 
 // Distancia hasta el primer obstáculo en la dirección unitaria (dx, dy), o maxDist si no hay
+// lastRayHit(): el obstáculo fijo donde se detuvo el último rayo (o null), para romperlo
+let lastHit = null;
+export const lastRayHit = () => lastHit;
 export function raycastObstacles(x, y, dx, dy, maxDist) {
   let best = maxDist;
+  lastHit = null;
   for (const o of DYNAMIC) best = Math.min(best, rayCircle(x, y, dx, dy, o.x, o.y, o.r));
   const ex = x + dx * maxDist;
   const ey = y + dy * maxDist;
@@ -170,7 +175,10 @@ export function raycastObstacles(x, y, dx, dy, maxDist) {
     if (b.maxX < minX || b.minX > maxX || b.maxY < minY || b.minY > maxY) continue;
     const o = b.o;
     const t = o.shape === 'circle' ? rayCircle(x, y, dx, dy, o.x, o.y, o.r) : rayBox(x, y, dx, dy, b);
-    if (t < best) best = t;
+    if (t < best) {
+      best = t;
+      lastHit = o;
+    }
   }
   return best;
 }

@@ -5,6 +5,7 @@ import { applyInput } from '@calculo-royale/shared/movement';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 import { inventoryOp } from './inventoryOps.js';
+import { resetProps } from './destruction.js';
 import { startRevive, tryDown, updateTeams } from './teams.js';
 import { encodeEffects, resetThrowables, updateThrowables } from './throwables.js';
 import {
@@ -86,6 +87,7 @@ export class Game {
     if (this.vehicles) resetVehicles(this);
     for (const p of this.room.players.values()) p.question = null;
     resetCrates(this);
+    resetProps(this);
     if (this.loot?.size) {
       clearLoot(this);
       this.room.broadcast?.(EVENTS.LOOT_SYNC, []);

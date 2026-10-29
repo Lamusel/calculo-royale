@@ -491,6 +491,16 @@ export function worldLimits(x, y, r) {
 const NATURE = [...forest(), ...groves()];
 export const OBSTACLES = [...NAMED, ...NATURE, ...scatteredCover(NATURE), ...gulag];
 export const TREES = OBSTACLES.filter((o) => o.kind === 'tree');
+// Destrucción ligera (6.5): cajas de madera, barriles (uno de cada tres es rojo y explota) y cercas.
+// Al romperse salen de la colisión (o.broken); las paredes nunca se rompen
+export const DESTRUCTIBLE_HP = { crate: 60, barrel: 40, fence: 90 };
+export const DESTRUCTIBLES = OBSTACLES.filter((o) => DESTRUCTIBLE_HP[o.kind] && Math.abs(o.x) <= MAP_HALF && Math.abs(o.y) <= MAP_HALF);
+DESTRUCTIBLES.forEach((o, i) => {
+  o.destId = i;
+});
+OBSTACLES.filter((o) => o.kind === 'barrel').forEach((o, i) => {
+  o.red = i % 3 === 0;
+});
 export const VEHICLE_SPOTS = vehicleSpots();
 
 // Pista del aeródromo (solo visual): rectángulo de asfalto
