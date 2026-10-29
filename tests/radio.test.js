@@ -234,3 +234,39 @@ test('sin Supabase los resultados se guardan en un JSON local', async () => {
   const saved = await saveResults(record, { SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_SERVICE_KEY: 'x' }, dir);
   assert.equal(saved.where, 'local');
 });
+
+test('equipos: sin fuego amigo; derribado se levanta con Reanimar (5 s y pregunta); sin compañeros en pie, muere; gana el último equipo', async () => {
+  const { assignTeams } = await import('../server/src/game/teams.js');
+  const room = makeRoom();
+  room.teamMode = 'duos';
+  const [a, b, c, d] = addPlayers(room, 4);
+  a.teamChoice = 1;
+  b.teamChoice = 1;
+  assignTeams(room);
+  assert.equal(a.team, b.team);
+  assert.notEqual(c.team, a.team);
+  assert.equal(c.team, d.team);
+  start(room);
+  // Sin fuego amigo
+  damagePlayer(room.game, a, 50, b.id, 0);
+  assert.equal(a.hp, 100);
+  // c derriba a a: queda derribado (b sigue en pie)
+  damagePlayer(room.game, a, 500, c.id, 0, { ignoreArmor: true });
+  assert.ok(a.alive && a.downed);
+  // b lo levanta: 5 s y la pregunta rápida
+  b.teleport(a.x + 1, a.y);
+  room.game.interact(b, 'revive');
+  advance(room, 5000 + TICK_MS * 2);
+  assert.equal(b.transmission?.kind, 'revive');
+  answer(room, b, true);
+  assert.equal(a.downed, null);
+  assert.ok(a.hp > 1);
+  // Si cae el último en pie del equipo, el derribado también muere
+  damagePlayer(room.game, a, 500, c.id, 0, { ignoreArmor: true });
+  assert.ok(a.downed);
+  damagePlayer(room.game, b, 500, c.id, 0, { ignoreArmor: true });
+  advance(room, TICK_MS * 2);
+  assert.equal(a.alive, false);
+  assert.equal(b.alive, false);
+  assert.equal(room.phase, 'results', 'gana el equipo de c y d');
+});

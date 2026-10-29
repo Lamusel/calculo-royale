@@ -48,6 +48,7 @@ export function buildRecord(room, classStats) {
     por_tema: classStats.byTopic,
     jugadores: [...room.players.values()].map((p) => ({
       nombre: p.name,
+      equipo: p.team ?? null,
       bot: Boolean(p.bot),
       puesto: p.place,
       bajas: p.kills,
@@ -67,7 +68,7 @@ const csvCell = (v) => {
 };
 
 export function recordToCsv(record) {
-  const header = ['fecha', 'sala', 'modo', 'jugador', 'tipo', 'puesto', 'bajas', 'aciertos', 'respuestas', 'porcentaje', 'puntaje', 'temas_fallados'];
+  const header = ['fecha', 'sala', 'modo', 'jugador', 'equipo', 'tipo', 'puesto', 'bajas', 'aciertos', 'respuestas', 'porcentaje', 'puntaje', 'temas_fallados'];
   const scoreOf = new Map(record.ranking.map((r) => [r.name, r.score]));
   const rows = [...record.jugadores]
     .sort((a, b) => (a.puesto ?? 99) - (b.puesto ?? 99))
@@ -76,6 +77,7 @@ export function recordToCsv(record) {
       record.codigo,
       record.modo_facil ? 'fácil (no cuenta)' : 'normal',
       j.nombre,
+      j.equipo ?? '',
       j.bot ? 'bot' : 'estudiante',
       j.puesto ?? '',
       j.bajas,

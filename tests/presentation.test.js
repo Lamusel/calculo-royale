@@ -130,7 +130,7 @@ test('CSV: una fila por jugador, modo fácil y bots marcados, comillas escapadas
   assert.ok(csv.startsWith('﻿'), 'BOM para las tildes en Excel');
   const lines = csv.trim().split('\r\n');
   assert.equal(lines.length, 3);
-  assert.ok(lines[0].includes('jugador;tipo;puesto'));
+  assert.ok(lines[0].includes('jugador;equipo;tipo;puesto'));
   assert.ok(lines[1].includes('"Ana; ""la profe"""'), 'escapado');
   assert.ok(lines[1].includes('fácil (no cuenta)') && lines[1].endsWith(';polares'));
   assert.ok(lines[2].includes(';bot;'));

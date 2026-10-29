@@ -9,6 +9,7 @@ import { actions, inputState, press, toggleGrenadeMode } from '../input/inputSta
 import WeaponIcon from './WeaponIcon.jsx';
 import Icon from './Icons.jsx';
 import { BoxPanel, InventoryScreen, OfferChooser, ReplacePrompt, WeaponCard } from './Inventory.jsx';
+import { QuestionCard } from './Operator.jsx';
 
 // Interfaz de combate (fases 29 y 32). En el celular solo hay pocos botones fijos (joysticks, Recargar,
 // Obtener balas, mochila, lanzables y curación) y una única zona de acción contextual (Tomar, Abrir,
@@ -343,6 +344,22 @@ export default function CombatHUD({ view, phase, roster, myId, isTouch, client }
     <>
       {damageFlashAt > 0 && (
         <div key={damageFlashAt} className="pointer-events-none absolute inset-0 z-20 animate-[damage_400ms_ease-out_forwards] shadow-[inset_0_0_80px_rgba(220,38,38,0.65)]" />
+      )}
+      {/* Derribado: un compañero lo puede levantar */}
+      {self.alive && self.downedLeft > 0 && (
+        <div className="pointer-events-none absolute left-1/2 top-[30%] z-30 -translate-x-1/2 rounded-lg bg-red-950/85 px-4 py-2 text-center text-red-100">
+          <p className="font-black uppercase tracking-widest">Derribado</p>
+          <p className="text-xs">Arrástrate hacia un compañero: te puede reanimar · {Math.ceil(self.downedLeft / 1000)} s</p>
+        </div>
+      )}
+      {self.reviving && self.reviving.left > 0 && (
+        <p className="pointer-events-none absolute left-1/2 top-[30%] z-30 -translate-x-1/2 rounded bg-green-950/85 px-3 py-1 text-sm text-green-100">Reanimando… {Math.ceil(self.reviving.left / 1000)} s (no te muevas)</p>
+      )}
+      {client?.transmission?.kind === 'revive' && (
+        <div className="absolute left-1/2 top-[5.5rem] z-40 w-[min(92vw,28rem)] -translate-x-1/2 rounded-lg border border-green-400/70 bg-black/85 p-2 text-stone-100 shadow-xl">
+          <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.3em] text-green-300">Reanimar: acierta para levantarlo</p>
+          <QuestionCard item={client.transmission} compact onAnswer={(i) => client.answerTransmission(client.transmission.id, i)} />
+        </div>
       )}
       {/* Aturdidora: pantalla blanca que se va apagando */}
       {self.flashLeft && <div className="pointer-events-none absolute inset-0 z-40 animate-[flash_2500ms_ease-out_forwards] bg-white" />}

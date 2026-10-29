@@ -86,6 +86,9 @@ export function aliveCount(game) {
 // resto va a la vida (salvo ignoreArmor: zona y bombardeo). Devuelve { dealt (ya reducido), killed }.
 export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ignoreArmor = false } = {}) {
   if (!target.alive) return { dealt: 0, killed: false };
+  // Sin fuego amigo (dúos y escuadras)
+  const from = game.room.players.get(attackerId);
+  if (from && from !== target && from.team != null && from.team === target.team) return { dealt: 0, killed: false };
   if (!ignoreArmor) amount *= helmetFactor(target.helmetLevel ?? 0, isSniper(WEAPON_IDS[weaponIndex]));
   const absorbed = ignoreArmor ? 0 : Math.min(target.armor, amount);
   target.armor -= absorbed;
@@ -98,6 +101,8 @@ export function damagePlayer(game, target, amount, attackerId, weaponIndex, { ig
   const hitter = game.room.players.get(attackerId);
   if (hitter && hitter !== target) hitter.damageDealt = (hitter.damageDealt ?? 0) + amount;
   if (target.hp > 0) return { dealt: amount, killed: false };
+  // En equipos: derribado en vez de muerto si le queda un compañero en pie
+  if (game.tryDown?.(target, attackerId)) return { dealt: amount, killed: false, downed: true };
 
   target.hp = 0;
   target.alive = false;

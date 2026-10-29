@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HEALING, INTERACT_RADIUS, ITEM_NAMES, JEEP, LOOT, LOOT_ITEMS, RARITIES, TIER_COLORS, vehicleType, WEAPONS, ZIPLINE } from '@calculo-royale/shared/constants';
-import { CRATE_STATE, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
+import { CRATE_STATE, PLAYER_FLAGS, VEHICLE_STATE } from '@calculo-royale/shared/protocol';
 import { nearestRack, ZIPLINE_LINES } from '@calculo-royale/shared/mapLayout';
 import { CRATES, cratePosition } from '../game/crateList.js';
 import { selfWeaponId } from '../net/GameClient.js';
@@ -28,9 +28,15 @@ function jeepAction(v) {
 // Todo lo que está al alcance, de más cercano a más lejano (una acción por tipo, como en el servidor):
 // armero (lobby), caja visible, jeep o botín del suelo (el botín con la misma ventaja de 0,3 m).
 // La zona de acción muestra la primera y una flechita para cambiar entre ellas.
-export function interactables(me, phase, crateStates, airdrop, vehicles, inVehicle, loot, myId, now) {
+export function interactables(me, phase, crateStates, airdrop, vehicles, inVehicle, loot, myId, now, others = null, mates = null) {
   if (inVehicle) return [{ kind: 'vehicle', icon: 'exit', label: 'Bajar', enabled: true, color: '#fb923c', dist: 0 }];
   const out = [];
+  // Compañero derribado cerca: Reanimar (5 s y una pregunta rápida)
+  for (const [id, p] of others ?? []) {
+    if (!mates?.has(id) || !(p.flags & PLAYER_FLAGS.DOWNED)) continue;
+    const d = Math.hypot(p.x - me.x, p.y - me.y);
+    if (d < 2.6) out.push({ kind: 'revive', icon: 'revive', label: 'Reanimar', enabled: true, color: '#4ade80', dist: d - 1 });
+  }
   const rack = phase === 'lobby' ? nearestRack(me.x, me.y, INTERACT_RADIUS) : null;
   if (rack) out.push({ kind: 'rack', icon: 'take', label: `Tomar ${ITEM_NAMES[rack.item]}`, enabled: true, dist: Math.hypot(rack.x - me.x, rack.y - me.y) });
   let crate = null;
@@ -105,7 +111,7 @@ export function useClientView(client, frameRef, phase) {
         deathAt,
         actions:
           me && self?.alive && !client.question && !client.deploying
-            ? interactables(me, phase, crates ?? [], airdrop, vehicles, client.vehicleId !== null, client.loot, client.myId, now)
+            ? interactables(me, phase, crates ?? [], airdrop, vehicles, client.vehicleId !== null, client.loot, client.myId, now, others, client.mates)
             : [],
         vehicle: client.vehicleId !== null ? { ...vehicles?.get(client.vehicleId), seat: client.seat } : null,
         question: client.question,

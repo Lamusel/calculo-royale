@@ -3,6 +3,7 @@ import { EVENTS } from '@calculo-royale/shared/protocol';
 import { drawQuestion } from '../questions/QuestionBank.js';
 import { recordStats } from './crates.js';
 import { answerGulag, enterGulag } from './gulag.js';
+import { answerRevive } from './teams.js';
 
 // Preguntas por radio: las de práctica de los espectadores (caídos que no van al Gulag o que ya lo
 // perdieron) y las del Gulag. Igual que en las cajas, la respuesta correcta vive solo aquí.
@@ -52,6 +53,10 @@ export function answerTransmission(game, player, id, index) {
   if (!t) return;
   player.transmission = null;
   const correct = game.now <= t.expiresAt && index === t.q.correcta;
+  if (t.kind === 'revive') {
+    answerRevive(game, player, t, correct, index);
+    return;
+  }
   if (!player.gulagBot) recordStats(player, t.q, correct, index);
   game.room.emitTo(player, EVENTS.TRANSMISSION_RESULT, { id: t.id, kind: t.kind, correct, explicacion: correct ? t.q.explicacion : null });
   if (t.kind === 'gulag') answerGulag(game, player, correct);

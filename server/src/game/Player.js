@@ -70,6 +70,8 @@ export class Player {
     this.arena = null; // índice de la arena del Gulag donde pelea (null: en la partida)
     this.gulag = null; // { state: 'queue'|'fight', since, fightId } mientras está en el Gulag
     this.zip = null; // { from, to, len, t } colgado de una tirolina
+    this.downed = null; // { until, by } derribado (dúos y escuadras)
+    this.reviving = null; // { targetId, until, x, y, asked } levantando a un compañero
     this.padAt = null; // plataforma que acaba de usar (se rearma al alejarse)
     this.vehicleId = null; // vehículo en el que va
     this.seat = null; // 'driver' | 'passenger'
@@ -252,6 +254,8 @@ export class Player {
       gulag: this.gulag && { state: this.gulag.state, since: this.gulag.since, fightId: this.gulag.fightId ?? null, choose: Boolean(this.gulag.choose) },
       gulagUsed: this.gulagUsed,
       kills: this.kills,
+      downedLeft: this.downed ? Math.max(0, this.downed.until - now) : 0,
+      reviving: this.reviving ? { targetId: this.reviving.targetId, left: Math.max(0, this.reviving.until - now) } : null,
       place: this.place,
       vehicle: this.vehicleId !== null ? { id: this.vehicleId, seat: this.seat } : null,
       killedBy: this.killedBy,
@@ -260,6 +264,6 @@ export class Player {
   }
 
   info() {
-    return { id: this.id, name: this.name, color: this.color, skin: this.skin, connected: this.connected, bot: this.bot || undefined };
+    return { id: this.id, name: this.name, color: this.color, skin: this.skin, connected: this.connected, bot: this.bot || undefined, team: this.team ?? undefined, teamChoice: this.teamChoice ?? undefined };
   }
 }

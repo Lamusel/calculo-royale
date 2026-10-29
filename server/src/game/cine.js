@@ -34,7 +34,7 @@ export function duelCircle(current, a, b, radius = DUEL.radius) {
 
 // Al quedar 2 vivos (si la partida empezó con más): presentación y última zona
 export function checkDuel(game) {
-  if (game.duel || game.room.phase !== 'playing' || !game.zone || game.startingPlayers <= 2) return;
+  if (game.duel || game.room.phase !== 'playing' || !game.zone || game.startingPlayers <= 2 || (game.room.teamMode ?? 'solo') !== 'solo') return;
   const alive = [...game.room.players.values()].filter(inMatch);
   if (alive.length !== 2) return;
   const [a, b] = alive;

@@ -93,7 +93,8 @@ export function encodeAirdrop(game) {
 function checkVictory(game) {
   if (game.finished || game.startingPlayers < 2) return;
   const alive = [...game.room.players.values()].filter(inMatch);
-  if (alive.length > 1) return;
+  // Gana el último equipo con alguien vivo (en solitario, cada uno es su equipo)
+  if (new Set(alive.map((p) => p.team ?? `solo${p.id}`)).size > 1) return;
   game.finished = true;
   // Si murieron todos a la vez, gana el último en caer (posición 1)
   const winner = alive[0] ?? [...game.room.players.values()].find((p) => p.place === 1) ?? null;

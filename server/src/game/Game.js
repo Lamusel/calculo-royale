@@ -5,6 +5,7 @@ import { applyInput } from '@calculo-royale/shared/movement';
 import { nearestRack, TRAINING } from '@calculo-royale/shared/mapLayout';
 import { finishReload, fire, startReload, switchWeapon, throwGrenade, updateGrenades } from './combat.js';
 import { inventoryOp } from './inventoryOps.js';
+import { startRevive, tryDown, updateTeams } from './teams.js';
 import { encodeEffects, resetThrowables, updateThrowables } from './throwables.js';
 import {
   answerCrate, chooseOffer, cancelQuestion, crateStates, createCrates, nearestCrate, openCrate, resetCrates, updateCrates, pickMatchCrates,
@@ -93,8 +94,9 @@ export class Game {
   }
 
   handleInput(player, input) {
-    // Gulag: congelado en su esquina mientras responde y en la cuenta regresiva (solo apunta)
-    if (player.frozen) return;
+    // Gulag: congelado en su esquina mientras responde y en la cuenta regresiva (solo apunta);
+    // derribado o reanimando: solo se mueve (arrastrándose)
+    if (player.frozen || player.downed || player.reviving) return;
     // En el bus o cayendo: solo se puede saltar
     if (player.deploying) {
       if (input.buttons & BUTTONS.JUMP) jump(this, player);
@@ -128,7 +130,11 @@ export class Game {
   // Dentro de un jeep: bajarse. Si no, lo más cercano entre armeros (lobby), cajas y jeeps.
   // kind: qué prefiere el jugador si hay varias cosas cerca ('rack' | 'crate' | 'vehicle' | 'loot')
   interact(player, kind = null) {
-    if (!player.alive || player.question || player.engineQuestion || player.deploying) return;
+    if (!player.alive || player.question || player.engineQuestion || player.deploying || player.downed) return;
+    if (kind === 'revive' || (!kind && this.room.phase === 'playing' && startRevive(this, player))) {
+      if (kind === 'revive') startRevive(this, player);
+      return;
+    }
     if (player.vehicleId !== null) {
       if (kind === 'seat') switchSeat(this, player);
       else exitVehicle(this, player);
@@ -222,6 +228,11 @@ export class Game {
     inventoryOp(this, player, data);
   }
 
+  // Derribado en vez de muerto (dúos y escuadras)
+  tryDown(target, attackerId) {
+    return tryDown(this, target, attackerId);
+  }
+
   chooseOffer(player, index) {
     if (Number.isInteger(index) && index >= 0 && index < (player.offer?.options.length ?? 0)) chooseOffer(this, player, index);
   }
@@ -290,6 +301,7 @@ export class Game {
     updateMatch(this, DT);
     updateRadio(this);
     updateGulag(this, DT);
+    updateTeams(this);
     updateVehicles(this, DT);
     updateLeader(this);
     checkDuel(this);
@@ -324,7 +336,8 @@ export class Game {
         (p.deploy && !p.air ? PLAYER_FLAGS.IN_BUS : 0) |
         (p.air === 'fall' ? PLAYER_FLAGS.FALLING : 0) |
         (p.air === 'chute' ? PLAYER_FLAGS.PARACHUTE : 0) |
-        (p.zip ? PLAYER_FLAGS.ZIPLINE : 0);
+        (p.zip ? PLAYER_FLAGS.ZIPLINE : 0) |
+        (p.downed ? PLAYER_FLAGS.DOWNED : 0);
       return encodePlayerState(p, WEAPON_IDS.indexOf(p.weaponId), flags);
     });
     return [

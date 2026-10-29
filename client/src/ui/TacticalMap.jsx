@@ -245,6 +245,30 @@ export function draw(ctx, size, data, detailed, view = FULL) {
     }
   }
 
+  // Compañeros de equipo (siempre) y sus marcadores (30 s)
+  if (data.mates?.size) {
+    ctx.fillStyle = '#4ade80';
+    for (const id of data.mates) {
+      const p = data.others?.get(id);
+      if (!p || p.flags & PLAYER_FLAGS.DEAD) continue;
+      ctx.beginPath();
+      ctx.arc(X(p.x), Y(p.y), 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  for (const pg of data.pings ?? []) {
+    if (now - pg.at > 30_000) continue;
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(X(pg.x), Y(pg.y) - 9);
+    ctx.lineTo(X(pg.x) + 6, Y(pg.y));
+    ctx.lineTo(X(pg.x), Y(pg.y) + 9);
+    ctx.lineTo(X(pg.x) - 6, Y(pg.y));
+    ctx.closePath();
+    ctx.stroke();
+  }
+
   // Enemigos (solo con radar)
   if (data.radar) {
     ctx.fillStyle = '#f87171';
@@ -391,7 +415,8 @@ function useMapCanvas(frameRef, extra, size, detailed) {
       if (t - last < 100) return; // 10 Hz alcanza
       last = t;
       const f = frameRef.current;
-      draw(ctx, size, { ...f, ...extra.current }, detailed, detailed ? FULL : minimapView(f.follow ?? f.me));
+      const x = extra.current;
+      draw(ctx, size, { ...f, ...x, mates: x.client?.mates, pings: x.client?.pings }, detailed, detailed ? FULL : minimapView(f.follow ?? f.me));
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
@@ -407,7 +432,19 @@ function BigMap({ frameRef, extra, onClose, radio }) {
   const me = frameRef.current.me;
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center gap-4 bg-black/75 p-3" onPointerUp={onClose}>
-      <canvas ref={ref} style={{ width: size, height: size }} className="rounded border border-khaki-dark" />
+      <canvas
+        ref={ref}
+        style={{ width: size, height: size }}
+        className="rounded border border-khaki-dark"
+        onPointerUp={(e) => {
+          // En equipo, tocar el mapa marca un punto para los compañeros (no cierra)
+          const c = extra.current.client;
+          if (!c?.mates?.size) return;
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          c.ping(((e.clientX - rect.left) / rect.width) * MAP_SIZE - MAP_HALF, MAP_HALF - ((e.clientY - rect.top) / rect.height) * MAP_SIZE);
+        }}
+      />
       <div className="hidden max-w-xs flex-col gap-2 text-sm text-stone-200 md:flex">
         <p className="font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">Mapa táctico</p>
         {me && (
@@ -441,10 +478,10 @@ function BigMap({ frameRef, extra, onClose, radio }) {
 export const minimapSize = (isTouch) => (isTouch ? 104 : 140);
 
 // Minimapa en la esquina; al tocarlo se abre el mapa grande
-export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, marks = null, night = false, lastShot = null, deployRoute = null }) {
+export default function TacticalMap({ frameRef, myId, radar, radio, isTouch, marks = null, night = false, lastShot = null, deployRoute = null, client = null }) {
   const [open, setOpen] = useState(false);
   const extra = useRef({});
-  extra.current = { myId, radar, marks, night, lastShot, deployRoute };
+  extra.current = { myId, radar, marks, night, lastShot, deployRoute, client };
   const size = minimapSize(isTouch);
   const ref = useMapCanvas(frameRef, extra, size, false);
   return (

@@ -1,3 +1,4 @@
+import { assignTeams } from '../game/teams.js';
 import { randomUUID } from 'node:crypto';
 import { BOTS, MAX_PLAYERS, PLAYER_COLORS, RECONNECT_GRACE_MS, SCORE } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
@@ -27,6 +28,7 @@ export class Room {
     this.weatherChoice = 'aleatorio'; // lo elige el host; se resuelve al iniciar
     this.deployMode = 'bus'; // despliegue: 'bus' | 'punto' (lo elige el host)
     this.duration = 'normal'; // duración de la partida: 'corta' | 'normal' | 'larga' (lo elige el host)
+    this.teamMode = 'solo'; // 'solo' | 'duos' | 'squads' (fase 33)
     this.weather = 'despejado';
     this.windAngle = 0;
     this.easy = false; // modo fácil: preguntas de aritmética (no cuenta para los logros; el CSV lo marca)
@@ -155,6 +157,7 @@ export class Room {
       p.teleport(spawns[i].x, spawns[i].y);
     });
     this.results = null;
+    assignTeams(this);
     Object.assign(this, pickWeather(this.weatherChoice));
     this.game.startMatch();
     this.game.pickCrates();
@@ -181,6 +184,7 @@ export class Room {
           answered: p.stats.answered,
           score: score(place, players.length, p.kills, p.stats.correct),
           bot: p.bot || undefined,
+          team: p.team ?? undefined,
         };
       })
       .sort((a, b) => b.score - a.score || a.place - b.place);
@@ -247,6 +251,7 @@ export class Room {
       weatherChoice: this.weatherChoice,
       deployMode: this.deployMode,
       duration: this.duration,
+      teamMode: this.teamMode,
       easy: this.easy,
       windAngle: this.windAngle,
       players: [...this.players.values()].map((p) => p.info()),

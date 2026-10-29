@@ -226,7 +226,7 @@ export function deathBox(game, player) {
 // --- Curación con tiempo ---
 export function useItem(game, player, item) {
   const heal = HEALING[item];
-  if (!heal || !player.alive || player.deploying || player.question || player.engineQuestion || player.healing) return false;
+  if (!heal || !player.alive || player.downed || player.deploying || player.question || player.engineQuestion || player.healing) return false;
   if ((player.heals?.[item] ?? 0) <= 0) return false;
   if (item === 'drink') {
     if (player.drinkUntil > game.now) return false;
@@ -261,7 +261,7 @@ export function updateHealing(game) {
       }
     }
     if (p.drinkUntil > game.now) p.hp = Math.min(MAX_HP, p.hp + (HEALING.drink.heal / HEALING.drink.durationMs) * TICK_MS);
-    p.speedFactor = (p.healing ? HEALING.moveFactor : p.drinkUntil > game.now ? HEALING.drink.speedBoost : 1) * (p.flashUntil > game.now ? THROWABLES.flash.slow : 1);
+    p.speedFactor = (p.healing ? HEALING.moveFactor : p.drinkUntil > game.now ? HEALING.drink.speedBoost : 1) * (p.flashUntil > game.now ? THROWABLES.flash.slow : 1) * (p.downed ? 0.35 : 1) * (p.reviving ? 0 : 1);
   }
 }
 

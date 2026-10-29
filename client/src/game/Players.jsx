@@ -67,7 +67,7 @@ function Bar({ barRef, color, y, height, order }) {
   );
 }
 
-function SoldierAvatar({ player, isMe, register, blobShadow }) {
+function SoldierAvatar({ player, isMe, mate = false, register, blobShadow }) {
   const refs = useRef({}).current;
   const set = (key) => (node) => (refs[key] = node);
   const character = useMemo(() => new Character({ skin: player.skin, color: player.color }), [player.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -87,11 +87,11 @@ function SoldierAvatar({ player, isMe, register, blobShadow }) {
 
   const label = useMemo(
     () =>
-      textTexture(player.connected ? player.name : `${player.name} 💤`, {
-        color: isMe ? '#fde047' : '#ffffff',
+      textTexture(player.connected ? `${mate ? '◆ ' : ''}${player.name}` : `${player.name} 💤`, {
+        color: isMe ? '#fde047' : mate ? '#4ade80' : '#ffffff',
         size: 40,
       }),
-    [player.name, player.connected, isMe],
+    [player.name, player.connected, isMe, mate],
   );
 
   return (
@@ -215,7 +215,8 @@ export default function Players({ client, roster, myId, frameRef, quality, night
           x: pos.x,
           y: pos.y,
           aim: pos.aim,
-          dead,
+          // Derribado (dúos y escuadras): tirado en el suelo, con su barra de vida visible
+          dead: dead || Boolean(info.flags & PLAYER_FLAGS.DOWNED),
           reloading: Boolean(info.flags & PLAYER_FLAGS.RELOADING),
           aiming: isMe && (inputState.stickAim !== null || inputState.adsHeld || Boolean(aimPreview())),
           shotAgo: now - (shotAt ?? -1e9),
@@ -287,7 +288,8 @@ export default function Players({ client, roster, myId, frameRef, quality, night
     }
   });
 
+  const myTeam = roster.find((p) => p.id === myId)?.team;
   return roster.map((p) => (
-    <SoldierAvatar key={p.id} player={p} isMe={p.id === myId} register={register} blobShadow={!quality.shadows} />
+    <SoldierAvatar key={p.id} player={p} isMe={p.id === myId} mate={p.id !== myId && p.team != null && p.team === myTeam} register={register} blobShadow={!quality.shadows} />
   ));
 }

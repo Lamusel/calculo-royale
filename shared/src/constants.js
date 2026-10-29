@@ -245,6 +245,8 @@ export const OPERATOR = {
   questionMs: 30_000,
   gapMs: 2_500, // entre una pregunta y la siguiente
 };
+// Modos de equipo (fase 33): el anfitrión elige; cada uno se une a un equipo o se mezclan al azar
+export const TEAM_MODES = { solo: { name: 'Solitario', size: 1 }, duos: { name: 'Dúos', size: 2 }, squads: { name: 'Escuadras', size: 4 } };
 // Reanimación en equipo (dúos y escuadras): tiempo de la pregunta
 export const TEAM_REVIVE = { questionMs: 20_000 };
 // Gulag (fase 30): combates de 2 o 3 en arenas privadas fuera del mapa

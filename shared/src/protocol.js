@@ -15,6 +15,10 @@ export const EVENTS = {
   ROOM_TOPICS: 'room:topics', // C → S (solo host, en el lobby): [slug, ...] temas de la sala
   ROOM_DEPLOY: 'room:deploy', // C → S (solo host, en el lobby): 'bus' | 'punto'
   ROOM_DURATION: 'room:duration', // C → S (solo host, en el lobby): 'corta' | 'normal' | 'larga'
+  ROOM_TEAM_MODE: 'room:teamMode', // C → S (solo host): 'solo' | 'duos' | 'squads'
+  ROOM_TEAM_JOIN: 'room:teamJoin', // C → S: número de equipo (0 = sin elegir)
+  ROOM_TEAM_SHUFFLE: 'room:teamShuffle', // C → S (solo host): mezclar los equipos
+  TEAM_PING: 'team:ping', // C → S { x, y } · S → C { id, x, y } (solo a su equipo)
   ROOM_WEATHER: 'room:weather', // C → S (solo host, en el lobby): 'aleatorio' o un clima de WEATHERS
   ROOM_EASY: 'room:easy', // C → S (solo host, en el lobby): true | false — preguntas de aritmética
   ROOM_BOTS: 'room:bots', // C → S (solo host, en el lobby): completar con bots hasta N jugadores (0 = quitarlos)
@@ -111,6 +115,7 @@ export const PLAYER_FLAGS = {
   FALLING: 64, // caída libre (la altura va en el índice 9 de su entrada)
   PARACHUTE: 128, // bajando en paracaídas
   ZIPLINE: 256, // colgado de una tirolina (la altura va en el índice 9)
+  DOWNED: 512, // derribado (dúos y escuadras): se arrastra, un compañero lo puede levantar
 };
 
 // Estado de cada caja en el snapshot

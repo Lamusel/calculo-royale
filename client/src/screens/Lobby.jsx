@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { DEPLOY_MODES, DURATIONS, MAX_PLAYERS, TEAM_MODES, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { SERVER_URL, socket } from '../net/socket.js';
 import { startGame } from '../net/session.js';
@@ -125,6 +125,49 @@ function DeployPicker({ room, isHost }) {
         </option>
       ))}
     </select>
+  );
+}
+
+// Dúos y escuadras (fase 33): el anfitrión elige el modo; cada uno se une a un equipo o se mezclan
+function TeamPicker({ room, isHost, myId }) {
+  const mode = room.teamMode ?? 'solo';
+  const size = TEAM_MODES[mode].size;
+  const me = room.players.find((p) => p.id === myId);
+  const teams = Math.max(2, Math.ceil(room.players.length / size) + 1);
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {isHost ? (
+        <select value={mode} onChange={(e) => socket.emit(EVENTS.ROOM_TEAM_MODE, e.target.value)} className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100" title="Equipos">
+          {Object.entries(TEAM_MODES).map(([id, m]) => (
+            <option key={id} value={id} className="bg-olive-900">
+              👥 {m.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">👥 {TEAM_MODES[mode].name}</span>
+      )}
+      {size > 1 && (
+        <>
+          <select value={me?.teamChoice ?? 0} onChange={(e) => socket.emit(EVENTS.ROOM_TEAM_JOIN, Number(e.target.value))} className="rounded bg-white/10 px-1.5 py-1 text-xs text-stone-100" title="Tu equipo">
+            <option value={0} className="bg-olive-900">Equipo: al azar</option>
+            {Array.from({ length: teams }, (_, i) => i + 1).map((n) => {
+              const count = room.players.filter((p) => p.teamChoice === n).length;
+              return (
+                <option key={n} value={n} disabled={count >= size && me?.teamChoice !== n} className="bg-olive-900">
+                  Equipo {n} ({count}/{size})
+                </option>
+              );
+            })}
+          </select>
+          {isHost && (
+            <button onClick={() => socket.emit(EVENTS.ROOM_TEAM_SHUFFLE)} className="rounded bg-white/10 px-2 py-1 text-xs text-stone-200">
+              Mezclar
+            </button>
+          )}
+        </>
+      )}
+    </span>
   );
 }
 
@@ -267,6 +310,7 @@ export default function Lobby({ room, myId, isTouch, onSkin }) {
           <WeatherPicker room={room} isHost={isHost} />
           <DeployPicker room={room} isHost={isHost} />
           <DurationPicker room={room} isHost={isHost} />
+          <TeamPicker room={room} isHost={isHost} myId={myId} />
           <PresentationPicker room={room} isHost={isHost} />
           {isHost && (
             <button onClick={onStart} className="rounded bg-khaki px-4 py-1.5 font-bold text-olive-950">

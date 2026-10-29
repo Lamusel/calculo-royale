@@ -271,6 +271,10 @@ export class GameClient {
       [EVENTS.LOOT_SYNC]: (list) => this.lootStore.sync(list),
       [EVENTS.LOOT_ADD]: (list) => this.lootStore.add(list),
       [EVENTS.LOOT_REMOVE]: (ids) => this.lootStore.remove(ids),
+      [EVENTS.TEAM_PING]: (ping) => {
+        this.pings = [...(this.pings ?? []).filter((p) => p.id !== ping.id), { ...ping, at: performance.now() }];
+        sound.radio();
+      },
       [EVENTS.CRATE_CHOSEN]: (result) => {
         this.offer = null;
         this.toast((result.loot ?? []).map((n) => `+ ${n}`).join(' · '));
@@ -592,9 +596,11 @@ export class GameClient {
   // false solo los de la partida, null todos
   followable(frame = this.lastFrame, gulag = null) {
     if (!frame) return [];
+    // Primero los compañeros de equipo
     return [...frame.others]
       .filter(([id, p]) => id !== this.myId && !(p.flags & PLAYER_FLAGS.DEAD) && (gulag === null || (Math.abs(p.x) > MAP_HALF) === gulag))
-      .map(([id]) => id);
+      .map(([id]) => id)
+      .sort((a, b) => Number(this.mates?.has(b) ?? false) - Number(this.mates?.has(a) ?? false));
   }
 
   // ¿La cámara está siguiendo un combate del Gulag?
@@ -632,6 +638,11 @@ export class GameClient {
   toast(text) {
     if (!text) return;
     this.toasts = [...(this.toasts ?? []), { text: text.length > 42 ? `${text.slice(0, 40)}…` : text, at: performance.now() }].slice(-3);
+  }
+
+  // Marcador de equipo: un punto en el mapa para los compañeros
+  ping(x, y) {
+    this.socket.emit(EVENTS.TEAM_PING, { x, y });
   }
 
   switchWeaponSlot(slot) {

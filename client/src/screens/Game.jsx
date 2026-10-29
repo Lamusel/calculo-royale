@@ -64,13 +64,17 @@ function DebugOverlay({ stats, quality }) {
 
 // Clima de la partida (y hacia dónde sopla el viento en la tormenta de arena)
 // Contadores siempre visibles (vivos, mis bajas y, al caer o ganar, mi puesto)
-function Counters({ frameRef, self }) {
-  let alive = self?.alive && frameRef.current.me && Math.abs(frameRef.current.me.x) <= MAP_HALF ? 1 : 0;
-  for (const p of frameRef.current.others?.values() ?? []) if (!(p.flags & PLAYER_FLAGS.DEAD) && Math.abs(p.x) <= MAP_HALF) alive++;
+function Counters({ frameRef, self, roster, myId, teams }) {
+  // En dúos y escuadras se cuentan equipos con alguien vivo
+  const teamOf = (id) => roster.find((p) => p.id === id)?.team ?? `solo${id}`;
+  const ids = new Set();
+  if (self?.alive && frameRef.current.me && Math.abs(frameRef.current.me.x) <= MAP_HALF) ids.add(teams ? teamOf(myId) : myId);
+  for (const [id, p] of frameRef.current.others ?? []) if (!(p.flags & PLAYER_FLAGS.DEAD) && Math.abs(p.x) <= MAP_HALF) ids.add(teams ? teamOf(id) : id);
+  const alive = ids.size;
   const chip = 'rounded bg-black/65 px-2 py-0.5 font-mono text-[11px] font-bold';
   return (
     <div className="flex gap-1">
-      <span className={`${chip} text-stone-100`} title="Vivos">👤 {alive}</span>
+      <span className={`${chip} text-stone-100`} title={teams ? 'Equipos vivos' : 'Vivos'}>{teams ? '👥' : '👤'} {alive}</span>
       <span className={`${chip} text-red-300`} title="Mis bajas">✕ {self?.kills ?? 0}</span>
       {self?.place && <span className={`${chip} text-khaki-light`} title="Mi puesto">#{self.place}</span>}
     </div>
@@ -122,6 +126,9 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
   // Espectador (caído sin Gulag o que ya lo perdió): preguntas de práctica
   const operating = room.phase === 'playing' && view.self && !view.self.alive && !view.self.gulag;
   const followName = room.players.find((p) => p.id === client.followId)?.name;
+  // Compañeros de equipo (minimapa, Reanimar, seguir primero a ellos al caer)
+  const myTeam = room.players.find((p) => p.id === myId)?.team;
+  client.mates = new Set(myTeam != null ? room.players.filter((p) => p.id !== myId && p.team === myTeam).map((p) => p.id) : []);
   return (
     <>
       <HUD
@@ -137,6 +144,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       {!replaying && <QuickPhrases client={client} roster={room.players} isTouch={isTouch} />}
       <TacticalMap
         frameRef={frameRef}
+        client={client}
         myId={myId}
         radar={view.radarLeft > 0}
         marks={view.self?.marks}
@@ -148,7 +156,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
       />
       {room.phase === 'playing' && (
         <div className={`pointer-events-none absolute top-12 z-20 flex flex-col items-end gap-1 ${isTouch ? 'right-16' : 'right-3'}`}>
-          <Counters frameRef={frameRef} self={view.self} />
+          <Counters frameRef={frameRef} self={view.self} roster={room.players} myId={myId} teams={(room.teamMode ?? 'solo') !== 'solo'} />
           <WeatherChip weather={room.weather} windAngle={room.windAngle} />
           {view.self?.alive && view.self.streak > 0 && (
             <span className="rounded bg-black/55 px-2 py-0.5 font-mono text-[11px] text-sky-200">Racha {view.self.streak % 3 === 0 ? 3 : view.self.streak % 3}/3</span>

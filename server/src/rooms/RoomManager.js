@@ -1,4 +1,5 @@
-import { DEPLOY_MODES, DURATIONS, NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
+import { shuffleTeams, teamPing } from '../game/teams.js';
+import { DEPLOY_MODES, DURATIONS, NAME_MAX_LENGTH, TEAM_MODES, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TOPICS, WEATHERS } from '@calculo-royale/shared/constants';
 import { decodeInput } from '@calculo-royale/shared/codec';
 import { EVENTS } from '@calculo-royale/shared/protocol';
 import { canUseSkin } from '@calculo-royale/shared/skins';
@@ -134,6 +135,36 @@ export class RoomManager {
     if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby' || !DEPLOY_MODES[mode]) return;
     room.deployMode = mode;
     room.broadcastInfo();
+  }
+
+  // Equipos (fase 33): modo (host), unirse a un equipo y mezclar (host)
+  setTeamMode(socket, mode) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby' || !TEAM_MODES[mode]) return;
+    room.teamMode = mode;
+    for (const p of room.players.values()) p.teamChoice = null;
+    room.broadcastInfo();
+  }
+
+  joinTeam(socket, team) {
+    const room = this.roomOf(socket);
+    const player = this.playerOf(socket);
+    const n = Math.floor(Number(team));
+    if (!room || !player || room.phase !== 'lobby' || !(n >= 0 && n <= 20)) return;
+    player.teamChoice = n || null;
+    room.broadcastInfo();
+  }
+
+  shuffleTeams(socket) {
+    const room = this.roomOf(socket);
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'lobby') return;
+    shuffleTeams(room);
+    room.broadcastInfo();
+  }
+
+  teamPing(socket, data) {
+    const player = this.playerOf(socket);
+    if (player) teamPing(this.roomOf(socket).game, player, Number(data?.x), Number(data?.y));
   }
 
   // Duración de la próxima partida (solo el host, en el lobby)
