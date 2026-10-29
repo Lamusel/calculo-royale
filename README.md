@@ -736,21 +736,22 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 
 **El día (30 min antes)**
 - [ ] Abrir `<servidor>/health` para despertarlo (o confirmar que UptimeRobot está en verde).
-- [ ] PC del profe: crear la sala, elegir **temas**, **clima**, **despliegue** y si hace falta **bots**; **desactivar Modo fácil** si la partida cuenta.
+- [ ] PC del profe: crear la sala y abrir **⚙** (panel plegable): **modo** (Solitario, Dúos, Escuadras), **duración**, **temas**, **clima**, **despliegue** y si hace falta **bots**; **desactivar Modo fácil** si la partida cuenta. **💬 Chat**: apágalo si distrae.
+- [ ] En dúos o escuadras, pedir que cada uno elija su equipo (o **Mezclar**).
 - [ ] Proyector: `<cliente>/espectador?code=XXXX` en pantalla completa (F11), **🎬 Director** encendido, volumen del PC arriba.
 - [ ] Mostrar el **QR** grande para que entren; esperar a que todos digan "Conectado".
 - [ ] Recordar a los estudiantes: girar el celular (horizontal), subir el brillo, cerrar otras apps.
 
 **Durante y después**
 - [ ] Si alguien se queda colgado: recargar la página (vuelve a la misma sala con su sesión).
-- [ ] Al terminar: botón **⬇ CSV** en los resultados (anfitrión o proyector) y guardar el archivo.
+- [ ] Al terminar: botones **⬇ CSV** y **⬇ JSON** (estadísticas de balance: bajas por arma, acierto por tema y dificultad, regresos del Gulag, duración y FPS) en los resultados; guardar los dos.
 - [ ] **Volver al lobby** para la siguiente partida.
 
 ### Lista final de pruebas
 
 | Prueba | Cómo | Estado |
 |---|---|---|
-| Pruebas automáticas | `npm test` | 179 en verde |
+| Pruebas automáticas | `npm test` | 201 en verde |
 | Build | `npm run build` | Sin errores |
 | Carga 40 clientes (bus y elegir punto) | `npm run loadtest -- 40 120` y `… --punto` (local y Render) | OK (ver bitácora, fase 22) |
 | Partida completa con bots hasta el duelo | Lobby → bots hasta 8 → Iniciar | OK en Edge |
@@ -1015,3 +1016,4 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - 2026-10-28: **correcciones 6.4.** Reanimar ya no se atasca si el derribado muere; derribado con barra propia (30 s, los enemigos lo rematan) y cruz roja en el mapa; arma visible en la mano con todo el arsenal (antes solo las 4 primeras); externas siempre tiesas; munición mínima; cada pasajero en su puesto (platón de pie); plataformas suben ~72 m y planean; 20 colores de equipo con nombre; chat de texto con Equipo/Todos, antispam, filtro e interruptor del anfitrión.
 - 2026-10-28: **interfaz 6.5.** Portada con Jugar, Skins, Opciones y Créditos y el soldado con su skin; retratos de las procedurales generados una vez fuera de pantalla (caché en localStorage); configuración del lobby en un panel plegable; avisos del Mando no de zona como toasts de 2,5 s; tutorial de 1 minuto la primera vez (saltable).
 - 2026-10-28: **pulido 6.5.** Indicador rojo en el borde hacia donde vino el daño; brillo por rareza (anillos aditivos que laten en botín y cajas); racha de 3 bajas = UAV gratis; el clima cambia una vez a mitad de partida con aviso del Mando y velo de transición; tarjeta de jugador con apodo y temas fuerte/débil; "¡Victoria! Una integral para cenar"; destrucción ligera de cajas de madera, barriles (1 de cada 3 rojo explota y encadena) y cercas, fuera de la colisión y con 4 trozos de 3 s.
+- 2026-10-28: **cierre 6.5.** Snapshots con interés por cercanía (los que están a más de 150 m van 1 de cada 5; el proyector recibe todo) y estadísticas de balance en el JSON de resultados (⬇ JSON del anfitrión). Carga contra Render (Oregón, plan gratis) con 40 clientes por 120 s: CPU 14 % (máx. 14,9 %), RSS 94 MB, tick promedio 21 ms (picos de hasta 300 ms), ping p50 219 ms y p95 409 ms, snapshots p50 51 ms; 0 desconexiones.
