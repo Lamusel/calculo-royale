@@ -540,6 +540,11 @@ test('7B: bocina (solo el conductor, una por segundo) y la radio del camión que
   assert.equal(toggleRadio(room.game, b), false);
   assert.ok(toggleRadio(room.game, a));
   assert.equal(truck.radioOff, true);
+  // También en los otros vehículos (jeep, moto, lancha)
+  const jeep = room.game.vehicles.find((v) => v.type === 'jeep');
+  a.vehicleId = jeep.id;
+  assert.ok(toggleRadio(room.game, a));
+  assert.equal(jeep.radioOff, true);
 });
 
 test('7B: sin armas ni balas, el golpe a puños (botón MELEE del input) le baja vida al de 1,5 m', async () => {

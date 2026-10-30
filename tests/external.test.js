@@ -261,3 +261,31 @@ test('clips por significado y avisos de límites para celular', () => {
   assert.equal(limitWarnings({ bytes: 1e6, triangles: 9000, maxTexture: 1024 }).length, 0);
   assert.equal(limitWarnings({ bytes: 4e6, triangles: 20000, maxTexture: 2048 }).length, 3);
 });
+
+test('7B: dos jugadores con la misma skin externa: un modelo cada uno, sin compartir huesos, aunque setSkin se repita mientras carga', async () => {
+  setLoaderDeps(fakeLoader(mixamoModel()));
+  const a = new Character({ skin: 'prueba_1', color: '#f00' });
+  const b = new Character({ skin: 'prueba_1', color: '#0f0' });
+  a.setSkin('prueba_1'); // lo que hace el avatar al montarse (antes montaba dos modelos encimados)
+  b.setSkin('prueba_1');
+  await until(() => a.status !== 'loading' && b.status !== 'loading');
+  const externals = (ch) => ch.rig.root.children.filter((o) => o === ch.external.object || o.name === ch.external.object.name).length;
+  assert.equal(externals(a), 1);
+  assert.equal(externals(b), 1);
+  assert.notEqual(a.external.model, b.external.model);
+  const bones = (ch) => {
+    const out = new Set();
+    ch.external.model.traverse((o) => o.isBone && out.add(o));
+    return out;
+  };
+  const shared = [...bones(a)].filter((bone) => bones(b).has(bone));
+  assert.equal(shared.length, 0, 'cada uno con su esqueleto');
+  assert.equal(a.external.mode, 'A');
+  // Cambiar de skin y volver: sigue habiendo uno solo
+  a.setSkin('soldado');
+  a.setSkin('prueba_1');
+  await until(() => a.status !== 'loading');
+  assert.equal(externals(a), 1);
+  a.dispose();
+  b.dispose();
+});

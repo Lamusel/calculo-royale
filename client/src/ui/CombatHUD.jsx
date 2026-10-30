@@ -33,8 +33,8 @@ function JeepBar({ vehicle, client }) {
         <div className={`h-full transition-all ${hp > 0.35 ? 'bg-orange-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} />
       </div>
       <span className="font-mono text-[10px] text-stone-300">{vehicle.seat === 'driver' ? 'Conduces' : 'Pasajero'}</span>
-      {/* Radio del camión (7A): solo si hay música para ella; se apaga para uno mismo */}
-      {vehicle.type === 'truck' && client && hasMusic('radio-camion') && (
+      {/* Radio (7B: en todos los vehículos): solo si hay canciones radio-camion-N; el conductor la apaga para todos */}
+      {client && hasMusic('radio-camion') && (
         <TouchButton
           onPress={() => {
             // El conductor la apaga para todos; un pasajero, solo para él
@@ -43,7 +43,7 @@ function JeepBar({ vehicle, client }) {
             refresh((n) => n + 1);
           }}
           className="pointer-events-auto rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-stone-200"
-          title="Radio del camión"
+          title="Radio del vehículo"
         >
           📻 {client.truckRadioOff || client.frameVehicle?.radioOff ? 'Apagada' : 'Radio'}
         </TouchButton>

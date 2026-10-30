@@ -261,10 +261,10 @@ export function honk(game, player) {
   return true;
 }
 
-// Radio del camión (7B): el conductor la apaga o la prende para todos los que van y los que oyen
+// Radio de los vehículos (7B): el conductor la apaga o la prende para todos los que van y los que oyen
 export function toggleRadio(game, player) {
   const v = player.vehicleId !== null ? game.vehicles[player.vehicleId] : null;
-  if (!v || v.type !== 'truck' || player.seat !== 'driver') return false;
+  if (!v || player.seat !== 'driver') return false;
   v.radioOff = !v.radioOff;
   return true;
 }

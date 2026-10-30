@@ -703,7 +703,9 @@ export class GameClient {
     for (const id of this.grenadeTrack.keys()) if (!frame.grenades?.has(id)) this.grenadeTrack.delete(id);
     let radio = null;
     for (const v of frame.vehicles?.values() ?? []) {
-      if (v.type === 'truck' && v.driver && !v.radioOff && !this.truckRadioOff && Math.hypot(v.x - at.x, v.y - at.y) < 70) radio = v;
+      // Radio en todos los vehículos con conductor (se corta al bajarte, alejarte o si explota)
+      const dr = Math.hypot(v.x - at.x, v.y - at.y);
+      if (v.driver && v.state !== VEHICLE_STATE.DESTROYED && !v.radioOff && !this.truckRadioOff && dr < 70 && (!radio || dr < Math.hypot(radio.x - at.x, radio.y - at.y))) radio = v;
       // Vehículo que explota
       const was = this.vehicleStates.get(v.id);
       if (was !== undefined && was !== v.state && v.state === VEHICLE_STATE.DESTROYED) sound.vehicleBoom(v.x, v.y);

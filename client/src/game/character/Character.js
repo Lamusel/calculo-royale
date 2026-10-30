@@ -54,8 +54,12 @@ export class Character {
   }
 
   setSkin(skinId) {
-    if (skinId === this.skinId && (this.procedural || this.external)) return;
+    // La misma skin ya puesta o cargándose: nada (antes, una segunda llamada mientras cargaba montaba
+    // dos modelos encimados)
+    if (skinId === this.skinId && (this.procedural || this.external || this.status === 'loading')) return;
     this.skinId = skinId;
+    // Turno de carga: solo la última pedida se monta; las anteriores se liberan al llegar
+    const token = (this.loadToken = (this.loadToken ?? 0) + 1);
     this.entry = getSkinEntry(skinId);
     this.dropExternal();
     this.applyWeaponOffset();
@@ -76,7 +80,7 @@ export class Character {
       loadSkinSystem()
         .then((m) => m.createSkinInstance(this.entry))
         .then((instance) => {
-          if (this.skinId !== wanted) {
+          if (this.skinId !== wanted || this.loadToken !== token || this.external) {
             loaderModule.then((m) => m.disposeSkinInstance(instance));
             return;
           }
@@ -93,7 +97,7 @@ export class Character {
           if (this.anim) this.pose();
         })
         .catch((err) => {
-          if (this.skinId !== wanted) return;
+          if (this.skinId !== wanted || this.loadToken !== token) return;
           if (!warned.has(skinId)) console.warn('Skin asset missing:', skinId, err?.message ?? err);
           warned.add(skinId);
           clearTimeout(this.fallbackTimer);
@@ -289,6 +293,7 @@ export class Character {
   // Libera la skin (React puede volver a montarla con setSkin: StrictMode monta dos veces)
   dispose() {
     clearTimeout(this.fallbackTimer);
+    this.loadToken = (this.loadToken ?? 0) + 1; // una carga en curso se libera al llegar
     this.procedural?.remove();
     this.procedural = null;
     this.dropExternal();

@@ -595,7 +595,7 @@ export function updateWorldAudio(w) {
   setLoop('amb-bosque', { name: 'ambiente-bosque', level: (a.bosque ?? 0) * 0.2, synth: { kind: 'bandpass', filter: 2300, q: 3 } });
   setLoop('amb-ciudad', { name: 'ambiente-ciudad', level: (a.ciudad ?? 0) * 0.28, synth: { kind: 'lowpass', filter: 160 } });
   setLoop('rio', { name: 'rio', level: (a.rio ?? 0) * 0.4, synth: { kind: 'bandpass', filter: 700, q: 0.8 } });
-  // Radio del camión: solo con archivo (music/radio-camion-1..3), en el camión y apagable
+  // Radio de los vehículos: solo con archivo (music/radio-camion-N), en el más cercano con conductor y apagable
   setLoop('radio', w.radio && { name: 'radio-camion', music: true, playlist: true, at: w.radio, level: 0.55 });
   setLoop('tirolina', w.zipline && { name: 'tirolina', level: 0.35, synth: { kind: 'bandpass', filter: 3000, q: 3 } });
   setLoop('nadar', w.swimming && { name: 'nadar', level: 0.3, synth: { kind: 'bandpass', filter: 600, q: 1 } });

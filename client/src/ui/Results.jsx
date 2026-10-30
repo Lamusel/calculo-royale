@@ -7,28 +7,38 @@ import { useEffect, useState } from 'react';
 import { loadSkin } from '../achievements.js';
 import { getSkinEntry } from '../game/character/skins/index.js';
 
-// Apodo de la tarjeta (6.5) según el tema más fuerte; con aciertos parejos a medias, "Punto de silla"
+// Apodo de la tarjeta según el puesto y el acierto: al ganador y a quien acierta todo, uno de los buenos
+// (el de su tema más fuerte o "Gradiente máximo"); "Punto de silla" para quien queda a mitad de tabla o
+// con aciertos parejos a medias; "Mínimo local" para los últimos puestos
 const NICKNAMES = {
   lagrange: 'El Lagrangiano',
   integrales_dobles: 'Integral andante',
   derivadas_direccionales: 'Gradiente con patas',
   maximos_minimos: 'Máximo absoluto',
 };
-export function playerCard(byTopic = {}) {
+export function playerCard(byTopic = {}, place = null, total = null) {
   const rated = Object.entries(byTopic)
     .filter(([, t]) => t.total > 0)
     .map(([slug, t]) => ({ slug, rate: t.ok / t.total, total: t.total }))
     .sort((a, b) => b.rate - a.rate || b.total - a.total);
-  if (!rated.length) return { strong: null, weak: null, nickname: 'Punto de silla' };
-  const strong = rated[0];
+  const strong = rated[0] ?? null;
   const weak = rated.length > 1 ? rated.at(-1) : null;
-  const ok = rated.reduce((n, t) => n + t.rate * t.total, 0) / rated.reduce((n, t) => n + t.total, 0);
-  const nickname = ok >= 0.4 && ok <= 0.6 && weak ? 'Punto de silla' : NICKNAMES[strong.slug] ?? 'Punto de silla';
-  return { strong: strong.slug, weak: weak?.slug ?? null, nickname };
+  const answered = rated.reduce((n, t) => n + t.total, 0);
+  const ok = answered ? rated.reduce((n, t) => n + t.rate * t.total, 0) / answered : null;
+  const best = (strong && NICKNAMES[strong.slug]) ?? 'Gradiente máximo';
+  // Dónde quedó en la tabla: 0 arriba, 1 abajo
+  const spot = place && total > 1 ? (place - 1) / (total - 1) : 0.5;
+  let nickname;
+  if (place === 1 || (ok === 1 && answered >= 2)) nickname = best;
+  else if (ok !== null && ok >= 0.75) nickname = (strong && NICKNAMES[strong.slug]) ?? 'Máximo local';
+  else if ((ok !== null && ok >= 0.4 && ok <= 0.6) || (spot > 0.33 && spot < 0.67)) nickname = 'Punto de silla';
+  else if (spot <= 0.33) nickname = 'Máximo local';
+  else nickname = 'Mínimo local';
+  return { strong: strong?.slug ?? null, weak: weak?.slug ?? null, nickname };
 }
 
-function PlayerCard({ me, mine, medals = [] }) {
-  const card = playerCard(mine?.byTopic);
+function PlayerCard({ me, mine, medals = [], total = null }) {
+  const card = playerCard(mine?.byTopic, me.place, total);
   const ants = medals.find((m) => m.id === 'hormigas' && m.playerId === me.id);
   return (
     <div className="flex items-center gap-3 rounded border border-khaki-dark bg-black/40 p-2">
@@ -220,7 +230,7 @@ export default function Results({ results, mine, myId, isHost, onReset, classSta
 
         {winner && <Podium ranking={results.ranking} winnerId={results.winnerId} />}
         {won && <p className="text-center text-sm font-bold uppercase tracking-[0.3em] text-yellow-300">¡Ganaste!</p>}
-        {me && <PlayerCard me={me} mine={mine} medals={results.medals} />}
+        {me && <PlayerCard me={me} mine={mine} medals={results.medals} total={results.ranking.length} />}
 
         <Medals medals={results.medals} myId={myId} />
 
