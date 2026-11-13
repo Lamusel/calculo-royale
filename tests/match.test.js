@@ -86,7 +86,7 @@ test('la zona avisa, se cierra interpolando y termina en la zona anunciada', () 
 
 test('una fase usa elipse y la desigualdad se escribe bien', () => {
   assert.ok(ZONE_PHASES.some((p) => p.ellipse));
-  assert.equal(zoneInequality({ cx: 12, cy: -5, p: 20, q: 20 }), '(x - 12)^2 + (y + 5)^2 \\le 400');
+  assert.equal(zoneInequality({ cx: 12, cy: -5, p: 20, q: 20 }), 'r \\le 20\\ \\text{alrededor de}\\ (12, -5)');
   assert.equal(zoneInequality({ cx: 0, cy: 3, p: 35, q: 20 }), '\\frac{x^2}{1225} + \\frac{(y - 3)^2}{400} \\le 1');
   const e = { cx: 2, cy: 1, p: 10, q: 4 };
   assert.equal(insideZone(e, 11, 1), true);

@@ -3,7 +3,7 @@
 
 export const CREDITS = {
   title: 'Cálculo Royale',
-  subtitle: 'Battle royale militar para Cálculo Multivariable',
+  subtitle: 'Battle royale militar de integrales con jacobiano y volumen (Cálculo Multivariable)',
   institution: '[Universidad / Unidades Tecnológicas de Santander]',
   course: '[Cálculo Multivariable · grupo y semestre]',
   sections: [

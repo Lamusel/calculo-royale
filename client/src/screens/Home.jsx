@@ -83,7 +83,7 @@ export default function Home({ connected, notice, onEnter }) {
           <h1 className="text-5xl font-black uppercase tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] sm:text-6xl">
             Cálculo <span className="text-khaki">Royale</span>
           </h1>
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-stone-400">Battle royale militar · Cálculo Multivariable</p>
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-stone-400">Battle royale militar · Jacobiano y volumen</p>
           <WakeUp connected={connected} />
           {view === 'menu' ? (
             <div className="mt-2 flex w-full flex-col gap-2">

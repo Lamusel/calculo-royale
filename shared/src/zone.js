@@ -20,11 +20,12 @@ function shifted(v, c) {
   return `(${v} ${c > 0 ? '-' : '+'} ${Math.abs(c)})^2`;
 }
 
-// Desigualdad de la zona en LaTeX, como la anuncia el mando
+// Desigualdad de la zona en LaTeX, como la anuncia el mando. La circular va en polares con el polo
+// en su centro ("r ≤ 430 alrededor de (24, 2)"); la elíptica sigue en cartesianas.
 export function zoneInequality(z) {
+  if (z.p === z.q) return `r \\le ${z.p}\\ \\text{alrededor de}\\ (${z.cx}, ${z.cy})`;
   const x = shifted('x', z.cx);
   const y = shifted('y', z.cy);
-  if (z.p === z.q) return `${x} + ${y} \\le ${z.p * z.p}`;
   return `\\frac{${x}}{${z.p * z.p}} + \\frac{${y}}{${z.q * z.q}} \\le 1`;
 }
 

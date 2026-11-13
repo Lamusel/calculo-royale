@@ -63,7 +63,7 @@ function TopicPicker({ room, isHost, onClose }) {
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-3" onPointerUp={(e) => e.target === e.currentTarget && onClose()}>
       <div className="max-h-full w-full max-w-md overflow-y-auto rounded-lg border border-khaki-dark bg-olive-900 p-4 text-stone-100">
-        <p className="mb-2 font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">Temas de la sala</p>
+        <p className="mb-2 font-mono text-xs uppercase tracking-[0.25em] text-khaki-light">Temas de la sala · integrales con jacobiano y volumen</p>
         <div className="flex flex-col gap-1.5">
           {Object.entries(TOPICS).map(([slug, name]) => (
             <label key={slug} className={`flex items-center gap-3 rounded px-2 py-1.5 ${isHost ? 'cursor-pointer bg-black/25' : 'bg-black/15'}`}>

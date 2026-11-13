@@ -8,13 +8,13 @@ import { loadSkin } from '../achievements.js';
 import { getSkinEntry } from '../game/character/skins/index.js';
 
 // Apodo de la tarjeta según el puesto y el acierto: al ganador y a quien acierta todo, uno de los buenos
-// (el de su tema más fuerte o "Gradiente máximo"); "Punto de silla" para quien queda a mitad de tabla o
-// con aciertos parejos a medias; "Mínimo local" para los últimos puestos
+// (el de su tema más fuerte o "Integral triple"); "Media esfera" para quien queda a mitad de tabla o
+// con aciertos parejos a medias; "Jacobiano nulo" para los últimos puestos
 const NICKNAMES = {
-  lagrange: 'El Lagrangiano',
-  integrales_dobles: 'Integral andante',
-  derivadas_direccionales: 'Gradiente con patas',
-  maximos_minimos: 'Máximo absoluto',
+  jacobiano: 'El Jacobiano',
+  'cambio-variables-dobles': 'Polar perfecto',
+  'triples-cilindricas-esfericas': 'Rey de las esféricas',
+  volumen: 'Volumen máximo',
 };
 export function playerCard(byTopic = {}, place = null, total = null) {
   const rated = Object.entries(byTopic)
@@ -25,15 +25,15 @@ export function playerCard(byTopic = {}, place = null, total = null) {
   const weak = rated.length > 1 ? rated.at(-1) : null;
   const answered = rated.reduce((n, t) => n + t.total, 0);
   const ok = answered ? rated.reduce((n, t) => n + t.rate * t.total, 0) / answered : null;
-  const best = (strong && NICKNAMES[strong.slug]) ?? 'Gradiente máximo';
+  const best = (strong && NICKNAMES[strong.slug]) ?? 'Integral triple';
   // Dónde quedó en la tabla: 0 arriba, 1 abajo
   const spot = place && total > 1 ? (place - 1) / (total - 1) : 0.5;
   let nickname;
   if (place === 1 || (ok === 1 && answered >= 2)) nickname = best;
-  else if (ok !== null && ok >= 0.75) nickname = (strong && NICKNAMES[strong.slug]) ?? 'Máximo local';
-  else if ((ok !== null && ok >= 0.4 && ok <= 0.6) || (spot > 0.33 && spot < 0.67)) nickname = 'Punto de silla';
-  else if (spot <= 0.33) nickname = 'Máximo local';
-  else nickname = 'Mínimo local';
+  else if (ok !== null && ok >= 0.75) nickname = (strong && NICKNAMES[strong.slug]) ?? 'Radio creciente';
+  else if ((ok !== null && ok >= 0.4 && ok <= 0.6) || (spot > 0.33 && spot < 0.67)) nickname = 'Media esfera';
+  else if (spot <= 0.33) nickname = 'Radio creciente';
+  else nickname = 'Jacobiano nulo';
   return { strong: strong?.slug ?? null, weak: weak?.slug ?? null, nickname };
 }
 

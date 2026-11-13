@@ -1,6 +1,6 @@
 # Cálculo Royale
 
-Battle royale **militar** multijugador para **Cálculo Multivariable (corte 3)**, UTS Bucaramanga.
+Battle royale **militar** multijugador para **Cálculo Multivariable: integrales con cambio de variables (jacobiano) y volumen**, UTS Bucaramanga.
 Hasta 40 jugadores en la misma partida (≈36 en celular, ≈4 en PC), directo desde el navegador.
 Primero es un battle royale de verdad; **el cálculo es la llave del poder**: las cajas de suministro tienen candado de código (una pregunta ABCD), el centro de mando habla en desigualdades y los caídos siguen peleando como operadores de radio.
 
@@ -207,8 +207,8 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 
 ```json
 {
-  "id": "int-dobles-001",
-  "tema": "integrales_dobles",
+  "id": "cv-08",
+  "tema": "cambio-variables-dobles",
   "dificultad": 2,
   "enunciado": "Evalúe $\\int_0^1 \\int_0^2 xy \\, dy \\, dx$",
   "opciones": ["$1$", "$2$", "$\\frac{1}{2}$", "$4$"],
@@ -217,13 +217,13 @@ Formato fijo para poder alimentarlo copiando y pegando (incluso con otra IA):
 }
 ```
 
-> ⚠️ **Banco PROVISIONAL.** Las 40 preguntas actuales cubren temas típicos de Cálculo Multivariable mientras llegan los temas reales del corte 3. Cada respuesta correcta se recalcula numéricamente en `tests/questions.test.js` (cuadraturas, muestreo y derivadas numéricas); al cambiar el banco, agregar su verificación ahí.
+> **Banco actual (tanda 8): integrales con jacobiano y volumen.** 100 preguntas en 4 temas: `jacobiano` (jacobiano de transformaciones), `cambio-variables-dobles` (polares y transformaciones lineales), `triples-cilindricas-esfericas` (cilíndricas, esféricas, masa) y `volumen`. Son 25 por tema, repartidas 7/7/6/5 en las dificultades 1 a 4, con 2/2/3/3 opciones. Los 4 temas del corte 3 (derivadas direccionales, Lagrange, integrales dobles, máximos y mínimos) salieron de la rotación; su banco y sus generadores quedan en el historial de git (hasta el commit `163e2ce`).
 
-- `tema`: slug del tema (ver `TOPICS` en `shared/src/constants.js`; lista definitiva pendiente de los temas del corte 3).
+- `tema`: slug del tema (ver `TOPICS` en `shared/src/constants.js`).
 - `dificultad`: 1 a 4 (coincide con la rareza de la caja).
 - Fórmulas en LaTeX entre `$...$`, renderizadas con KaTeX.
-- **Paramétricas:** archivos en `server/src/questions/generators/` que exportan `{ name, tema, dificultad, generar(rand) }` y devuelven el mismo formato con números aleatorios (más `valor`, el número correcto, que usan las pruebas y nunca se envía). Hay 4: integral doble sobre rectángulo, gradiente en un punto, derivada direccional y polar a cartesiano, con distractores de errores típicos (olvidar el ½, no normalizar el vector, invertir componentes, cuadrante equivocado).
-- **Para agregar preguntas:** editar o crear `server/src/questions/bank/<tema>.json` (mismo formato) y agregar su verificación en `tests/questions.test.js`. `npm test` revisa formato, que KaTeX las pueda dibujar y que la marcada sea la correcta.
+- **Paramétricas:** archivos en `server/src/questions/generators/` que exportan `{ name, tema, dificultad, generar(rand) }` y devuelven el mismo formato con números aleatorios. Hay 2 por tema: jacobiano de una transformación lineal y área de la imagen de un rectángulo; doble en polares sobre disco o anillo y doble con `u = x + y`, `v = x − y`; masa de un cilindro y triple sobre esfera o semiesfera; volumen bajo un paraboloide y volumen de cilindro o cono. Los distractores son errores típicos: olvidar el jacobiano, `r²` en vez de `r`, `ρ sen φ` en vez de `ρ² sen φ`, `φ` hasta `2π`, el signo de `J` sin valor absoluto.
+- **Para agregar preguntas:** editar la lista de `scripts/build-bank.js` y correr `node scripts/build-bank.js` (regenera `server/src/questions/bank/<tema>.json`). Cada pregunta lleva `verifica`, la descripción del problema; `npm test` la resuelve por su cuenta (jacobiano por diferencias finitas, la integral en cartesianas sobre una cuadrícula, iteradas con Simpson) y exige que la marcada coincida y ningún distractor. También revisa el formato y que KaTeX pueda dibujarlas.
 - El host elige qué temas entran en la sala; si un tema no tiene preguntas de cierta dificultad, se usa la más cercana.
 - Las mismas preguntas alimentan candados, transmisiones de operadores de radio e intercepciones.
 
@@ -874,6 +874,7 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 | 32 | ✅ Completa | Pocos botones fijos, zona de acción contextual, abanicos de lanzables y curación, modo vehículo, iconos SVG. Falta verlo en el celular |
 | 30 | ✅ Completa | Gulag en arenas privadas (cola, 3 preguntas, equipo por aciertos, muerte súbita, regreso en paracaídas); fuera bombardeo, intercepción, voz del Mando y reanimación por aciertos |
 | 31 | ✅ Completa | Zona de 6 fases (~19 min) que arranca 3 min tras aterrizar, duración elegible, tiempos de preguntas nuevos, bus a 112 m con planeo y paracaídas a mano, zona final que se desplaza |
+| Tanda 8 | ✅ Completa | Tema nuevo: integrales con jacobiano y volumen. 100 preguntas verificadas en 4 temas, 8 generadores y 5 rápidas (50 semillas); zona circular en polares; datos de carga, apodos y medallas del tema |
 
 ### Bitácora
 
@@ -1108,3 +1109,4 @@ Render no deja cambiar la región de un servicio, así que se crea uno nuevo en 
 - 2026-10-29: **7B · varias salas a la vez.** Un error en un evento se registra con su sala y no tumba el servidor; un error en el ciclo de una sala se registra y, si se repite ~1 s, la sala se cierra sola avisando a sus jugadores, sin afectar a las otras. Cada sala lleva sus propios objetos rotos y muros de espuma (antes eran compartidos entre salas). `puerta` sigue sin usarse: las casas tienen vanos, no puertas que se abran.
 - 2026-10-29: **7B · créditos.** Sección "Fuentes de audio" en `client/src/credits.js` (pantalla de Créditos) y en el README, con "Por confirmar" para completar.
 - 2026-10-29: **correcciones 7B.** Skins externas encimadas en los demás jugadores: mientras una externa cargaba, una segunda llamada a setSkin con la misma skin lanzaba otra carga y se montaban dos modelos; ahora un turno de carga deja solo la última (prueba con dos jugadores con la misma skin; cada uno con su esqueleto clonado, tiesos, y se libera al salir). Radio en todos los vehículos (la del más cercano con conductor, botón 📻 en todos, el conductor la apaga para todos). Podio con el retrato de cada skin en una tarjeta sobre su escalón (sin modelos 3D). Apodo según puesto y acierto: el ganador y quien acierta todo reciben el de su tema o "Gradiente máximo"; "Punto de silla" queda para la mitad de tabla.
+- 2026-11-13: **tanda 8 (tema nuevo: integrales con jacobiano y volumen).** *Banco:* 100 preguntas nuevas en `jacobiano`, `cambio-variables-dobles`, `triples-cilindricas-esfericas` y `volumen` (25 por tema, 7/7/6/5 por dificultad, opciones 2/2/3/3), 8 generadores con parámetros aleatorios y 5 preguntas rápidas para balas y reanimación. *Pruebas:* cada pregunta trae `verifica` y `tests/questions.test.js` la resuelve aparte (jacobiano numérico, integral en cartesianas sobre una cuadrícula, iteradas con Simpson); generadores y rápidas con 50 semillas. *Temas viejos:* fuera de `TOPICS`, así que no salen en el lobby, el panel del anfitrión, el CSV ni los reportes; siguen en el historial de git. Dificultad adaptativa, repaso, comodín 50/50 y modo fácil no cambiaron. *Textos:* la zona circular se anuncia en polares ("r ≤ 430 alrededor de (24, 2)"; la elíptica sigue en cartesianas), 15 datos nuevos en la pantalla de carga, apodos ("El Jacobiano", "Polar perfecto", "Rey de las esféricas", "Volumen máximo", "Media esfera", "Jacobiano nulo") y medallas ("Integrador triple", "Jacobiano exacto"). De paso: a los anuncios "Nueva zona segura" y "La zona se desplaza" les faltaba el `$` de apertura de la fórmula. El formato de las preguntas no tiene campo de pista (nunca lo tuvo): no se agregó para no tocar mecánicas.

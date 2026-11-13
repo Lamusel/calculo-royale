@@ -23,7 +23,7 @@ function announce(game, event) {
       game,
       'zone',
       `Zona ${event.phase + 1} de ${ZONE_PHASES.length}: se desplaza`,
-      `Aquí Mando. La zona se desplaza hacia el ${dir}: ${zoneInequality(event.zone)}$. Muévanse, en ${Math.round(event.waitMs / 1000)} s empieza a correrse.`,
+      `Aquí Mando. La zona se desplaza hacia el ${dir}: $${zoneInequality(event.zone)}$. Muévanse, en ${Math.round(event.waitMs / 1000)} s empieza a correrse.`,
       9000,
       'zona-moviendose',
     );
@@ -32,7 +32,7 @@ function announce(game, event) {
       game,
       'zone',
       `Zona ${event.phase + 1} de ${ZONE_PHASES.length}`,
-      `Aquí Mando. Nueva zona segura: ${zoneInequality(event.zone)}$. Tienen ${Math.round(event.waitMs / 1000)} s.`,
+      `Aquí Mando. Nueva zona segura: $${zoneInequality(event.zone)}$. Tienen ${Math.round(event.waitMs / 1000)} s.`,
       9000,
       'zona-nueva',
     );

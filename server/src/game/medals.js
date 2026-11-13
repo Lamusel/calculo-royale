@@ -3,8 +3,8 @@
 
 export const MEDALS = [
   { id: 'bajas', name: 'Más bajas', icon: '💀', value: (p) => p.kills, unit: 'bajas' },
-  { id: 'calculista', name: 'Calculista', icon: '🧮', value: (p) => p.stats.correct, unit: 'aciertos' },
-  { id: 'precision', name: 'Puntería matemática', icon: '🎯', value: (p) => (p.stats.answered >= 3 ? Math.round((p.stats.correct / p.stats.answered) * 100) : 0), unit: '% de aciertos' },
+  { id: 'calculista', name: 'Integrador triple', icon: '🧮', value: (p) => p.stats.correct, unit: 'aciertos' },
+  { id: 'precision', name: 'Jacobiano exacto', icon: '🎯', value: (p) => (p.stats.answered >= 3 ? Math.round((p.stats.correct / p.stats.answered) * 100) : 0), unit: '% de aciertos' },
   { id: 'dano', name: 'Más daño', icon: '💥', value: (p) => Math.round(p.damageDealt ?? 0), unit: 'de daño' },
   { id: 'francotirador', name: 'Baja más lejana', icon: '🔭', value: (p) => Math.round(p.longestKill ?? 0), unit: 'm' },
   { id: 'saqueador', name: 'Saqueador', icon: '🎒', value: (p) => p.pickups ?? 0, unit: 'objetos' },
