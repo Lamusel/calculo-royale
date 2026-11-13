@@ -1,166 +1,239 @@
 // Banco de preguntas y generadores (npm test): formato, KaTeX, número de opciones y verificación
-// numérica de cada respuesta. Cada pregunta del banco describe su problema en `verifica`; aquí se
-// resuelve por cuenta propia (Simpson, gradientes numéricos, muestreo de la restricción) sin mirar
-// la respuesta escrita, y se exige que la marcada coincida y ningún distractor.
+// de cada respuesta. Cada pregunta (del banco, de los generadores y las rápidas) describe su problema
+// en `verifica`; aquí se resuelve por cuenta propia, sin mirar la respuesta escrita, y se exige que la
+// marcada coincida y ningún distractor:
+//   - jacobianos: determinante por diferencias finitas, comparado con la opción en varios puntos
+//   - integrales con cambio de variables: la misma integral en cartesianas, sobre una cuadrícula
+//   - integrales iteradas ya planteadas: Simpson anidado
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import katex from 'katex';
 import { optionCount, TOPICS } from '@calculo-royale/shared/constants';
 import { BANK, drawQuestion, drawQuickQuestion, GENERATORS, QUICK_GENERATORS, shuffleOptions } from '../server/src/questions/QuestionBank.js';
 
-// --- Evaluador numérico de opciones LaTeX sencillas (números, fracciones, π, e, raíces, tuplas) ---
-function toJs(tex) {
-  let s = tex.replace(/\$/g, '').replace(/\\left|\\right|\\,/g, '').replace(/\s+/g, '');
-  const frac = /\\frac\{([^{}]*)\}\{([^{}]*)\}/;
-  const sqrt = /\\sqrt\{([^{}]*)\}/;
-  // Raíces y fracciones anidadas (\frac{3}{\sqrt{2}}): se resuelven de adentro hacia afuera
-  while (frac.test(s) || sqrt.test(s)) s = s.replace(sqrt, 'Math.sqrt($1)').replace(frac, '(($1)/($2))');
-  s = s.replace(/e\^\{([^{}]*)\}/g, 'Math.exp($1)').replace(/\\pi/g, 'PI').replace(/\^\{([^{}]*)\}/g, '**($1)');
-  s = s.replace(/(?<![A-Za-z.])e(?![A-Za-z(])/g, 'E');
-  s = s.replace(/(\d|\)|PI|E)(?=\(|Math|PI|E)/g, '$1*');
-  return s;
-}
-function splitTuple(s) {
-  if (!(s.startsWith('(') && s.endsWith(')'))) return null;
-  const parts = [];
-  let depth = 0;
-  let start = 1;
-  for (let i = 1; i < s.length - 1; i++) {
-    if (s[i] === '(') depth++;
-    if (s[i] === ')') depth--;
-    if (s[i] === ',' && depth === 0) {
-      parts.push(s.slice(start, i));
-      start = i + 1;
+const SLUGS = ['cambio-variables-dobles', 'jacobiano', 'triples-cilindricas-esfericas', 'volumen'];
+
+// --- Evaluador de opciones en LaTeX (números, fracciones, π, e, raíces, ln, sen, cos y variables) ---
+const GREEK = { pi: 'PI', rho: 'rho', phi: 'phi', theta: 'theta' };
+const FUNCS = { sin: 'Math.sin', cos: 'Math.cos', tan: 'Math.tan', ln: 'Math.log' };
+function texToJs(src) {
+  const s = src.replace(/\$|\\left|\\right|\\displaystyle|\\[,!;:]/g, '').replace(/\\(cdot|times)/g, '*').trim();
+  let i = 0;
+  const skip = () => {
+    while (s[i] === ' ') i++;
+  };
+  const group = () => {
+    i++;
+    const inner = expr('}');
+    i++;
+    return inner;
+  };
+  function atom() {
+    skip();
+    const c = s[i];
+    let a;
+    if (/[0-9.]/.test(c)) {
+      let j = i;
+      while (/[0-9.]/.test(s[j] ?? '')) j++;
+      a = s.slice(i, j);
+      i = j;
+    } else if (c === '(') {
+      i++;
+      a = `(${expr(')')})`;
+      i++;
+    } else if (c === '{') a = `(${group()})`;
+    else if (c === '\\') {
+      const name = /^\\([A-Za-z]+)/.exec(s.slice(i))?.[1];
+      if (!name) throw new Error(`comando en ${s.slice(i)}`);
+      i += name.length + 1;
+      if (name === 'frac') {
+        skip();
+        const n = group();
+        skip();
+        a = `((${n})/(${group()}))`;
+      } else if (name === 'sqrt') {
+        skip();
+        a = `Math.sqrt(${group()})`;
+      } else if (FUNCS[name]) a = `${FUNCS[name]}(${atom()})`;
+      else if (GREEK[name]) a = GREEK[name];
+      else throw new Error(`\\${name}`);
+    } else if (/[A-Za-z]/.test(c ?? '')) {
+      a = c === 'e' ? 'E' : c;
+      i++;
+    } else throw new Error(`símbolo ${c}`);
+    skip();
+    if (s[i] === '^') {
+      i++;
+      skip();
+      const e = s[i] === '{' ? group() : s[i++];
+      a = `(${a}**(${e}))`;
+    }
+    return a;
+  }
+  function expr(end) {
+    let js = '';
+    let prevAtom = false;
+    for (;;) {
+      skip();
+      if (i >= s.length || s[i] === end) return js;
+      if ('+-*/'.includes(s[i])) {
+        js += s[i++];
+        prevAtom = false;
+      } else {
+        js += (prevAtom ? '*' : '') + atom();
+        prevAtom = true;
+      }
     }
   }
-  if (!parts.length) return null;
-  parts.push(s.slice(start, -1));
-  return parts;
+  return expr(undefined) || '1';
 }
-function evalOption(tex) {
-  const s = toJs(tex);
-  const parts = splitTuple(s);
-  const run = (p) => new Function('PI', 'E', `return (${p})`)(Math.PI, Math.E);
-  return parts ? parts.map(run) : run(s);
+function evalTex(tex, env = {}) {
+  return new Function('PI', 'E', ...Object.keys(env), `return (${texToJs(tex)})`)(Math.PI, Math.E, ...Object.values(env));
 }
-// Expresiones simbólicas en x, y ("2x", "3y^2", "x^2"): multiplicación implícita
-function evalSym(tex, x, y) {
-  let s = tex.replace(/\$/g, '').replace(/\s+/g, '').replace(/\^(\d)/g, '**$1');
-  s = s.replace(/(\d|x|y|\))(?=x|y|\()/g, '$1*');
-  return new Function('x', 'y', `return (${s})`)(x, y);
-}
-const close = (a, b, tol = 1e-3) =>
-  Array.isArray(b) ? Array.isArray(a) && a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < tol) : !Array.isArray(a) && Math.abs(a - b) < tol * Math.max(1, Math.abs(b));
+const close = (a, b, tol = 2e-3) => Number.isFinite(a) && Math.abs(a - b) < tol * Math.max(1, Math.abs(b));
 
 // --- Herramientas numéricas independientes ---
-const fn = (expr) => new Function('x', 'y', `return (${expr})`);
-function simpson(f, a, b, n = 200) {
+const MATH = ['sin', 'cos', 'tan', 'sqrt', 'exp', 'log', 'abs', 'max', 'min', 'PI'];
+const withMath = (params, body) => new Function(...MATH, `return function (${params.join(',')}) { ${body} }`)(...MATH.map((k) => Math[k]));
+const fn = (vars, expr) => withMath(vars, `return (${expr});`);
+function simpson(f, a, b, n) {
   const h = (b - a) / n;
   let sum = f(a) + f(b);
   for (let i = 1; i < n; i++) sum += f(a + i * h) * (i % 2 ? 4 : 2);
   return (sum * h) / 3;
 }
-const H = 1e-4;
-const grad = (f, x, y) => [(f(x + H, y) - f(x - H, y)) / (2 * H), (f(x, y + H) - f(x, y - H)) / (2 * H)];
-const hessian = (f, x, y) => {
-  const h = 1e-3;
-  const fxx = (f(x + h, y) - 2 * f(x, y) + f(x - h, y)) / (h * h);
-  const fyy = (f(x, y + h) - 2 * f(x, y) + f(x, y - h)) / (h * h);
-  const fxy = (f(x + h, y + h) - f(x + h, y - h) - f(x - h, y + h) + f(x - h, y - h)) / (4 * h * h);
-  return { fxx, fyy, fxy, D: fxx * fyy - fxy * fxy };
-};
-// Puntos de la restricción (círculo, elipse o tramo de recta)
-function curvePoints({ tipo, r, a, b, x0, y0, dx, dy }, n = 40000) {
-  return Array.from({ length: n + 1 }, (_, i) => {
-    const t = i / n;
-    if (tipo === 'circ') return [r * Math.cos(2 * Math.PI * t), r * Math.sin(2 * Math.PI * t)];
-    if (tipo === 'elip') return [a * Math.cos(2 * Math.PI * t), b * Math.sin(2 * Math.PI * t)];
-    const s = -20 + 40 * t; // recta: x0 + s dx, y0 + s dy
-    return [x0 + s * dx, y0 + s * dy];
-  });
+// Determinante del jacobiano del mapa en un punto, por diferencias centrales
+function jacobian(v, point) {
+  const fs = v.map.map((e) => fn(v.vars, e));
+  const h = 1e-5;
+  const m = fs.map((f) => point.map((_, j) => {
+    const up = point.map((x, k) => (k === j ? x + h : x));
+    const down = point.map((x, k) => (k === j ? x - h : x));
+    return (f(...up) - f(...down)) / (2 * h);
+  }));
+  let det = m.length === 2
+    ? m[0][0] * m[1][1] - m[0][1] * m[1][0]
+    : m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  if (v.abs) det = Math.abs(det);
+  return v.inv ? 1 / det : det;
 }
-function optimum(v) {
-  const f = fn(v.f);
-  let best = null;
-  for (const [x, y] of curvePoints(v.curva)) {
-    const val = f(x, y);
-    if (!best || (v.modo === 'max' ? val > best.val : val < best.val)) best = { x, y, val };
+// Integral iterada tal como está escrita (variables de afuera hacia adentro)
+function iterated(v) {
+  const f = fn(v.vars, v.f);
+  const lims = v.lim.map((l, i) => l.map((e) => fn(v.vars.slice(0, i), String(e))));
+  const n = v.vars.length === 3 ? 40 : 200;
+  const rec = (i, args) => (i === v.vars.length ? f(...args) : simpson((t) => rec(i + 1, [...args, t]), lims[i][0](...args), lims[i][1](...args), n));
+  return rec(0, []);
+}
+// ∬ f dA en cartesianas: suma de puntos medios sobre la caja, solo donde se cumple la condición
+function cart2(v) {
+  const run = withMath(['x0', 'x1', 'y0', 'y1', 'n'], `
+    const hx = (x1 - x0) / n, hy = (y1 - y0) / n; let s = 0;
+    for (let i = 0; i < n; i++) { const x = x0 + (i + 0.5) * hx;
+      for (let j = 0; j < n; j++) { const y = y0 + (j + 0.5) * hy; if (${v.cond}) s += (${v.f}); } }
+    return s * hx * hy;`);
+  return run(...v.box, v.n ?? 1000);
+}
+// ∭ f dV en cartesianas, igual que cart2
+function cart3(v) {
+  const run = withMath(['x0', 'x1', 'y0', 'y1', 'z0', 'z1', 'n'], `
+    const hx = (x1 - x0) / n, hy = (y1 - y0) / n, hz = (z1 - z0) / n; let s = 0;
+    for (let i = 0; i < n; i++) { const x = x0 + (i + 0.5) * hx;
+      for (let j = 0; j < n; j++) { const y = y0 + (j + 0.5) * hy;
+        for (let k = 0; k < n; k++) { const z = z0 + (k + 0.5) * hz; if (${v.cond}) s += (${v.f}); } } }
+    return s * hx * hy * hz;`);
+  return run(...v.box, v.n ?? 110);
+}
+
+// Puntos de muestra para comparar expresiones (ángulos entre 0 y π/2: sen φ > 0)
+const SAMPLES = [[1.3, 0.7, 0.4], [0.6, 1.1, 0.9], [2.1, 0.5, 1.2]];
+const XYZ = [[0.8, 0.5, 0.6], [-0.4, 1.2, 0.9], [1.1, -0.7, 0.3]];
+const noDifferentials = (o) => o.replace(/d(\\theta|\\rho|\\phi|[zruvwAV])/g, '');
+const safe = (f) => {
+  try {
+    return f();
+  } catch {
+    return NaN;
   }
-  return best;
-}
-const int2 = (f, [a, b], [lo, hi], n = 200) => simpson((x) => simpson((y) => f(x, y), fn(lo)(x, 0), fn(hi)(x, 0), n), a, b, n);
-const int2y = (f, [c, d], [lo, hi], n = 200) => simpson((y) => simpson((x) => f(x, y), fn(lo)(0, y), fn(hi)(0, y), n), c, d, n);
-const KIND = (f, [x, y]) => {
-  const { fxx, D } = hessian(f, x, y);
-  assert.ok(Math.hypot(...grad(f, x, y)) < 1e-4, 'el punto es crítico');
-  return D < 0 ? 'silla' : fxx > 0 ? 'Mínimo' : 'Máximo';
 };
 
-// Valor real (número o tupla) del problema, o { contiene } si se verifica por texto,
-// o { prueba } si se revisa cada opción con un criterio
+// Resuelve el problema: devuelve { valor, tol } (número), { contiene } (se revisa el texto) o
+// { prueba } (criterio que debe cumplir la marcada y ningún distractor)
 function solve(v) {
-  const f = v.f ? fn(v.f) : null;
   switch (v.tipo) {
-    case 'valor': return v.valor;
-    case 'grad': return grad(f, ...v.p);
-    case 'parcial': return grad(f, ...v.p)[v.var === 'x' ? 0 : 1];
-    case 'dir': {
-      const [gx, gy] = grad(f, ...v.p);
-      return (gx * v.v[0] + gy * v.v[1]) / Math.hypot(...v.v);
+    case 'jac': {
+      if (v.p) return { valor: jacobian(v, v.p), tol: 2e-3 };
+      const env = (pt) => Object.fromEntries(v.vars.map((name, i) => [name, pt[i]]));
+      return { prueba: (o) => SAMPLES.every((pt) => close(safe(() => evalTex(v.dV ? noDifferentials(o) : o, env(pt))), jacobian(v, pt.slice(0, v.vars.length)), 1e-4)) };
     }
-    case 'maxdir': return Math.hypot(...grad(f, ...v.p));
-    case 'unitgrad': {
-      const g = grad(f, ...v.p);
-      const len = Math.hypot(...g);
-      return g.map((c) => c / len);
+    case 'areaimg': {
+      const [u0, u1, v0, v1] = v.box;
+      return { valor: simpson((u) => simpson((w) => Math.abs(jacobian(v, [u, w])), v0, v1, 10), u0, u1, 10), tol: 2e-3 };
     }
-    case 'gradsym': return { prueba: (o) => [[1, 2], [-1.5, 0.5], [3, -2]].every(([x, y]) => close(splitTuple(o.replace(/\$/g, '').replace(/\s+/g, '')).map((c) => evalSym(c, x, y)), grad(f, x, y), 1e-3)) };
-    case 'zerodir': {
-      const g = grad(f, ...v.p);
-      return { prueba: (o) => { const u = evalOption(o); return Math.abs(Math.hypot(...u) - 1) < 1e-6 && Math.abs(u[0] * g[0] + u[1] * g[1]) < 1e-4; } };
+    case 'sym': {
+      // La opción, en las coordenadas del otro sistema, debe valer lo mismo que f(x, y, z)
+      const f = fn(['x', 'y', 'z'], v.f);
+      return {
+        prueba: (o) => XYZ.every(([x, y, z]) => {
+          const rho = Math.hypot(x, y, z);
+          const env = { x, y, z, r: Math.hypot(x, y), theta: Math.atan2(y, x), rho, phi: Math.acos(z / rho) };
+          return close(safe(() => evalTex(o, env)), f(x, y, z), 1e-6);
+        }),
+      };
     }
-    case 'lag': return optimum(v).val;
-    case 'lagpunto': { const b = optimum(v); return [b.x, b.y]; }
-    case 'lambda': {
-      const b = optimum(v);
-      const gf = grad(f, b.x, b.y);
-      const gg = grad(fn(v.g), b.x, b.y);
-      return (gf[0] * gg[0] + gf[1] * gg[1]) / (gg[0] ** 2 + gg[1] ** 2);
-    }
-    case 'max2d': {
-      const cond = fn(v.cond);
-      let best = -Infinity;
-      const [lo, hi] = v.dom;
-      for (let x = lo + 0.01; x < hi; x += 0.01) for (let y = lo + 0.01; y < hi; y += 0.01) if (cond(x, y)) best = Math.max(best, f(x, y));
-      return best;
-    }
-    case 'int2': return int2(f, v.x, v.y, v.n);
-    case 'int2y': return int2y(f, v.y, v.x, v.n);
-    case 'polar': return simpson((t) => simpson((r) => f(r * Math.cos(t), r * Math.sin(t)) * r, fn(v.r[0])(0, 0), fn(v.r[1])(0, 0)), v.t[0], v.t[1]);
-    case 'orden': {
-      const g = fn(v.f);
-      const value = (w) => (w.tipo === 'int2' ? int2(g, w.x, w.y, 400) : int2y(g, w.y, w.x, 400));
-      assert.ok(close(value(v.original), value(v.cambiada), 5e-3), 'el cambio de orden da lo mismo');
+    case 'iter': return { valor: iterated(v), tol: 2e-3 };
+    case 'cart2': return { valor: cart2(v), tol: 1e-2 };
+    case 'cart3': return { valor: cart3(v), tol: 1e-2 };
+    case 'equiv': {
+      const a = solve(v.a).valor;
+      const b = solve(v.b).valor;
+      assert.ok(close(a, b, 1e-2), `los límites de la opción correcta dan ${a} y la región mide ${b}`);
       return { contiene: v.contiene };
-    }
-    case 'critico': return { prueba: (o) => { const p = evalOption(o); return Math.hypot(...grad(f, ...p)) < 1e-4; } };
-    case 'clasif': return { contiene: KIND(f, v.p) };
-    case 'D': return hessian(f, ...v.p).D;
-    case 'valcrit': {
-      assert.ok(Math.hypot(...grad(f, ...v.p)) < 1e-4, 'el punto es crítico');
-      return f(...v.p);
     }
     case 'concepto': return { contiene: v.contiene };
     default: throw new Error(`tipo ${v.tipo}`);
   }
 }
 
+// La marcada debe ser la solución y ningún distractor puede serlo
+function checkAnswer(q, label = q.id) {
+  assert.ok(q.verifica, `${label}: sin verificación`);
+  const truth = solve(q.verifica);
+  const marked = q.opciones[q.correcta];
+  const others = q.opciones.filter((_, i) => i !== q.correcta);
+  if (truth.contiene) {
+    assert.ok(marked.includes(truth.contiene), `${label}: se esperaba «${truth.contiene}» en ${marked}`);
+    for (const o of others) assert.ok(!o.includes(truth.contiene), `${label}: el distractor ${o} también dice «${truth.contiene}»`);
+  } else if (truth.prueba) {
+    assert.ok(truth.prueba(marked), `${label}: la marcada ${marked} no cumple`);
+    for (const o of others) assert.ok(!truth.prueba(o), `${label}: el distractor ${o} también cumple`);
+  } else {
+    const value = safe(() => evalTex(marked));
+    assert.ok(close(value, truth.valor, truth.tol), `${label}: marcada ${marked} = ${value}, real ${truth.valor}`);
+    // Un distractor a menos del 3 % de la respuesta sería injusto (y no se distinguiría de la cuadrícula)
+    for (const o of others) assert.ok(!close(safe(() => evalTex(o)), truth.valor, 3e-2), `${label}: el distractor ${o} también es correcto`);
+  }
+}
+
 function renders(tex) {
   for (const [, math] of tex.matchAll(/\$([^$]+)\$/g)) katex.renderToString(math, { throwOnError: true });
 }
+const seeded = (s) => {
+  let seed = s;
+  return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+};
 
-test('banco: solo los 4 temas, ≥ 25 por tema (7/7/6/5) y opciones suficientes por dificultad', () => {
-  assert.deepEqual(Object.keys(TOPICS).sort(), ['derivadas_direccionales', 'integrales_dobles', 'lagrange', 'maximos_minimos']);
+test('el evaluador de LaTeX entiende las formas exactas del banco', () => {
+  assert.ok(close(evalTex('$\\frac{8\\pi}{3}(2 - \\sqrt{2})$'), (8 * Math.PI / 3) * (2 - Math.SQRT2), 1e-9));
+  assert.ok(close(evalTex('$\\pi(1 - e^{-4})$'), Math.PI * (1 - Math.exp(-4)), 1e-9));
+  assert.ok(close(evalTex('$3\\ln 2$'), 3 * Math.log(2), 1e-9));
+  assert.ok(close(evalTex('$-\\frac{1}{2}$'), -0.5, 1e-9));
+  assert.ok(close(evalTex('$\\rho^2\\sin\\phi$', { rho: 2, phi: 0.5 }), 4 * Math.sin(0.5), 1e-9));
+  assert.ok(close(evalTex('$4(u^2 + v^2)$', { u: 2, v: 3 }), 52, 1e-9));
+});
+
+test('banco: solo los 4 temas nuevos, 25 por tema (7/7/6/5) y opciones 2/2/3/3 por dificultad', () => {
+  assert.deepEqual(Object.keys(TOPICS).sort(), SLUGS);
   const ids = new Set();
   for (const q of BANK) {
     assert.ok(!ids.has(q.id), `id repetido ${q.id}`);
@@ -173,146 +246,57 @@ test('banco: solo los 4 temas, ≥ 25 por tema (7/7/6/5) y opciones suficientes 
     assert.ok(q.explicacion.length > 10, q.id);
     for (const t of [q.enunciado, ...q.opciones, q.explicacion]) renders(t);
   }
-  for (const tema of Object.keys(TOPICS)) {
+  assert.deepEqual([1, 2, 3, 4].map(optionCount), [2, 2, 3, 3]);
+  for (const tema of SLUGS) {
     const list = BANK.filter((q) => q.tema === tema);
-    assert.ok(list.length >= 25, `${tema}: ${list.length}`);
-    for (const [d, min] of [[1, 7], [2, 7], [3, 6], [4, 5]]) assert.ok(list.filter((q) => q.dificultad === d).length >= min, `${tema} dificultad ${d}`);
+    assert.equal(list.length, 25, `${tema}: ${list.length}`);
+    assert.deepEqual([1, 2, 3, 4].map((d) => list.filter((q) => q.dificultad === d).length), [7, 7, 6, 5], tema);
     assert.equal(GENERATORS.filter((g) => g.tema === tema).length, 2, `${tema}: 2 generadores`);
+    assert.ok(QUICK_GENERATORS.some((g) => g.tema === tema), `${tema}: sin pregunta rápida`);
   }
 });
 
-test('cada respuesta del banco está bien calculada y ningún distractor también lo está', () => {
-  for (const q of BANK) {
-    assert.ok(q.verifica, `${q.id}: sin verificación`);
-    const truth = solve(q.verifica);
-    const marked = q.opciones[q.correcta];
-    const others = q.opciones.filter((_, i) => i !== q.correcta);
-    if (truth?.contiene) {
-      assert.ok(marked.includes(truth.contiene), `${q.id}: se esperaba «${truth.contiene}» en ${marked}`);
-      for (const o of others) assert.ok(!o.includes(truth.contiene), `${q.id}: el distractor ${o} también dice «${truth.contiene}»`);
-    } else if (truth?.prueba) {
-      assert.ok(truth.prueba(marked), `${q.id}: la marcada ${marked} no cumple`);
-      for (const o of others) assert.ok(!truth.prueba(o), `${q.id}: el distractor ${o} también cumple`);
-    } else {
-      let value;
-      try {
-        value = evalOption(marked);
-      } catch (e) {
-        assert.fail(`${q.id}: no se pudo evaluar ${marked} (${e.message})`);
-      }
-      assert.ok(close(value, truth, 2e-3), `${q.id}: marcada ${marked} = ${value}, real ${truth}`);
-      for (const o of others) {
-        let v;
-        try {
-          v = evalOption(o);
-        } catch {
-          continue;
-        }
-        assert.ok(!close(v, truth, 2e-3), `${q.id}: el distractor ${o} también es correcto`);
-      }
-    }
-  }
+test('cada respuesta del banco se resuelve aparte: la marcada es la correcta y ningún distractor lo es', () => {
+  for (const q of BANK) checkAnswer(q);
 });
-
-// Valor independiente de cada generador a partir de sus parámetros
-const GEN_CHECK = {
-  'gradiente-punto': (q) => {
-    const [, a, b, x, y] = q.enunciado.match(/= (\d*)x\^2 y \+ (\d*)y\^3\$.*\((-?\d+), (-?\d+)\)/).map((v) => (v === '' ? 1 : Number(v)));
-    return grad((px, py) => a * px * px * py + b * py ** 3, x, y);
-  },
-  'derivada-direccional': (q) => {
-    const [, a, b, x, y, vx, vy] = q.enunciado.match(/= (\d*)x\^2 \+ (\d*)y\^2\$ en \$\((-?\d+), (-?\d+)\)\$.*\((-?\d+), (-?\d+)\)/).map((v) => (v === '' ? 1 : Number(v)));
-    const [gx, gy] = grad((px, py) => a * px * px + b * py * py, x, y);
-    return (gx * vx + gy * vy) / Math.hypot(vx, vy);
-  },
-  'lagrange-lineal': (q) => {
-    const [, a, b, r2] = q.enunciado.match(/= (\d*)x \+ (\d*)y\$ sobre \$x\^2 \+ y\^2 = (\d+)/).map((v) => (v === '' ? 1 : Number(v)));
-    return optimum({ f: `${a}*x+${b}*y`, curva: { tipo: 'circ', r: Math.sqrt(r2) }, modo: 'max' }).val;
-  },
-  'lagrange-recta': (q) => {
-    const [, a, b, c] = q.enunciado.match(/\$(\d*)x \+ (\d*)y = (\d+)\$/).map((v) => (v === '' ? 1 : Number(v)));
-    // Recta a x + b y = c: punto (0, c/b) y dirección (b, −a)
-    return optimum({ f: 'x*x+y*y', curva: { tipo: 'recta', x0: 0, y0: c / b, dx: b, dy: -a }, modo: 'min' }).val;
-  },
-  'integral-doble-rect': (q) => {
-    const [, p, qq, a, b] = q.enunciado.match(/\\int_0\^\{(\d+)\} \\int_0\^\{(\d+)\} \((\d*)x \+ (\d*)y\)/).map((v) => (v === '' ? 1 : Number(v)));
-    return int2((x, y) => a * x + b * y, [0, p], ['0', String(qq)]);
-  },
-  'integral-tipo-i': (q) => {
-    const [, a, m, c] = q.enunciado.match(/\\int_0\^\{(\d+)\} \\int_0\^\{(\d*)x\} (\d+)/).map((v) => (v === '' ? 1 : Number(v)));
-    return int2(() => c, [0, a], ['0', `${m}*x`]);
-  },
-  'punto-critico': (q) => {
-    const { a, h, c, k } = q.f;
-    const f = (x, y) => a * x * x - 2 * a * h * x + c * y * y - 2 * c * k * y;
-    return { prueba: (o) => Math.hypot(...grad(f, ...evalOption(o))) < 1e-4 };
-  },
-  clasificar: (q) => {
-    const { a, b, c } = q.f;
-    return { contiene: KIND((x, y) => a * x * x + b * x * y + c * y * y, [0, 0]) };
-  },
-};
-
-function checkGenerated(g, q, n) {
-  assert.equal(q.opciones.length, n, `${g.name}: ${q.opciones}`);
-  assert.equal(new Set(q.opciones).size, n, `${g.name}: opciones repetidas ${q.opciones}`);
-  for (const t of [q.enunciado, ...q.opciones, q.explicacion]) renders(t);
-  const truth = GEN_CHECK[g.name]?.(q);
-  const marked = q.opciones[q.correcta];
-  if (truth?.contiene) assert.ok(marked.includes(truth.contiene), `${g.name}: ${marked}`);
-  else if (truth?.prueba) {
-    assert.ok(truth.prueba(marked), `${g.name}: ${marked}`);
-    for (const o of q.opciones.filter((x) => x !== marked)) assert.ok(!truth.prueba(o), `${g.name}: distractor ${o}`);
-  } else if (truth !== undefined) assert.ok(close(evalOption(marked), truth, 2e-3), `${g.name}: ${marked} ≠ ${truth}`);
-  if (typeof q.valor !== 'string') assert.ok(close(evalOption(marked), q.valor, 1e-9), `${g.name}: ${marked} ≠ ${q.valor}`);
-}
 
 test('cada generador, con 50 semillas: opciones según dificultad, KaTeX válido y la correcta bien calculada', () => {
   for (const g of GENERATORS) {
-    assert.ok(GEN_CHECK[g.name], `${g.name}: sin verificación independiente`);
+    const n = optionCount(g.dificultad);
+    const ids = new Set();
     for (let s = 1; s <= 50; s++) {
-      let seed = s * 7919;
-      const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-      checkGenerated(g, g.generar(rand, optionCount(g.dificultad)), optionCount(g.dificultad));
+      const q = g.generar(seeded(s * 7919), n);
+      ids.add(q.id);
+      assert.equal(q.tema, g.tema);
+      assert.equal(q.opciones.length, n, `${g.name}: ${q.opciones}`);
+      assert.equal(new Set(q.opciones).size, n, `${g.name}: opciones repetidas ${q.opciones}`);
+      for (const t of [q.enunciado, ...q.opciones, q.explicacion]) renders(t);
+      checkAnswer(q, `${g.name} (${q.enunciado})`);
     }
+    assert.ok(ids.size >= 4, `${g.name}: los parámetros casi no cambian`);
   }
 });
 
 test('preguntas rápidas (balas y reanimación): dificultad 1, 2 opciones, de los temas de la sala y bien calculadas', () => {
-  const check = {
-    'parcial-rapida': (q) => {
-      const [, a, b, x, y] = q.enunciado.match(/f = (\d*)x\^2 y \+ (\d*)y\$ en \$\((\d+), (\d+)\)/).map((v) => (v === '' ? 1 : Number(v)));
-      return grad((px, py) => a * px * px * py + b * py, x, y)[0];
-    },
-    'componente-gradiente': (q) => {
-      const [, x, y, a, b] = q.enunciado.match(/\\nabla f\((\d+), (-?\d+)\)\$ para \$f = (\d*)x \+ (\d*)y\^2/).map((v) => (v === '' ? 1 : Number(v)));
-      return grad((px, py) => a * px + b * py * py, x, y)[1];
-    },
-    'integral-constante': (q) => {
-      const [, c, p, qq] = q.enunciado.match(/\\iint_R (\d+)\\,dA\$ con \$R = \[0, (\d+)\] \\times \[0, (\d+)\]/).map(Number);
-      return int2(() => c, [0, p], ['0', String(qq)]);
-    },
-    'critico-rapido': (q) => q.valor,
-  };
   for (const g of QUICK_GENERATORS) {
     for (let s = 1; s <= 50; s++) {
-      let seed = s * 104729;
-      const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-      const q = g.generar(rand, 2);
+      const q = g.generar(seeded(s * 104729), 2);
       assert.equal(q.dificultad, 1);
       assert.ok(TOPICS[q.tema], q.tema);
       assert.equal(new Set(q.opciones).size, 2, `${g.name}: ${q.opciones}`);
       for (const t of [q.enunciado, ...q.opciones, q.explicacion]) renders(t);
-      assert.ok(close(evalOption(q.opciones[q.correcta]), check[g.name](q), 2e-3), `${g.name}: ${q.opciones[q.correcta]}`);
+      checkAnswer(q, `${g.name} (${q.enunciado})`);
     }
   }
-  // Con un solo tema en la sala, la rápida es de ese tema
-  for (let i = 0; i < 20; i++) assert.equal(drawQuickQuestion(Math.random, false, ['lagrange', 'integrales_dobles']).tema, 'integrales_dobles');
-  assert.equal(drawQuickQuestion(Math.random, false, ['maximos_minimos']).opciones.length, 2);
+  // Con un solo tema válido en la sala, la rápida es de ese tema; un tema viejo ya no cuenta
+  for (let i = 0; i < 20; i++) assert.equal(drawQuickQuestion(Math.random, false, ['lagrange', 'volumen']).tema, 'volumen');
+  assert.equal(drawQuickQuestion(Math.random, false, ['jacobiano']).opciones.length, 2);
+  // Modo fácil: aritmética, también en las rápidas
+  assert.equal(drawQuickQuestion(Math.random, true, ['jacobiano']).tema, 'facil');
 });
 
 test('drawQuestion respeta los temas, la dificultad y el número de opciones, y baraja por jugador', () => {
-  for (const tema of Object.keys(TOPICS)) {
+  for (const tema of SLUGS) {
     for (const d of [1, 2, 3, 4]) {
       const q = drawQuestion({ topics: [tema], difficulty: d });
       assert.equal(q.tema, tema);
@@ -320,10 +304,11 @@ test('drawQuestion respeta los temas, la dificultad y el número de opciones, y 
       assert.equal(q.opciones.length, optionCount(d), `${tema} d${d}`);
     }
   }
-  // Sin dificultad 5: usa la más cercana (4)
-  assert.equal(drawQuestion({ topics: ['lagrange'], difficulty: 5 }).dificultad, 4);
+  // Sin dificultad 5: usa la más cercana (4). Modo fácil: aritmética con las mismas opciones
+  assert.equal(drawQuestion({ topics: ['volumen'], difficulty: 5 }).dificultad, 4);
+  assert.equal(drawQuestion({ topics: ['volumen'], difficulty: 3, easy: true }).tema, 'facil');
   const positions = new Set();
-  const base = BANK.find((x) => x.id === 'id-08');
+  const base = BANK.find((x) => x.id === 'vo-08');
   for (let i = 0; i < 40; i++) positions.add(shuffleOptions(base).correcta);
   assert.ok(positions.size > 1, 'la correcta cambia de lugar');
   const shuffled = shuffleOptions(base);
@@ -334,7 +319,7 @@ test('no repite preguntas del banco al mismo jugador mientras haya otras', () =>
   const seen = new Set();
   const ids = [];
   for (let i = 0; i < 12; i++) {
-    const q = drawQuestion({ topics: ['maximos_minimos'], difficulty: 4, seen });
+    const q = drawQuestion({ topics: ['volumen'], difficulty: 4, seen });
     if (!q.id.startsWith('gen-')) ids.push(q.id);
   }
   assert.equal(new Set(ids).size, ids.length);

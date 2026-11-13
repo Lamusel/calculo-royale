@@ -179,14 +179,14 @@ export const DUMMY_HP = 200;
 export const DUMMY_REGEN_MS = 2000;
 
 // --- Cajas de suministro y preguntas ---
-// Temas del banco (slug → nombre). Provisionales hasta tener los temas del corte 3.
-// Temas reales del corte 3 (fase 28). El gradiente va dentro de derivadas direccionales; el cambio
-// de orden de integración y las polares sencillas, dentro de integrales dobles.
+// Temas del banco (slug → nombre). Tanda 8: el juego trata solo de integrales con cambio de variables
+// (jacobiano) y volumen. Los 4 temas del corte 3 (derivadas direccionales, Lagrange, integrales dobles,
+// máximos y mínimos) salieron de la rotación; su banco y generadores quedan en el historial de git.
 export const TOPICS = {
-  derivadas_direccionales: 'Derivadas direccionales',
-  lagrange: 'Multiplicadores de Lagrange',
-  integrales_dobles: 'Integrales dobles',
-  maximos_minimos: 'Máximos y mínimos',
+  jacobiano: 'Jacobiano de transformaciones',
+  'cambio-variables-dobles': 'Dobles con cambio de variables',
+  'triples-cilindricas-esfericas': 'Triples: cilíndricas y esféricas',
+  volumen: 'Volumen',
 };
 
 // Nombres de todos los temas que pueden aparecer en las estadísticas (los elegibles + el de las balas)

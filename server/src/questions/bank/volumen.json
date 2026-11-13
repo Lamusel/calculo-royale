@@ -1,0 +1,611 @@
+[
+  {
+    "id": "vo-01",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "Volumen del cilindro $x^2 + y^2 \\le 9$, $0 \\le z \\le 2$",
+    "opciones": [
+      "$18\\pi$",
+      "$12\\pi$",
+      "$6\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^3\\!\\int_0^2 r\\,dz\\,dr\\,d\\theta = 2\\pi \\cdot \\frac92 \\cdot 2 = 18\\pi$. Es $\\pi R^2 h$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2",
+      "cond": "(x*x+y*y)<=9",
+      "box": [
+        -3,
+        3,
+        -3,
+        3
+      ]
+    }
+  },
+  {
+    "id": "vo-02",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "Volumen bajo $z = 3$ sobre el rectángulo $[0, 2] \\times [0, 4]$",
+    "opciones": [
+      "$24$",
+      "$8$",
+      "$12$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\iint_R 3\\,dA = 3 \\cdot \\text{área} = 3 \\cdot 8 = 24$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "3",
+      "cond": "true",
+      "box": [
+        0,
+        2,
+        0,
+        4
+      ]
+    }
+  },
+  {
+    "id": "vo-03",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "Si $f \\ge 0$, el volumen bajo $z = f(x, y)$ sobre la región $R$ es",
+    "opciones": [
+      "$\\iint_R f\\,dA$",
+      "$\\iint_R 1\\,dA$",
+      "$\\iint_R f^2\\,dA$"
+    ],
+    "correcta": 0,
+    "explicacion": "Se suma altura por área de la base: $\\iint_R f\\,dA$. Con $1$ en vez de $f$ sale el área de $R$.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "\\iint_R f\\,dA"
+    }
+  },
+  {
+    "id": "vo-04",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "Volumen de la esfera de radio $1$",
+    "opciones": [
+      "$\\frac{4\\pi}{3}$",
+      "$4\\pi$",
+      "$\\frac{2\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^1 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta = 2\\pi \\cdot 2 \\cdot \\frac13 = \\frac{4\\pi}{3}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2*sqrt(max(0,1-(x*x+y*y)))",
+      "cond": "(x*x+y*y)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-05",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "Volumen bajo $z = x + y$ sobre $[0, 1] \\times [0, 1]$",
+    "opciones": [
+      "$1$",
+      "$2$",
+      "$\\frac{1}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^1\\!\\int_0^1 (x + y)\\,dy\\,dx = \\int_0^1 \\left(x + \\frac12\\right)dx = 1$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "x+y",
+      "cond": "true",
+      "box": [
+        0,
+        1,
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-06",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "Volumen del cono de radio $3$ y altura $1$",
+    "opciones": [
+      "$3\\pi$",
+      "$9\\pi$",
+      "$\\frac{9\\pi}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$V = \\frac13\\pi R^2 h = \\frac13 \\cdot \\pi \\cdot 9 \\cdot 1 = 3\\pi$. El cilindro que lo contiene mide $9\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "1-sqrt((x*x+y*y))/3",
+      "cond": "(x*x+y*y)<=9",
+      "box": [
+        -3,
+        3,
+        -3,
+        3
+      ]
+    }
+  },
+  {
+    "id": "vo-07",
+    "tema": "volumen",
+    "dificultad": 1,
+    "enunciado": "$\\displaystyle\\int_0^{2\\pi}\\!\\int_0^3\\!\\int_0^1 r\\,dz\\,dr\\,d\\theta$ (volumen de un cilindro)",
+    "opciones": [
+      "$9\\pi$",
+      "$6\\pi$",
+      "$3\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^1 dz = 1$ y $\\int_0^3 r\\,dr = \\frac92$. $2\\pi \\cdot \\frac92 = 9\\pi$.",
+    "verifica": {
+      "tipo": "iter",
+      "f": "r",
+      "vars": [
+        "theta",
+        "r",
+        "z"
+      ],
+      "lim": [
+        [
+          0,
+          "2*PI"
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          1
+        ]
+      ]
+    }
+  },
+  {
+    "id": "vo-08",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen bajo $z = 4 - x^2 - y^2$ y sobre el plano $xy$",
+    "opciones": [
+      "$8\\pi$",
+      "$\\frac{32\\pi}{3}$",
+      "$16\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "La base es el disco $r \\le 2$: $\\int_0^{2\\pi}\\!\\int_0^2 (4 - r^2)\\,r\\,dr\\,d\\theta$. $\\int_0^2 (4r - r^3)\\,dr = 4$, por $2\\pi$: $8\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "4-(x*x+y*y)",
+      "cond": "(x*x+y*y)<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-09",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen bajo $z = x^2 + y^2$ sobre el disco $x^2 + y^2 \\le 1$",
+    "opciones": [
+      "$\\frac{\\pi}{2}$",
+      "$\\frac{2\\pi}{3}$",
+      "$\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^1 r^2 \\cdot r\\,dr\\,d\\theta = 2\\pi \\cdot \\frac14 = \\frac{\\pi}{2}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "(x*x+y*y)",
+      "cond": "(x*x+y*y)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-10",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen de la semiesfera de radio $3$",
+    "opciones": [
+      "$18\\pi$",
+      "$36\\pi$",
+      "$9\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi/2}\\!\\int_0^3 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta = 2\\pi \\cdot 1 \\cdot 9 = 18\\pi$. La esfera completa mide $36\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "sqrt(max(0,9-(x*x+y*y)))",
+      "cond": "(x*x+y*y)<=9",
+      "box": [
+        -3,
+        3,
+        -3,
+        3
+      ]
+    }
+  },
+  {
+    "id": "vo-11",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen bajo $z = xy$ sobre $[0, 2] \\times [0, 2]$",
+    "opciones": [
+      "$4$",
+      "$2$",
+      "$8$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^2 x\\,dx \\cdot \\int_0^2 y\\,dy = 2 \\cdot 2 = 4$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "x*y",
+      "cond": "true",
+      "box": [
+        0,
+        2,
+        0,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-12",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen del sólido $x^2 + y^2 \\le 1$, $0 \\le z \\le 2 - x^2 - y^2$",
+    "opciones": [
+      "$\\frac{3\\pi}{2}$",
+      "$\\frac{10\\pi}{3}$",
+      "$3\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^1 (2 - r^2)\\,r\\,dr\\,d\\theta$. $\\int_0^1 (2r - r^3)\\,dr = \\frac34$, por $2\\pi$: $\\frac{3\\pi}{2}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2-(x*x+y*y)",
+      "cond": "(x*x+y*y)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-13",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen bajo el plano $z = 6 - 2x - 3y$ en el primer octante",
+    "opciones": [
+      "$6$",
+      "$18$",
+      "$36$"
+    ],
+    "correcta": 0,
+    "explicacion": "Es un tetraedro que corta los ejes en $3$, $2$ y $6$. $V = \\frac16 \\cdot 3 \\cdot 2 \\cdot 6 = 6$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "max(0,6-2*x-3*y)",
+      "cond": "true",
+      "box": [
+        0,
+        3,
+        0,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-14",
+    "tema": "volumen",
+    "dificultad": 2,
+    "enunciado": "Volumen bajo $z = \\sqrt{x^2 + y^2}$ sobre el disco $x^2 + y^2 \\le 9$",
+    "opciones": [
+      "$18\\pi$",
+      "$9\\pi$",
+      "$27\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^3 r \\cdot r\\,dr\\,d\\theta = 2\\pi \\cdot 9 = 18\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "sqrt((x*x+y*y))",
+      "cond": "(x*x+y*y)<=9",
+      "box": [
+        -3,
+        3,
+        -3,
+        3
+      ]
+    }
+  },
+  {
+    "id": "vo-15",
+    "tema": "volumen",
+    "dificultad": 3,
+    "enunciado": "Volumen entre el paraboloide $z = x^2 + y^2$ y el plano $z = 9$",
+    "opciones": [
+      "$\\frac{81\\pi}{2}$",
+      "$36\\pi$",
+      "$81\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "Se cortan en $r = 3$: $\\int_0^{2\\pi}\\!\\int_0^3 (9 - r^2)\\,r\\,dr\\,d\\theta$. $\\int_0^3 (9r - r^3)\\,dr = \\frac{81}{4}$, por $2\\pi$: $\\frac{81\\pi}{2}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "9-(x*x+y*y)",
+      "cond": "(x*x+y*y)<=9",
+      "box": [
+        -3,
+        3,
+        -3,
+        3
+      ]
+    }
+  },
+  {
+    "id": "vo-16",
+    "tema": "volumen",
+    "dificultad": 3,
+    "enunciado": "Volumen dentro de la esfera $\\rho = 2$ y sobre el cono $\\phi = \\frac{\\pi}{4}$",
+    "opciones": [
+      "$\\frac{8\\pi}{3}(2 - \\sqrt{2})$",
+      "$2\\pi(2 - \\sqrt{2})$",
+      "$\\frac{16\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi/4}\\!\\int_0^2 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot \\left(1 - \\frac{\\sqrt2}{2}\\right) \\cdot \\frac83 = \\frac{8\\pi}{3}(2 - \\sqrt2)$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "sqrt(max(0,4-(x*x+y*y)))-sqrt((x*x+y*y))",
+      "cond": "(x*x+y*y)<=2",
+      "box": [
+        -1.42,
+        1.42,
+        -1.42,
+        1.42
+      ]
+    }
+  },
+  {
+    "id": "vo-17",
+    "tema": "volumen",
+    "dificultad": 3,
+    "enunciado": "Volumen entre $z = x^2 + y^2$ y $z = 2 - x^2 - y^2$",
+    "opciones": [
+      "$\\pi$",
+      "$\\frac{8\\pi}{3}$",
+      "$2\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "Se cortan en $r = 1$: $\\int_0^{2\\pi}\\!\\int_0^1 (2 - 2r^2)\\,r\\,dr\\,d\\theta$. $\\int_0^1 (2r - 2r^3)\\,dr = \\frac12$, por $2\\pi$: $\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2-2*((x*x+y*y))",
+      "cond": "(x*x+y*y)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-18",
+    "tema": "volumen",
+    "dificultad": 3,
+    "enunciado": "Volumen del sólido $x^2 + y^2 \\le 4$ entre $z = 0$ y $z = y + 2$",
+    "opciones": [
+      "$8\\pi$",
+      "$4\\pi$",
+      "$16\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\iint_D (y + 2)\\,dA$. Por simetría $\\iint_D y\\,dA = 0$ y queda $2 \\cdot \\text{área} = 2 \\cdot 4\\pi = 8\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "y+2",
+      "cond": "(x*x+y*y)<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-19",
+    "tema": "volumen",
+    "dificultad": 3,
+    "enunciado": "Volumen dentro del cilindro $x^2 + y^2 = 1$ y de la esfera $x^2 + y^2 + z^2 = 4$",
+    "opciones": [
+      "$\\frac{4\\pi}{3}(8 - 3\\sqrt{3})$",
+      "$\\frac{2\\pi}{3}(8 - 3\\sqrt{3})$",
+      "$\\frac{32\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^1 2\\sqrt{4 - r^2}\\,r\\,dr\\,d\\theta$. $\\int_0^1 r\\sqrt{4 - r^2}\\,dr = \\frac{8 - 3\\sqrt3}{3}$, por $4\\pi$: $\\frac{4\\pi}{3}(8 - 3\\sqrt3)$. No olvides la mitad de abajo.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2*sqrt(4-(x*x+y*y))",
+      "cond": "(x*x+y*y)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-20",
+    "tema": "volumen",
+    "dificultad": 3,
+    "enunciado": "Volumen del cono sólido $\\sqrt{x^2 + y^2} \\le z \\le 2$",
+    "opciones": [
+      "$\\frac{8\\pi}{3}$",
+      "$4\\pi$",
+      "$8\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^2 (2 - r)\\,r\\,dr\\,d\\theta$. $\\int_0^2 (2r - r^2)\\,dr = \\frac43$, por $2\\pi$: $\\frac{8\\pi}{3}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2-sqrt((x*x+y*y))",
+      "cond": "(x*x+y*y)<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-21",
+    "tema": "volumen",
+    "dificultad": 4,
+    "enunciado": "Volumen del sólido limitado por $z = x^2 + y^2$ y $z = 2x$",
+    "opciones": [
+      "$\\frac{\\pi}{2}$",
+      "$\\pi$",
+      "$2\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "Se cortan sobre $(x - 1)^2 + y^2 = 1$. Con el centro en $(1, 0)$: $\\int_0^{2\\pi}\\!\\int_0^1 (1 - r^2)\\,r\\,dr\\,d\\theta = 2\\pi \\cdot \\frac14 = \\frac{\\pi}{2}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "2*x-(x*x+y*y)",
+      "cond": "(x-1)**2+y*y<=1",
+      "box": [
+        0,
+        2,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "vo-22",
+    "tema": "volumen",
+    "dificultad": 4,
+    "enunciado": "Volumen del casquete de la esfera $x^2 + y^2 + z^2 \\le 4$ sobre el plano $z = 1$",
+    "opciones": [
+      "$\\frac{5\\pi}{3}$",
+      "$3\\pi$",
+      "$\\frac{16\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "Por discos de radio $\\sqrt{4 - z^2}$: $\\int_1^2 \\pi(4 - z^2)\\,dz = \\pi\\left(4 - \\frac73\\right) = \\frac{5\\pi}{3}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "sqrt(max(0,4-(x*x+y*y)))-1",
+      "cond": "(x*x+y*y)<=3",
+      "box": [
+        -1.74,
+        1.74,
+        -1.74,
+        1.74
+      ]
+    }
+  },
+  {
+    "id": "vo-23",
+    "tema": "volumen",
+    "dificultad": 4,
+    "enunciado": "Volumen entre las esferas $\\rho = 1$ y $\\rho = 2$, sobre el cono $\\phi = \\frac{\\pi}{3}$",
+    "opciones": [
+      "$\\frac{7\\pi}{3}$",
+      "$\\frac{3\\pi}{2}$",
+      "$\\frac{14\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi/3}\\!\\int_1^2 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot \\left(1 - \\frac12\\right) \\cdot \\frac73 = \\frac{7\\pi}{3}$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "1",
+      "cond": "(x*x+y*y+z*z)>=1 && (x*x+y*y+z*z)<=4 && z>=0.5*sqrt((x*x+y*y+z*z))",
+      "box": [
+        -2,
+        2,
+        -2,
+        2,
+        0,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-24",
+    "tema": "volumen",
+    "dificultad": 4,
+    "enunciado": "Volumen bajo $z = x^2 + y^2$ sobre el anillo $1 \\le x^2 + y^2 \\le 4$",
+    "opciones": [
+      "$\\frac{15\\pi}{2}$",
+      "$\\frac{14\\pi}{3}$",
+      "$15\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_1^2 r^2 \\cdot r\\,dr\\,d\\theta$. $\\int_1^2 r^3\\,dr = \\frac{15}{4}$, por $2\\pi$: $\\frac{15\\pi}{2}$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "(x*x+y*y)",
+      "cond": "(x*x+y*y)>=1 && (x*x+y*y)<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "vo-25",
+    "tema": "volumen",
+    "dificultad": 4,
+    "enunciado": "Volumen dentro de la esfera $x^2 + y^2 + z^2 = 4z$ y sobre el cono $z = \\sqrt{x^2 + y^2}$",
+    "opciones": [
+      "$8\\pi$",
+      "$\\frac{32\\pi}{3}$",
+      "$\\frac{16\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "La esfera es $\\rho = 4\\cos\\phi$ y el cono $\\phi = \\frac{\\pi}{4}$. $\\int_0^{2\\pi}\\!\\int_0^{\\pi/4}\\!\\int_0^{4\\cos\\phi} \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta = 2\\pi \\cdot \\frac{64}{3} \\cdot \\frac{3}{16} = 8\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "1",
+      "cond": "(x*x+y*y+z*z)<=4*z && z>=sqrt((x*x+y*y))",
+      "box": [
+        -2,
+        2,
+        -2,
+        2,
+        0,
+        4
+      ]
+    }
+  }
+]

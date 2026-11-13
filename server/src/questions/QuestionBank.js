@@ -3,14 +3,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { optionCount, TOPICS } from '@calculo-royale/shared/constants';
 import aritmetica from './basic/aritmetica.js';
-import clasificar from './generators/clasificar.js';
-import derivadaDireccional from './generators/derivadaDireccional.js';
-import gradientePunto from './generators/gradientePunto.js';
-import integralDobleRect from './generators/integralDobleRect.js';
-import integralTipoI from './generators/integralTipoI.js';
-import lagrangeLineal from './generators/lagrangeLineal.js';
-import lagrangeRecta from './generators/lagrangeRecta.js';
-import puntoCritico from './generators/puntoCritico.js';
+import dobleLineal from './generators/dobleLineal.js';
+import doblePolarAnillo from './generators/doblePolarAnillo.js';
+import jacobianoArea from './generators/jacobianoArea.js';
+import jacobianoLineal from './generators/jacobianoLineal.js';
+import tripleCilindroMasa from './generators/tripleCilindroMasa.js';
+import tripleEsfera from './generators/tripleEsfera.js';
+import volumenParaboloide from './generators/volumenParaboloide.js';
+import volumenSolido from './generators/volumenSolido.js';
 import { QUICK } from './quick/rapidas.js';
 
 // Banco de preguntas: JSON por tema (bank/) más generadores paramétricos (generators/).
@@ -23,11 +23,11 @@ export const BANK = readdirSync(BANK_DIR)
   .flatMap((f) => JSON.parse(readFileSync(join(BANK_DIR, f), 'utf8')));
 
 // Dos generadores paramétricos por tema
-export const GENERATORS = [gradientePunto, derivadaDireccional, lagrangeLineal, lagrangeRecta, integralDobleRect, integralTipoI, puntoCritico, clasificar];
+export const GENERATORS = [jacobianoLineal, jacobianoArea, doblePolarAnillo, dobleLineal, tripleCilindroMasa, tripleEsfera, volumenParaboloide, volumenSolido];
 
 export const ALL_TOPICS = Object.keys(TOPICS);
 
-// Preguntas rápidas de dificultad 1 de los temas del corte ("Obtener balas" y reanimación en equipo)
+// Preguntas rápidas de dificultad 1 de los temas de la sala ("Obtener balas" y reanimación en equipo)
 export const QUICK_GENERATORS = QUICK;
 
 // Deja n opciones: la correcta y los primeros distractores. En el banco, el orden en que están

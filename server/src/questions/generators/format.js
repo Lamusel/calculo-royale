@@ -26,7 +26,21 @@ export function surd(coef, k) {
 // Término "a·x" legible: term(1, 'x') → "x", term(3, 'y') → "3y"
 export const term = (a, v) => (a === 1 ? v : `${a}${v}`);
 
-export const pick = (list, rand) => list[Math.floor(rand() * list.length)];
+// Múltiplo racional de π: piFrac(3, 2) → "\frac{3\pi}{2}", piFrac(4) → "4\pi", piFrac(1, 3) → "\frac{\pi}{3}"
+export function piFrac(n, d = 1) {
+  const g = gcd(n, d) || 1;
+  n /= g;
+  d /= g;
+  if (n === 0) return '0';
+  const c = Math.abs(n) === 1 ? '' : String(Math.abs(n));
+  const sign = n < 0 ? '-' : '';
+  return d === 1 ? `${sign}${c}\\pi` : `${sign}\\frac{${c}\\pi}{${d}}`;
+}
+
+// "a u + b v" o "a u − b v" legible: lin(2, 'u', -1, 'v') → "2u - v"
+export const lin = (a, u, b, v) => `${term(a, u)} ${b < 0 ? '-' : '+'} ${term(Math.abs(b), v)}`;
+
+export const pick =(list, rand) => list[Math.floor(rand() * list.length)];
 export const randInt = (min, max, rand) => min + Math.floor(rand() * (max - min + 1));
 
 // n opciones distintas (4 por defecto): la correcta primero y luego los distractores en orden

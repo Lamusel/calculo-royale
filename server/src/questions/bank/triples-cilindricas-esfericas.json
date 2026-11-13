@@ -1,0 +1,774 @@
+[
+  {
+    "id": "tr-01",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "$\\displaystyle\\int_0^{2\\pi}\\!\\int_0^1\\!\\int_0^2 r\\,dz\\,dr\\,d\\theta$",
+    "opciones": [
+      "$2\\pi$",
+      "$4\\pi$",
+      "$\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^2 dz = 2$ y $\\int_0^1 r\\,dr = \\frac12$. $2\\pi \\cdot \\frac12 \\cdot 2 = 2\\pi$.",
+    "verifica": {
+      "tipo": "iter",
+      "f": "r",
+      "vars": [
+        "theta",
+        "r",
+        "z"
+      ],
+      "lim": [
+        [
+          0,
+          "2*PI"
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tr-02",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "Para integrar sobre una esfera sólida centrada en el origen conviene usar coordenadas",
+    "opciones": [
+      "esféricas",
+      "cilíndricas",
+      "cartesianas"
+    ],
+    "correcta": 0,
+    "explicacion": "En esféricas la esfera es simplemente $0 \\le \\rho \\le R$: todos los límites son constantes.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "esféricas"
+    }
+  },
+  {
+    "id": "tr-03",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "En esféricas, para cubrir toda la esfera el ángulo $\\phi$ (medido desde el eje $z$) varía en",
+    "opciones": [
+      "$0 \\le \\phi \\le \\pi$",
+      "$0 \\le \\phi \\le 2\\pi$",
+      "$0 \\le \\phi \\le \\frac{\\pi}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\phi$ baja del polo norte ($0$) al polo sur ($\\pi$). El que da la vuelta completa es $\\theta$, de $0$ a $2\\pi$.",
+    "verifica": {
+      "tipo": "equiv",
+      "contiene": "\\phi \\le \\pi$",
+      "a": {
+        "tipo": "iter",
+        "f": "rho*rho*sin(phi)",
+        "vars": [
+          "theta",
+          "phi",
+          "rho"
+        ],
+        "lim": [
+          [
+            0,
+            "2*PI"
+          ],
+          [
+            0,
+            "PI"
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      "b": {
+        "tipo": "cart3",
+        "f": "1",
+        "cond": "(x*x+y*y+z*z)<=1",
+        "box": [
+          -1,
+          1,
+          -1,
+          1,
+          -1,
+          1
+        ]
+      }
+    }
+  },
+  {
+    "id": "tr-04",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "En cilíndricas, $x^2 + y^2 + z^2$ es",
+    "opciones": [
+      "$r^2 + z^2$",
+      "$r + z$",
+      "$r^2$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x^2 + y^2 = r^2$ y $z$ queda igual: $r^2 + z^2$.",
+    "verifica": {
+      "tipo": "sym",
+      "f": "(x*x+y*y+z*z)"
+    }
+  },
+  {
+    "id": "tr-05",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "En esféricas, $x^2 + y^2 + z^2$ es",
+    "opciones": [
+      "$\\rho^2$",
+      "$\\rho$",
+      "$\\rho^2\\sin\\phi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\rho$ es la distancia al origen: $\\rho^2 = x^2 + y^2 + z^2$.",
+    "verifica": {
+      "tipo": "sym",
+      "f": "(x*x+y*y+z*z)"
+    }
+  },
+  {
+    "id": "tr-06",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "$\\displaystyle\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^1 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$",
+    "opciones": [
+      "$\\frac{4\\pi}{3}$",
+      "$2\\pi$",
+      "$\\frac{2\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^1 \\rho^2\\,d\\rho = \\frac13$ y $\\int_0^{\\pi}\\sin\\phi\\,d\\phi = 2$. $2\\pi \\cdot 2 \\cdot \\frac13 = \\frac{4\\pi}{3}$ (la esfera unitaria).",
+    "verifica": {
+      "tipo": "iter",
+      "f": "rho*rho*sin(phi)",
+      "vars": [
+        "theta",
+        "phi",
+        "rho"
+      ],
+      "lim": [
+        [
+          0,
+          "2*PI"
+        ],
+        [
+          0,
+          "PI"
+        ],
+        [
+          0,
+          1
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tr-07",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 1,
+    "enunciado": "El cilindro sólido $x^2 + y^2 \\le 4$, $0 \\le z \\le 5$ en cilíndricas es",
+    "opciones": [
+      "$0 \\le r \\le 2,\\ 0 \\le \\theta \\le 2\\pi,\\ 0 \\le z \\le 5$",
+      "$0 \\le r \\le 4,\\ 0 \\le \\theta \\le 2\\pi,\\ 0 \\le z \\le 5$",
+      "$0 \\le r \\le 2,\\ 0 \\le \\theta \\le \\pi,\\ 0 \\le z \\le 5$"
+    ],
+    "correcta": 0,
+    "explicacion": "$r^2 \\le 4$ da $r \\le 2$. $\\theta$ da la vuelta completa y $z$ no cambia.",
+    "verifica": {
+      "tipo": "equiv",
+      "contiene": "r \\le 2,\\ 0 \\le \\theta \\le 2\\pi",
+      "a": {
+        "tipo": "iter",
+        "f": "r",
+        "vars": [
+          "theta",
+          "r",
+          "z"
+        ],
+        "lim": [
+          [
+            0,
+            "2*PI"
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            5
+          ]
+        ]
+      },
+      "b": {
+        "tipo": "cart3",
+        "f": "1",
+        "cond": "x*x+y*y<=4",
+        "box": [
+          -2,
+          2,
+          -2,
+          2,
+          0,
+          5
+        ]
+      }
+    }
+  },
+  {
+    "id": "tr-08",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "$\\displaystyle\\int_0^{2\\pi}\\!\\int_0^1\\!\\int_0^3 z\\,r\\,dz\\,dr\\,d\\theta$",
+    "opciones": [
+      "$\\frac{9\\pi}{2}$",
+      "$9\\pi$",
+      "$\\frac{9\\pi}{4}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^3 z\\,dz = \\frac92$ y $\\int_0^1 r\\,dr = \\frac12$. $2\\pi \\cdot \\frac12 \\cdot \\frac92 = \\frac{9\\pi}{2}$.",
+    "verifica": {
+      "tipo": "iter",
+      "f": "z*r",
+      "vars": [
+        "theta",
+        "r",
+        "z"
+      ],
+      "lim": [
+        [
+          0,
+          "2*PI"
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tr-09",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "Masa del cilindro $x^2 + y^2 \\le 1$, $0 \\le z \\le 2$ con densidad $\\delta = z$",
+    "opciones": [
+      "$2\\pi$",
+      "$4\\pi$",
+      "$\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^1\\!\\int_0^2 z\\,r\\,dz\\,dr\\,d\\theta$. $2\\pi \\cdot \\frac12 \\cdot 2 = 2\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "z",
+      "cond": "x*x+y*y<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1,
+        0,
+        2
+      ]
+    }
+  },
+  {
+    "id": "tr-10",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "$\\displaystyle\\iiint_E 1\\,dV$, con $E$: esfera sólida de radio $3$",
+    "opciones": [
+      "$36\\pi$",
+      "$18\\pi$",
+      "$12\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^3 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot 2 \\cdot 9 = 36\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "1",
+      "cond": "(x*x+y*y+z*z)<=9",
+      "box": [
+        -3,
+        3,
+        -3,
+        3,
+        -3,
+        3
+      ]
+    }
+  },
+  {
+    "id": "tr-11",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "La semiesfera sólida $x^2 + y^2 + z^2 \\le 4$, $z \\ge 0$ en esféricas tiene",
+    "opciones": [
+      "$0 \\le \\phi \\le \\frac{\\pi}{2}$",
+      "$0 \\le \\phi \\le \\pi$",
+      "$0 \\le \\phi \\le 2\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$z \\ge 0$ es la mitad de arriba: $\\phi$ va del polo norte ($0$) al ecuador ($\\frac{\\pi}{2}$).",
+    "verifica": {
+      "tipo": "equiv",
+      "contiene": "\\frac{\\pi}{2}",
+      "a": {
+        "tipo": "iter",
+        "f": "rho*rho*sin(phi)",
+        "vars": [
+          "theta",
+          "phi",
+          "rho"
+        ],
+        "lim": [
+          [
+            0,
+            "2*PI"
+          ],
+          [
+            0,
+            "PI/2"
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      },
+      "b": {
+        "tipo": "cart3",
+        "f": "1",
+        "cond": "(x*x+y*y+z*z)<=4",
+        "box": [
+          -2,
+          2,
+          -2,
+          2,
+          0,
+          2
+        ]
+      }
+    }
+  },
+  {
+    "id": "tr-12",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "$\\displaystyle\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^2 \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$",
+    "opciones": [
+      "$\\frac{32\\pi}{3}$",
+      "$8\\pi$",
+      "$\\frac{16\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^2 \\rho^2\\,d\\rho = \\frac83$ y $\\int_0^{\\pi}\\sin\\phi\\,d\\phi = 2$. $2\\pi \\cdot 2 \\cdot \\frac83 = \\frac{32\\pi}{3}$.",
+    "verifica": {
+      "tipo": "iter",
+      "f": "rho*rho*sin(phi)",
+      "vars": [
+        "theta",
+        "phi",
+        "rho"
+      ],
+      "lim": [
+        [
+          0,
+          "2*PI"
+        ],
+        [
+          0,
+          "PI"
+        ],
+        [
+          0,
+          2
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tr-13",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "$\\displaystyle\\iiint_E (x^2 + y^2)\\,dV$, con $E$: $x^2 + y^2 \\le 1$, $0 \\le z \\le 4$",
+    "opciones": [
+      "$2\\pi$",
+      "$\\frac{8\\pi}{3}$",
+      "$4\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^1\\!\\int_0^4 r^2 \\cdot r\\,dz\\,dr\\,d\\theta$. $2\\pi \\cdot \\frac14 \\cdot 4 = 2\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "x*x+y*y",
+      "cond": "x*x+y*y<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1,
+        0,
+        4
+      ]
+    }
+  },
+  {
+    "id": "tr-14",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 2,
+    "enunciado": "En esféricas, $z$ es",
+    "opciones": [
+      "$\\rho\\cos\\phi$",
+      "$\\rho\\sin\\phi$",
+      "$\\rho\\cos\\theta$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\phi$ se mide desde el eje $z$, así que $z = \\rho\\cos\\phi$ (y $r = \\rho\\sin\\phi$).",
+    "verifica": {
+      "tipo": "sym",
+      "f": "z"
+    }
+  },
+  {
+    "id": "tr-15",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 3,
+    "enunciado": "Masa de la esfera sólida de radio $2$ con densidad $\\delta = \\sqrt{x^2 + y^2 + z^2}$",
+    "opciones": [
+      "$16\\pi$",
+      "$\\frac{32\\pi}{3}$",
+      "$8\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\delta = \\rho$: $\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^2 \\rho \\cdot \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot 2 \\cdot 4 = 16\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "sqrt((x*x+y*y+z*z))",
+      "cond": "(x*x+y*y+z*z)<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "tr-16",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 3,
+    "enunciado": "$\\displaystyle\\iiint_E z\\,dV$, con $E$: semiesfera $x^2 + y^2 + z^2 \\le 1$, $z \\ge 0$",
+    "opciones": [
+      "$\\frac{\\pi}{4}$",
+      "$\\frac{\\pi}{3}$",
+      "$\\frac{\\pi}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$z = \\rho\\cos\\phi$: $\\int_0^{2\\pi}\\!\\int_0^{\\pi/2}\\!\\int_0^1 \\rho\\cos\\phi \\cdot \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot \\frac12 \\cdot \\frac14 = \\frac{\\pi}{4}$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "z",
+      "cond": "(x*x+y*y+z*z)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1,
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "id": "tr-17",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 3,
+    "enunciado": "Masa del cilindro $x^2 + y^2 \\le 4$, $0 \\le z \\le 3$ con densidad $\\delta = \\sqrt{x^2 + y^2}$",
+    "opciones": [
+      "$16\\pi$",
+      "$12\\pi$",
+      "$24\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\delta = r$: $\\int_0^{2\\pi}\\!\\int_0^2\\!\\int_0^3 r \\cdot r\\,dz\\,dr\\,d\\theta$. $2\\pi \\cdot \\frac83 \\cdot 3 = 16\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "sqrt(x*x+y*y)",
+      "cond": "x*x+y*y<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2,
+        0,
+        3
+      ]
+    }
+  },
+  {
+    "id": "tr-18",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 3,
+    "enunciado": "$\\displaystyle\\iiint_E (x^2 + y^2 + z^2)\\,dV$, con $E$: esfera sólida de radio $1$",
+    "opciones": [
+      "$\\frac{4\\pi}{5}$",
+      "$\\pi$",
+      "$\\frac{4\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^1 \\rho^2 \\cdot \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot 2 \\cdot \\frac15 = \\frac{4\\pi}{5}$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "(x*x+y*y+z*z)",
+      "cond": "(x*x+y*y+z*z)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "tr-19",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 3,
+    "enunciado": "La región sobre el cono $z = \\sqrt{x^2 + y^2}$ y dentro de la esfera $x^2 + y^2 + z^2 = 4$ en esféricas es",
+    "opciones": [
+      "$0 \\le \\rho \\le 2,\\ 0 \\le \\phi \\le \\frac{\\pi}{4}$",
+      "$0 \\le \\rho \\le 2,\\ 0 \\le \\phi \\le \\frac{\\pi}{2}$",
+      "$0 \\le \\rho \\le 4,\\ 0 \\le \\phi \\le \\frac{\\pi}{4}$"
+    ],
+    "correcta": 0,
+    "explicacion": "La esfera es $\\rho = 2$. El cono $z = r$ es $\\phi = \\frac{\\pi}{4}$, y \"sobre el cono\" es $\\phi$ menor.",
+    "verifica": {
+      "tipo": "equiv",
+      "contiene": "\\rho \\le 2,\\ 0 \\le \\phi \\le \\frac{\\pi}{4}",
+      "a": {
+        "tipo": "iter",
+        "f": "rho*rho*sin(phi)",
+        "vars": [
+          "theta",
+          "phi",
+          "rho"
+        ],
+        "lim": [
+          [
+            0,
+            "2*PI"
+          ],
+          [
+            0,
+            "PI/4"
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      },
+      "b": {
+        "tipo": "cart3",
+        "f": "1",
+        "cond": "(x*x+y*y+z*z)<=4 && z>=sqrt(x*x+y*y)",
+        "box": [
+          -2,
+          2,
+          -2,
+          2,
+          0,
+          2
+        ]
+      }
+    }
+  },
+  {
+    "id": "tr-20",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 3,
+    "enunciado": "$\\displaystyle\\int_0^{2\\pi}\\!\\int_0^1\\!\\int_r^1 r\\,dz\\,dr\\,d\\theta$",
+    "opciones": [
+      "$\\frac{\\pi}{3}$",
+      "$\\pi$",
+      "$\\frac{2\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_r^1 dz = 1 - r$. $\\int_0^1 r(1 - r)\\,dr = \\frac12 - \\frac13 = \\frac16$, por $2\\pi$: $\\frac{\\pi}{3}$ (un cono).",
+    "verifica": {
+      "tipo": "iter",
+      "f": "r",
+      "vars": [
+        "theta",
+        "r",
+        "z"
+      ],
+      "lim": [
+        [
+          0,
+          "2*PI"
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          "r",
+          1
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tr-21",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 4,
+    "enunciado": "Masa del sólido entre las esferas $\\rho = 1$ y $\\rho = 2$ con densidad $\\delta = \\frac{1}{x^2 + y^2 + z^2}$",
+    "opciones": [
+      "$4\\pi$",
+      "$4\\pi\\ln 2$",
+      "$2\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\delta = \\frac{1}{\\rho^2}$ cancela el $\\rho^2$ del jacobiano: $\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_1^2 \\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $2\\pi \\cdot 2 \\cdot 1 = 4\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "1/((x*x+y*y+z*z))",
+      "cond": "(x*x+y*y+z*z)>=1 && (x*x+y*y+z*z)<=4",
+      "box": [
+        -2,
+        2,
+        -2,
+        2,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "tr-22",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 4,
+    "enunciado": "$\\displaystyle\\iiint_E z\\,dV$, con $E$: sobre el cono $z = \\sqrt{x^2 + y^2}$ y bajo el plano $z = 2$",
+    "opciones": [
+      "$4\\pi$",
+      "$\\frac{16\\pi}{3}$",
+      "$8\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "En cilíndricas: $\\int_0^{2\\pi}\\!\\int_0^2\\!\\int_r^2 z\\,r\\,dz\\,dr\\,d\\theta$. $\\int_r^2 z\\,dz = \\frac{4 - r^2}{2}$ y $\\int_0^2 \\frac{r(4 - r^2)}{2}\\,dr = 2$: $4\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "z",
+      "cond": "z>=sqrt(x*x+y*y)",
+      "box": [
+        -2,
+        2,
+        -2,
+        2,
+        0,
+        2
+      ]
+    }
+  },
+  {
+    "id": "tr-23",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 4,
+    "enunciado": "$\\displaystyle\\iiint_E \\sqrt{x^2 + y^2 + z^2}\\,dV$, con $E$: la parte de la esfera de radio $2$ en el primer octante",
+    "opciones": [
+      "$2\\pi$",
+      "$\\frac{4\\pi}{3}$",
+      "$16\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "Primer octante: $0 \\le \\theta \\le \\frac{\\pi}{2}$, $0 \\le \\phi \\le \\frac{\\pi}{2}$. $\\frac{\\pi}{2} \\cdot \\int_0^{\\pi/2}\\sin\\phi\\,d\\phi \\cdot \\int_0^2 \\rho^3\\,d\\rho = \\frac{\\pi}{2} \\cdot 1 \\cdot 4 = 2\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "sqrt((x*x+y*y+z*z))",
+      "cond": "(x*x+y*y+z*z)<=4",
+      "box": [
+        0,
+        2,
+        0,
+        2,
+        0,
+        2
+      ]
+    }
+  },
+  {
+    "id": "tr-24",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 4,
+    "enunciado": "$\\displaystyle\\iiint_E e^{(x^2 + y^2 + z^2)^{3/2}}\\,dV$, con $E$: esfera sólida de radio $1$",
+    "opciones": [
+      "$\\frac{4\\pi}{3}(e - 1)$",
+      "$4\\pi(e - 1)$",
+      "$\\frac{4\\pi}{3}e$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^1 e^{\\rho^3}\\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $\\int_0^1 \\rho^2 e^{\\rho^3}\\,d\\rho = \\frac{e - 1}{3}$, por $4\\pi$: $\\frac{4\\pi}{3}(e - 1)$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "exp(((x*x+y*y+z*z))**1.5)",
+      "cond": "(x*x+y*y+z*z)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  },
+  {
+    "id": "tr-25",
+    "tema": "triples-cilindricas-esfericas",
+    "dificultad": 4,
+    "enunciado": "$\\displaystyle\\iiint_E (x^2 + y^2)\\,dV$, con $E$: esfera sólida de radio $1$",
+    "opciones": [
+      "$\\frac{8\\pi}{15}$",
+      "$\\frac{4\\pi}{5}$",
+      "$\\frac{2\\pi}{3}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x^2 + y^2 = \\rho^2\\sin^2\\phi$: $\\int_0^{2\\pi}\\!\\int_0^{\\pi}\\!\\int_0^1 \\rho^4\\sin^3\\phi\\,d\\rho\\,d\\phi\\,d\\theta$. $\\int_0^{\\pi}\\sin^3\\phi\\,d\\phi = \\frac43$, así que $2\\pi \\cdot \\frac43 \\cdot \\frac15 = \\frac{8\\pi}{15}$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "x*x+y*y",
+      "cond": "(x*x+y*y+z*z)<=1",
+      "box": [
+        -1,
+        1,
+        -1,
+        1,
+        -1,
+        1
+      ]
+    }
+  }
+]

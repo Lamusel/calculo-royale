@@ -1,0 +1,632 @@
+[
+  {
+    "id": "jc-01",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "Jacobiano de las coordenadas polares $x = r\\cos\\theta$, $y = r\\sin\\theta$",
+    "opciones": [
+      "$r$",
+      "$r^2$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "$\\frac{\\partial(x,y)}{\\partial(r,\\theta)} = \\cos\\theta \\cdot r\\cos\\theta + r\\sin\\theta \\cdot \\sin\\theta$. Eso es $r(\\cos^2\\theta + \\sin^2\\theta) = r$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "r*cos(theta)",
+        "r*sin(theta)"
+      ],
+      "vars": [
+        "r",
+        "theta"
+      ]
+    }
+  },
+  {
+    "id": "jc-02",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "En coordenadas cilíndricas, $dV$ es",
+    "opciones": [
+      "$r\\,dz\\,dr\\,d\\theta$",
+      "$dz\\,dr\\,d\\theta$",
+      "$r^2\\,dz\\,dr\\,d\\theta$"
+    ],
+    "correcta": 0,
+    "explicacion": "Las cilíndricas son polares más la altura $z$. El jacobiano es el mismo de polares: $r$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "r*cos(theta)",
+        "r*sin(theta)",
+        "z"
+      ],
+      "vars": [
+        "r",
+        "theta",
+        "z"
+      ],
+      "dV": true
+    }
+  },
+  {
+    "id": "jc-03",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "$|J|$ de las coordenadas esféricas $(\\rho, \\phi, \\theta)$",
+    "opciones": [
+      "$\\rho^2\\sin\\phi$",
+      "$\\rho\\sin\\phi$",
+      "$\\rho^2\\cos\\phi$"
+    ],
+    "correcta": 0,
+    "explicacion": "Con $x = \\rho\\sin\\phi\\cos\\theta$, $y = \\rho\\sin\\phi\\sin\\theta$, $z = \\rho\\cos\\phi$ el determinante da $\\rho^2\\sin\\phi$. Por eso $dV = \\rho^2\\sin\\phi\\,d\\rho\\,d\\phi\\,d\\theta$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "rho*sin(phi)*cos(theta)",
+        "rho*sin(phi)*sin(theta)",
+        "rho*cos(phi)"
+      ],
+      "vars": [
+        "rho",
+        "phi",
+        "theta"
+      ],
+      "abs": true
+    }
+  },
+  {
+    "id": "jc-04",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "Jacobiano $\\frac{\\partial(x,y)}{\\partial(u,v)}$ de $x = 2u$, $y = 3v$",
+    "opciones": [
+      "$6$",
+      "$5$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "La matriz es diagonal: $x_u = 2$, $y_v = 3$. El determinante es $2 \\cdot 3 = 6$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "2*u",
+        "3*v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-05",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "La transformación $x = 2u$, $y = 2v$ multiplica las áreas por",
+    "opciones": [
+      "$4$",
+      "$2$",
+      "$8$"
+    ],
+    "correcta": 0,
+    "explicacion": "El factor de área es $|J|$. Aquí $J = 2 \\cdot 2 = 4$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "2*u",
+        "2*v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ],
+      "abs": true
+    }
+  },
+  {
+    "id": "jc-06",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "En $\\iint_R f\\,dA = \\iint_S f\\,(\\,?\\,)\\,du\\,dv$, el factor que falta es",
+    "opciones": [
+      "el valor absoluto del jacobiano, $|J|$",
+      "el jacobiano con su signo, $J$",
+      "el inverso, $\\frac{1}{J}$"
+    ],
+    "correcta": 0,
+    "explicacion": "Un área no puede ser negativa. Por eso se usa $|J|$ y no $J$ con su signo.",
+    "verifica": {
+      "tipo": "concepto",
+      "contiene": "valor absoluto"
+    }
+  },
+  {
+    "id": "jc-07",
+    "tema": "jacobiano",
+    "dificultad": 1,
+    "enunciado": "Jacobiano $\\frac{\\partial(x,y)}{\\partial(u,v)}$ de $x = u + v$, $y = v$",
+    "opciones": [
+      "$1$",
+      "$2$",
+      "$0$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x_u = 1$, $x_v = 1$, $y_u = 0$, $y_v = 1$. $J = 1 \\cdot 1 - 1 \\cdot 0 = 1$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "u+v",
+        "v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-08",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ para $x = 2u + v$, $y = u + 3v$",
+    "opciones": [
+      "$5$",
+      "$7$",
+      "$-5$"
+    ],
+    "correcta": 0,
+    "explicacion": "$J = x_u y_v - x_v y_u$. $J = 2 \\cdot 3 - 1 \\cdot 1 = 5$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "2*u+v",
+        "u+3*v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-09",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ para $x = u + v$, $y = u - v$",
+    "opciones": [
+      "$-2$",
+      "$2$",
+      "$0$"
+    ],
+    "correcta": 0,
+    "explicacion": "$J = (1)(-1) - (1)(1) = -2$. El jacobiano lleva signo; en la integral se usa $|J| = 2$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "u+v",
+        "u-v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-10",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ para $x = uv$, $y = v$",
+    "opciones": [
+      "$v$",
+      "$u$",
+      "$uv$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x_u = v$, $x_v = u$, $y_u = 0$, $y_v = 1$. $J = v \\cdot 1 - u \\cdot 0 = v$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "u*v",
+        "v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-11",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "Jacobiano de las cilíndricas, $\\frac{\\partial(x,y,z)}{\\partial(r,\\theta,z)}$",
+    "opciones": [
+      "$r$",
+      "$r^2$",
+      "$r\\sin\\theta$"
+    ],
+    "correcta": 0,
+    "explicacion": "$z$ no cambia, así que queda el determinante $2 \\times 2$ de polares. $J = r$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "r*cos(theta)",
+        "r*sin(theta)",
+        "z"
+      ],
+      "vars": [
+        "r",
+        "theta",
+        "z"
+      ]
+    }
+  },
+  {
+    "id": "jc-12",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "$\\frac{\\partial(x,y,z)}{\\partial(u,v,w)}$ para $x = 2u$, $y = 3v$, $z = 4w$",
+    "opciones": [
+      "$24$",
+      "$9$",
+      "$12$"
+    ],
+    "correcta": 0,
+    "explicacion": "Matriz diagonal: el determinante es el producto de la diagonal. $2 \\cdot 3 \\cdot 4 = 24$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "2*u",
+        "3*v",
+        "4*w"
+      ],
+      "vars": [
+        "u",
+        "v",
+        "w"
+      ]
+    }
+  },
+  {
+    "id": "jc-13",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "Bajo $x = 3u$, $y = 2v$, el cuadrado $0 \\le u \\le 1$, $0 \\le v \\le 1$ va a una región de área",
+    "opciones": [
+      "$6$",
+      "$5$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "Área de la imagen $= |J| \\cdot$ área original. $|J| = 6$ y el cuadrado mide $1$: área $6$.",
+    "verifica": {
+      "tipo": "areaimg",
+      "map": [
+        "3*u",
+        "2*v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ],
+      "box": [
+        0,
+        1,
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "id": "jc-14",
+    "tema": "jacobiano",
+    "dificultad": 2,
+    "enunciado": "Si $\\frac{\\partial(x,y)}{\\partial(u,v)} = 4$, entonces $\\frac{\\partial(u,v)}{\\partial(x,y)}$ vale",
+    "opciones": [
+      "$\\frac{1}{4}$",
+      "$4$",
+      "$-4$"
+    ],
+    "correcta": 0,
+    "explicacion": "Los jacobianos de una transformación y de su inversa son recíprocos. $\\frac{1}{4}$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "4*u",
+        "v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ],
+      "inv": true
+    }
+  },
+  {
+    "id": "jc-15",
+    "tema": "jacobiano",
+    "dificultad": 3,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ para $x = u^2 - v^2$, $y = 2uv$",
+    "opciones": [
+      "$4(u^2 + v^2)$",
+      "$4(u^2 - v^2)$",
+      "$2(u^2 + v^2)$"
+    ],
+    "correcta": 0,
+    "explicacion": "$x_u = 2u$, $x_v = -2v$, $y_u = 2v$, $y_v = 2u$. $J = 4u^2 + 4v^2 = 4(u^2 + v^2)$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "u*u-v*v",
+        "2*u*v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-16",
+    "tema": "jacobiano",
+    "dificultad": 3,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ si $u = x + y$, $v = x - y$",
+    "opciones": [
+      "$-\\frac{1}{2}$",
+      "$-2$",
+      "$\\frac{1}{2}$"
+    ],
+    "correcta": 0,
+    "explicacion": "Despejando: $x = \\frac{u + v}{2}$, $y = \\frac{u - v}{2}$. $J = \\frac12 \\cdot \\left(-\\frac12\\right) - \\frac12 \\cdot \\frac12 = -\\frac12$. Ojo: $-2$ es $\\frac{\\partial(u,v)}{\\partial(x,y)}$, el inverso.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "(u+v)/2",
+        "(u-v)/2"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-17",
+    "tema": "jacobiano",
+    "dificultad": 3,
+    "enunciado": "Área de la imagen del rectángulo $0 \\le u \\le 2$, $0 \\le v \\le 1$ bajo $x = 2u + v$, $y = u - v$",
+    "opciones": [
+      "$6$",
+      "$-6$",
+      "$2$"
+    ],
+    "correcta": 0,
+    "explicacion": "$J = (2)(-1) - (1)(1) = -3$, así que $|J| = 3$. Área $= 3 \\cdot 2 = 6$ (un área nunca es negativa).",
+    "verifica": {
+      "tipo": "areaimg",
+      "map": [
+        "2*u+v",
+        "u-v"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ],
+      "box": [
+        0,
+        2,
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "id": "jc-18",
+    "tema": "jacobiano",
+    "dificultad": 3,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ para $x = e^{u}\\cos v$, $y = e^{u}\\sin v$",
+    "opciones": [
+      "$e^{2u}$",
+      "$e^{u}$",
+      "$2e^{u}$"
+    ],
+    "correcta": 0,
+    "explicacion": "$J = e^u\\cos v \\cdot e^u\\cos v + e^u\\sin v \\cdot e^u\\sin v$. $J = e^{2u}(\\cos^2 v + \\sin^2 v) = e^{2u}$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "exp(u)*cos(v)",
+        "exp(u)*sin(v)"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-19",
+    "tema": "jacobiano",
+    "dificultad": 3,
+    "enunciado": "Valor de $|J|$ de las esféricas en $\\rho = 2$, $\\phi = \\frac{\\pi}{2}$",
+    "opciones": [
+      "$4$",
+      "$2$",
+      "$0$"
+    ],
+    "correcta": 0,
+    "explicacion": "$|J| = \\rho^2\\sin\\phi$. $2^2 \\cdot \\sin\\frac{\\pi}{2} = 4$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "rho*sin(phi)*cos(theta)",
+        "rho*sin(phi)*sin(theta)",
+        "rho*cos(phi)"
+      ],
+      "vars": [
+        "rho",
+        "phi",
+        "theta"
+      ],
+      "abs": true,
+      "p": [
+        2,
+        1.5707963267948966,
+        0.7
+      ]
+    }
+  },
+  {
+    "id": "jc-20",
+    "tema": "jacobiano",
+    "dificultad": 3,
+    "enunciado": "Con $x = 3u$, $y = 2v$ la elipse $\\frac{x^2}{9} + \\frac{y^2}{4} \\le 1$ pasa al disco $u^2 + v^2 \\le 1$. Su área es",
+    "opciones": [
+      "$6\\pi$",
+      "$\\pi$",
+      "$5\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$|J| = 3 \\cdot 2 = 6$. Área $= 6 \\cdot$ área del disco unitario $= 6\\pi$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "1",
+      "cond": "x*x/9+y*y/4<=1",
+      "box": [
+        -3,
+        3,
+        -2,
+        2
+      ]
+    }
+  },
+  {
+    "id": "jc-21",
+    "tema": "jacobiano",
+    "dificultad": 4,
+    "enunciado": "$\\frac{\\partial(x,y)}{\\partial(u,v)}$ si $u = xy$, $v = \\frac{y}{x}$ (con $x, y > 0$)",
+    "opciones": [
+      "$\\frac{1}{2v}$",
+      "$2v$",
+      "$\\frac{1}{2u}$"
+    ],
+    "correcta": 0,
+    "explicacion": "Es más fácil al revés: $\\frac{\\partial(u,v)}{\\partial(x,y)} = y \\cdot \\frac{1}{x} + x \\cdot \\frac{y}{x^2} = \\frac{2y}{x} = 2v$. El pedido es el recíproco: $\\frac{1}{2v}$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "sqrt(u/v)",
+        "sqrt(u*v)"
+      ],
+      "vars": [
+        "u",
+        "v"
+      ]
+    }
+  },
+  {
+    "id": "jc-22",
+    "tema": "jacobiano",
+    "dificultad": 4,
+    "enunciado": "$\\frac{\\partial(x,y,z)}{\\partial(u,v,w)}$ para $x = u + v$, $y = v + w$, $z = u + w$",
+    "opciones": [
+      "$2$",
+      "$0$",
+      "$1$"
+    ],
+    "correcta": 0,
+    "explicacion": "Filas $(1,1,0)$, $(0,1,1)$, $(1,0,1)$. Por la primera fila: $1(1 - 0) - 1(0 - 1) + 0 = 2$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "u+v",
+        "v+w",
+        "u+w"
+      ],
+      "vars": [
+        "u",
+        "v",
+        "w"
+      ]
+    }
+  },
+  {
+    "id": "jc-23",
+    "tema": "jacobiano",
+    "dificultad": 4,
+    "enunciado": "Área de la región del primer cuadrante entre $xy = 1$, $xy = 4$, $y = x$, $y = 4x$ (use $u = xy$, $v = \\frac{y}{x}$)",
+    "opciones": [
+      "$3\\ln 2$",
+      "$6\\ln 2$",
+      "$9$"
+    ],
+    "correcta": 0,
+    "explicacion": "La región es $1 \\le u \\le 4$, $1 \\le v \\le 4$ con $|J| = \\frac{1}{2v}$. $\\int_1^4\\!\\int_1^4 \\frac{1}{2v}\\,dv\\,du = 3 \\cdot \\frac{\\ln 4}{2} = 3\\ln 2$.",
+    "verifica": {
+      "tipo": "cart2",
+      "f": "1",
+      "cond": "x*y>=1 && x*y<=4 && y>=x && y<=4*x",
+      "box": [
+        0,
+        2.2,
+        0,
+        4.2
+      ]
+    }
+  },
+  {
+    "id": "jc-24",
+    "tema": "jacobiano",
+    "dificultad": 4,
+    "enunciado": "$|J|$ de $x = r\\cos\\theta$, $y = 2r\\sin\\theta$",
+    "opciones": [
+      "$2r$",
+      "$r$",
+      "$2r^2$"
+    ],
+    "correcta": 0,
+    "explicacion": "$J = \\cos\\theta \\cdot 2r\\cos\\theta + r\\sin\\theta \\cdot 2\\sin\\theta$. $J = 2r(\\cos^2\\theta + \\sin^2\\theta) = 2r$.",
+    "verifica": {
+      "tipo": "jac",
+      "map": [
+        "r*cos(theta)",
+        "2*r*sin(theta)"
+      ],
+      "vars": [
+        "r",
+        "theta"
+      ],
+      "abs": true
+    }
+  },
+  {
+    "id": "jc-25",
+    "tema": "jacobiano",
+    "dificultad": 4,
+    "enunciado": "Volumen del elipsoide $\\frac{x^2}{4} + \\frac{y^2}{9} + z^2 \\le 1$ (use $x = 2u$, $y = 3v$, $z = w$)",
+    "opciones": [
+      "$8\\pi$",
+      "$\\frac{4\\pi}{3}$",
+      "$6\\pi$"
+    ],
+    "correcta": 0,
+    "explicacion": "$|J| = 2 \\cdot 3 \\cdot 1 = 6$ y el elipsoide pasa a la esfera unitaria. $V = 6 \\cdot \\frac{4\\pi}{3} = 8\\pi$.",
+    "verifica": {
+      "tipo": "cart3",
+      "f": "1",
+      "cond": "x*x/4+y*y/9+z*z<=1",
+      "box": [
+        -2,
+        2,
+        -3,
+        3,
+        -1,
+        1
+      ]
+    }
+  }
+]
