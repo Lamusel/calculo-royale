@@ -47,7 +47,7 @@ test('zona que se desplaza: el centro se mueve lejos, nunca sale del mapa ni cae
 
 test('8 bots saltando al azar del bus no caen todos en la misma zona', () => {
   const room = {
-    phase: 'playing', players: new Map(), topics: ['integrales_dobles'], broadcasts: [], duration: 'normal',
+    phase: 'playing', players: new Map(), topics: ['volumen'], broadcasts: [], duration: 'normal',
     emitTo() {}, broadcast() {}, broadcastState() {}, respawnInLobby() {}, finishMatch() {}, sendClassStats() {},
   };
   room.game = new Game(room);
@@ -122,7 +122,7 @@ test('vehículos: camión de 6 plazas, lancha solo en el agua, el jeep no entra 
   for (let i = 0; i < 80; i++) applyVehicleInput(jeep, { mx: 0, my: -1 }, 0.05);
   assert.notEqual(waterAt(jeep.x, jeep.y), 2);
 
-  const room = { phase: 'playing', players: new Map(), topics: ['integrales_dobles'], emitTo() {}, broadcast() {}, broadcastState() {}, respawnInLobby() {}, finishMatch() {}, sendClassStats() {} };
+  const room = { phase: 'playing', players: new Map(), topics: ['volumen'], emitTo() {}, broadcast() {}, broadcastState() {}, respawnInLobby() {}, finishMatch() {}, sendClassStats() {} };
   room.game = new Game(room);
   const add = (id, x, y) => {
     const p = new Player({ id, name: `P${id}`, color: '#fff', token: `t${id}` });

@@ -218,9 +218,9 @@ test('estadísticas de clase: suma los aciertos por tema de todos', () => {
   const room = makeRoom();
   const [a, b] = addPlayers(room, 2);
   a.stats.byTopic = { polares: { ok: 2, total: 3 } };
-  b.stats.byTopic = { polares: { ok: 1, total: 1 }, lagrange: { ok: 0, total: 2 } };
+  b.stats.byTopic = { polares: { ok: 1, total: 1 }, jacobiano: { ok: 0, total: 2 } };
   const s = classStats(room.game);
-  assert.deepEqual(s.byTopic, { polares: { ok: 3, total: 4 }, lagrange: { ok: 0, total: 2 } });
+  assert.deepEqual(s.byTopic, { polares: { ok: 3, total: 4 }, jacobiano: { ok: 0, total: 2 } });
   assert.equal(s.alive, 2);
   assert.equal('votes' in s, false);
 });
@@ -349,12 +349,12 @@ test('6.5: estadísticas de balance en el registro (bajas por arma, tema y dific
   const [a, b] = addPlayers(room, 3);
   start(room);
   damagePlayer(room.game, b, 500, a.id, WEAPONS.m4a1 ? Object.keys(WEAPONS).indexOf('m4a1') : 0, { ignoreArmor: true });
-  recordStats(a, { tema: 'lagrange', dificultad: 2, enunciado: '', opciones: [], correcta: 0 }, true, 0);
+  recordStats(a, { tema: 'jacobiano', dificultad: 2, enunciado: '', opciones: [], correcta: 0 }, true, 0);
   a.fps = { sum: 120, n: 2 };
   advance(room, 2000);
   const s = balanceStats(room);
   assert.equal(s.bajas_por_arma.m4a1, 1);
-  assert.deepEqual(s.acierto_por_tema_y_dificultad['lagrange·2'], { ok: 1, total: 1, porcentaje: 100 });
+  assert.deepEqual(s.acierto_por_tema_y_dificultad['jacobiano·2'], { ok: 1, total: 1, porcentaje: 100 });
   assert.equal(s.fps_promedio, 60);
   assert.ok(s.duracion_s >= 2);
   assert.equal(typeof s.volvieron_del_gulag, 'number');
@@ -422,20 +422,20 @@ test('7A: cuerpo a cuerpo validado en el servidor: alcance, cadencia, espalda, c
 test('7A: repaso con pasos, comodín 50/50 una vez en cajas de dificultad 3+ y dificultad adaptativa por tema', async () => {
   const { adaptiveDifficulty, openCrate, recordStats, useFifty } = await import('../server/src/game/crates.js');
   const room = makeRoom();
-  room.topics = ['lagrange'];
+  room.topics = ['jacobiano'];
   const [a] = addPlayers(room, 1);
   start(room);
   // Falla mucho Lagrange: baja un nivel; si acierta todo, sube uno (máximo la caja + 1)
-  const q = { tema: 'lagrange', dificultad: 3, enunciado: 'x', opciones: ['$1$', '$2$'], correcta: 0, explicacion: 'Se iguala: $x=1$; listo.' };
+  const q = { tema: 'jacobiano', dificultad: 3, enunciado: 'x', opciones: ['$1$', '$2$'], correcta: 0, explicacion: 'Se iguala: $x=1$; listo.' };
   recordStats(a, q, false, 1);
   recordStats(a, q, false, 1);
-  assert.equal(adaptiveDifficulty(a, ['lagrange'], 3).difficulty, 2);
-  assert.equal(adaptiveDifficulty(a, ['lagrange'], 1).difficulty, 1, 'mínimo 1');
-  assert.equal(a.stats.adjusted.lagrange, 'bajó');
+  assert.equal(adaptiveDifficulty(a, ['jacobiano'], 3).difficulty, 2);
+  assert.equal(adaptiveDifficulty(a, ['jacobiano'], 1).difficulty, 1, 'mínimo 1');
+  assert.equal(a.stats.adjusted.jacobiano, 'bajó');
   a.resetStats();
   recordStats(a, q, true, 0);
   recordStats(a, q, true, 0);
-  assert.equal(adaptiveDifficulty(a, ['lagrange'], 3).difficulty, 4);
+  assert.equal(adaptiveDifficulty(a, ['jacobiano'], 3).difficulty, 4);
   // El historial guarda todo con 2 a 4 pasos y la respuesta
   assert.equal(a.stats.history.length, 2);
   const steps = a.stats.history[0].pasos;

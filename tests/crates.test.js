@@ -179,12 +179,12 @@ test('Todo o nada: la dorada da a elegir entre 3 premios legendarios o quita el 
 });
 
 test('las preguntas respetan los temas de la sala y la dificultad de la rareza', () => {
-  const room = makeRoom('playing', ['lagrange']);
+  const room = makeRoom('playing', ['jacobiano']);
   const epic = SUPPLY_CRATES.findIndex((c) => c.rarity === 2);
   const c = SUPPLY_CRATES[epic];
   const p = addPlayer(room, 1, c.x + 1, c.y);
   const { question } = open(room, p);
-  assert.equal(question.tema, TOPICS.lagrange);
+  assert.equal(question.tema, TOPICS.jacobiano);
   assert.equal(p.question.q.dificultad, 3);
 });
 

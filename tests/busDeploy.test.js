@@ -13,7 +13,7 @@ function makeRoom(n = 3) {
   const room = {
     phase: 'playing',
     players: new Map(),
-    topics: ['integrales_dobles'],
+    topics: ['volumen'],
     broadcasts: [],
     emitTo() {},
     broadcast(event, data) {

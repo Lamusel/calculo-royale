@@ -12,7 +12,7 @@ function makeRoom() {
   const room = {
     phase: 'playing',
     players: new Map(),
-    topics: ['integrales_dobles'],
+    topics: ['volumen'],
     emitted: [],
     emitTo(p, event, data) {
       this.emitted.push({ to: p.id, event, data });
