@@ -1,15 +1,6 @@
 import { BUTTONS } from '@calculo-royale/shared/protocol';
-import { CAMERA, THROWABLE_IDS } from '@calculo-royale/shared/constants';
-import { actions, grenadeDistance, inputState, lookBy, press } from './inputState.js';
-import { settings } from '../settings.js';
-
-// Tercera persona en PC: el mouse queda capturado (puntero bloqueado) y gira la cámara.
-// Esc lo suelta; se suelta solo al abrir una ventana (pregunta, mochila, mapa, opciones).
-const MODAL = '[class*="inset-0"][class*="z-40"]:not(.pointer-events-none), [class*="inset-0"][class*="z-50"]:not(.pointer-events-none)';
-const pointerLocked = () => Boolean(globalThis.document?.pointerLockElement);
-export function releasePointer() {
-  if (pointerLocked()) document.exitPointerLock?.();
-}
+import { THROWABLE_IDS } from '@calculo-royale/shared/constants';
+import { actions, grenadeDistance, inputState, press } from './inputState.js';
 
 // Lanzables con las teclas 5 a 0 (en el orden de THROWABLE_IDS) o la rueda del mouse; 4 = cuerpo a cuerpo (7B)
 const THROW_KEYS = ['Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
@@ -130,11 +121,6 @@ export function attachKeyboardMouse() {
   };
   const onPointerMove = (e) => {
     if (e.pointerType !== 'mouse') return;
-    if (pointerLocked()) {
-      if (inputState.thirdActive) lookBy(e.movementX, e.movementY, CAMERA.third.mouseSensitivity * (settings.lookSensitivity ?? 1));
-      mousePointer.active = false;
-      return;
-    }
     mousePointer.x = (e.clientX / innerWidth) * 2 - 1;
     mousePointer.y = -(e.clientY / innerHeight) * 2 + 1;
     mousePointer.active = true;
@@ -145,11 +131,6 @@ export function attachKeyboardMouse() {
     // Los toques generan mousedown de compatibilidad: esos los maneja TouchControls
     if (e.sourceCapabilities?.firesTouchEvents) return;
     if (e.target instanceof Element && e.target.closest('button, input, a')) return;
-    // Tercera persona: el primer clic sobre el juego captura el mouse (no dispara)
-    if (inputState.thirdActive && !pointerLocked() && e.target instanceof HTMLCanvasElement) {
-      e.target.requestPointerLock?.()?.catch?.(() => {});
-      return;
-    }
     // Granada armada con el botón del HUD: el clic izquierdo la lanza, el derecho cancela
     if (inputState.grenadeAiming) {
       if (e.button === 0) press(BUTTONS.GRENADE, null, grenadeDistance());
@@ -171,10 +152,6 @@ export function attachKeyboardMouse() {
   // El clic derecho es la mira: sin menú contextual dentro del juego
   const onContextMenu = (e) => e.preventDefault();
 
-  // Suelta el mouse si ya no hay tercera persona o si se abrió una ventana con botones
-  const watch = setInterval(() => {
-    if (pointerLocked() && (!inputState.thirdActive || document.querySelector(MODAL))) releasePointer();
-  }, 200);
   addEventListener('keydown', onKeyDown);
   addEventListener('keyup', onKeyUp);
   addEventListener('blur', onBlur);
@@ -184,8 +161,6 @@ export function attachKeyboardMouse() {
   addEventListener('contextmenu', onContextMenu);
   addEventListener('wheel', onWheel, { passive: true });
   return () => {
-    clearInterval(watch);
-    releasePointer();
     removeEventListener('wheel', onWheel);
     removeEventListener('keydown', onKeyDown);
     removeEventListener('keyup', onKeyUp);

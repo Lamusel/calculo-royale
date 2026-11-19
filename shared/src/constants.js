@@ -493,23 +493,6 @@ export const CAMERA = {
   projectorDistance: 26, // el proyector, siguiendo a alguien, un poco más lejos
   deployDistance: 30.5, // en el bus y cayendo: la vista amplia de siempre (se ve dónde caer)
   lookScaleFrom: 30.5, // la mira y el francotirador se ajustaron con la cámara a 30,5 m: se escalan
-  // Tercera persona (tanda 9): detrás del hombro derecho, mirando a un punto lejano al frente
-  third: {
-    fov: 62,
-    distance: 4.2, // metros detrás del soldado
-    height: 2.0, // altura de la cámara sobre el piso
-    shoulder: 0.8, // desplazamiento a la derecha (el soldado queda a la izquierda de la mira)
-    lookAhead: 30, // la mira del centro apunta a este punto: ahí el disparo coincide exacto
-    insideDistance: 2.6, // dentro de un edificio, más cerca
-    vehicleDistance: 8.5,
-    vehicleHeight: 3.4,
-    adsFov: 44, // apuntando sin mira
-    scopeFov: { reddot: 40, scope2x: 30, scope4x: 18 },
-    sniperFov: 16,
-    fog: [70, 150], // niebla mínima: tapa el borde donde dejan de dibujarse los bloques lejanos
-    mouseSensitivity: 0.0026, // radianes por píxel
-    touchSensitivity: 0.0062,
-  },
 };
 
 // --- Accesorios que se notan (fase 25) ---

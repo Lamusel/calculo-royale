@@ -52,21 +52,6 @@ const pitch = (CAMERA_PITCH_DEG * Math.PI) / 180;
 const CAMERA_DIR = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
 const CAMERA_OFFSET = CAMERA_DIR.clone().multiplyScalar(CAMERA.distances.normal);
 const insideHouse = (x, y) => HOUSES.some((h) => Math.abs(x - h.x) < h.w / 2 - 0.3 && Math.abs(y - h.y) < h.h / 2 - 0.3);
-const houseAt = (x, y) => HOUSES.findIndex((h) => Math.abs(x - h.x) < h.w / 2 + 0.2 && Math.abs(y - h.y) < h.h / 2 + 0.2);
-const THIRD = CAMERA.third;
-const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-
-// Cuánto puede alejarse la cámara del soldado sin atravesar una pared: avanza desde el soldado
-// hacia la cámara y se detiene al cruzar el borde de un edificio (entrando o saliendo).
-export function cameraReach(px, py, cx, cy) {
-  const start = houseAt(px, py);
-  const steps = 14;
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    if (houseAt(px + (cx - px) * t, py + (cy - py) * t) !== start) return Math.max(0.15, (i - 1) / steps);
-  }
-  return 1;
-}
 
 
 // Dirección del sol (desde el suroeste, alto): sombras hacia el noreste
@@ -104,127 +89,11 @@ function CameraRig({ client, frameRef, sun, overview }) {
   );
   // Celular acostado: el soldado un poco por debajo del centro (se ve más hacia adelante)
   const touch = useMemo(() => isTouchDevice(), []);
-
-  function leaveThird(camera, scene) {
-    inputState.thirdActive = false;
-    camera.fov = CAMERA_FOV;
-    camera.updateProjectionMatrix();
-    if (s.ownFog && scene.fog === s.ownFog) scene.fog = null;
-    s.ownFog = null;
-  }
-
-  // Cámara detrás del hombro (tanda 9). La mira del centro de la pantalla apunta al punto que está
-  // THIRD.lookAhead metros al frente del soldado: ahí el disparo (un ángulo en el mapa) coincide exacto.
-  function thirdPersonFrame(camera, scene, dt) {
-    const { me, myVehicleId } = frameRef.current;
-    const now = performance.now();
-    if (!inputState.thirdActive) {
-      inputState.camYaw = inputState.lastAim;
-      inputState.thirdActive = true;
-      s.reach = 1;
-      s.last = null;
-      s.target.set(me.x, terrainHeight(me.x, me.y), -me.y);
-    }
-    s.goal.set(me.x, terrainHeight(me.x, me.y), -me.y);
-    s.target.lerp(s.goal, 1 - Math.exp(-14 * dt));
-    const px = s.target.x;
-    const py = -s.target.z;
-    const ground = s.target.y;
-
-    // En vehículo la cámara se acomoda sola detrás del rumbo si el jugador no la está girando
-    const inVehicle = myVehicleId != null;
-    if (s.last && dt > 0) {
-      const vx = (me.x - s.last.x) / dt;
-      const vy = (me.y - s.last.y) / dt;
-      s.speed += (Math.hypot(vx, vy) - s.speed) * (1 - Math.exp(-4 * dt));
-      const heading = Math.atan2(vy, vx);
-      // En reversa no gira: la cámara solo sigue el rumbo cuando el vehículo avanza
-      const forward = Math.cos(angleDiff(heading, inputState.camYaw)) > -0.2;
-      if (inVehicle && forward && s.speed > 2.5 && now - (inputState.lookedAt ?? 0) > 1200) {
-        inputState.camYaw += angleDiff(heading, inputState.camYaw) * (1 - Math.exp(-2.2 * dt));
-      }
-    }
-    s.last = { x: me.x, y: me.y };
-
-    const yaw = inputState.camYaw;
-    const fx = Math.cos(yaw);
-    const fy = Math.sin(yaw);
-    const rx = fy;
-    const ry = -fx;
-    const inside = insideHouse(px, py);
-    const dist = inVehicle ? THIRD.vehicleDistance : inside ? THIRD.insideDistance : THIRD.distance;
-    const height = inVehicle ? THIRD.vehicleHeight : THIRD.height;
-    const shoulder = inVehicle ? 0 : THIRD.shoulder;
-    const wantX = px - fx * dist + rx * shoulder;
-    const wantY = py - fy * dist + ry * shoulder;
-    // Paredes: se acerca de golpe, se aleja despacio
-    const reach = cameraReach(px, py, wantX, wantY);
-    s.reach = reach < s.reach ? reach : s.reach + (reach - s.reach) * (1 - Math.exp(-3 * dt));
-    const camX = px + (wantX - px) * s.reach;
-    const camY = py + (wantY - py) * s.reach;
-    const pitchLift = Math.max(0, inputState.camPitch) * 1.4;
-    const camH = Math.max(ground + height + pitchLift, terrainHeight(camX, camY) + 0.6);
-    camera.position.set(camX, camH, -camY);
-
-    const lx = px + fx * THIRD.lookAhead;
-    const ly = py + fy * THIRD.lookAhead;
-    const look = new THREE.Vector3(lx, ground + 1.3 - Math.tan(inputState.camPitch) * THIRD.lookAhead, -ly);
-
-    const shake = client.trauma ** 2 * 0.35;
-    if (shake > 0.001) {
-      look.x += (Math.random() * 2 - 1) * shake;
-      look.y += (Math.random() * 2 - 1) * shake;
-    }
-    client.trauma = Math.max(0, client.trauma - dt * 1.6);
-    if (client.kick > 0.001) {
-      look.y += client.kick * 1.2;
-      client.kick = Math.max(0, client.kick - dt * 3);
-    }
-    camera.lookAt(look);
-
-    // Apuntar acerca la vista (mira puesta o francotirador)
-    const aiming = inputState.adsHeld && !inputState.grenadeMode;
-    const fov = aimPreview() === 'sniper' ? THIRD.sniperFov : aiming ? THIRD.scopeFov[inputState.scope] ?? THIRD.adsFov : THIRD.fov;
-    if (Math.abs(camera.fov - fov) > 0.05) {
-      camera.fov += (fov - camera.fov) * (1 - Math.exp(-10 * dt));
-      camera.updateProjectionMatrix();
-    }
-
-    // Niebla: si el clima no trae, una suave que tapa el borde donde dejan de dibujarse los bloques
-    if (!scene.fog) {
-      const color = scene.background?.isColor ? scene.background : new THREE.Color('#a9bfcc');
-      s.ownFog = new THREE.Fog(color, THIRD.fog[0], THIRD.fog[1]);
-      scene.fog = s.ownFog;
-    } else if (scene.fog !== s.ownFog) {
-      if (s.fog?.fog !== scene.fog) s.fog = { fog: scene.fog, near: scene.fog.near, far: scene.fog.far };
-      scene.fog.near = s.fog.near;
-      scene.fog.far = s.fog.far;
-    }
-
-    if (sun.current) {
-      sun.current.position.copy(s.target).add(SUN_OFFSET);
-      sun.current.target.position.copy(s.target);
-      sun.current.target.updateMatrixWorld();
-    }
-  }
   useFrame(({ camera, scene }, delta) => {
     const dt = Math.min(delta, 0.1);
     const { me, follow, deploying, altitude = 0 } = frameRef.current;
-    // Tercera persona: en el suelo o en vehículo, siguiendo al jugador propio (no en el bus ni de espectador)
     // Cine (presentación del duelo, repetición): la cámara gira alrededor de alguien
     const cine = client.cinematic?.(performance.now(), frameRef.current);
-    const third = settings.view === 'third' && !overview && !follow && !deploying && Boolean(me) && !cine;
-    if (third && !s.thirdFailed) {
-      try {
-        thirdPersonFrame(camera, scene, dt);
-        return;
-      } catch (err) {
-        // Seguro: si la cámara nueva falla, el juego sigue con la vista desde arriba
-        console.error('[cámara] tercera persona desactivada:', err);
-        s.thirdFailed = true;
-      }
-    }
-    if (inputState.thirdActive) leaveThird(camera, scene);
     if (cine) {
       const h = terrainHeight(cine.x, cine.y);
       camera.position.set(cine.x + Math.cos(cine.angle) * cine.distance, h + cine.height, -cine.y + Math.sin(cine.angle) * cine.distance);
@@ -331,7 +200,7 @@ function MouseAim({ frameRef }) {
   const hit = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera, raycaster }) => {
     const me = frameRef.current.me;
-    if (!me || !mousePointer.active || inputState.thirdActive) return;
+    if (!me || !mousePointer.active) return;
     plane.constant = -(terrainHeight(me.x, me.y) + 1);
     raycaster.setFromCamera(ndc.set(mousePointer.x, mousePointer.y), camera);
     if (raycaster.ray.intersectPlane(plane, hit)) {

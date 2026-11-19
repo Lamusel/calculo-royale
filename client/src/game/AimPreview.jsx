@@ -96,14 +96,13 @@ export default function AimPreview({ frameRef }) {
     const me = frameRef.current.me;
     const alive = me && !(frameRef.current.meInfo?.flags & PLAYER_FLAGS.DEAD);
     const mode = alive ? aimPreview() : null;
-    const third = inputState.thirdActive;
-    arrow.current.visible = Boolean(alive) && !third;
-    line.current.visible = mode === 'sniper' && !third;
+    arrow.current.visible = Boolean(alive);
+    line.current.visible = mode === 'sniper';
     dots.current.visible = ring.current.visible = fill.current.visible = mode === 'grenade';
     // Retícula de la mira: apuntando (mouse derecho o joystick) con una mira puesta
     const scope = inputState.scope;
     const aiming = (inputState.adsHeld || inputState.stickAim !== null) && mode !== 'grenade' && !inputState.grenadeMode;
-    reticle.current.visible = Boolean(alive && scope && aiming && !third);
+    reticle.current.visible = Boolean(alive && scope && aiming);
     if (!alive) return;
 
     const aim = currentAim();
