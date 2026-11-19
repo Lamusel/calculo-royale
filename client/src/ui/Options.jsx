@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BRIGHTNESS_RANGE, CAMERA_DISTANCE_OPTIONS, QUALITY_OPTIONS, safePadding, setSetting, settings, UI_SCALE_OPTIONS } from '../settings.js';
+import { BRIGHTNESS_RANGE, CAMERA_DISTANCE_OPTIONS, QUALITY_OPTIONS, VIEW_OPTIONS, safePadding, setSetting, settings, UI_SCALE_OPTIONS } from '../settings.js';
 
 // Botones de una opción con pocos valores (Calidad, Escala)
 function Choice({ label, options, value, onChange }) {
@@ -51,6 +51,12 @@ export default function Options({ onClose }) {
   const [quality, setQuality] = useState(settings.quality);
   const [uiScale, setUiScale] = useState(settings.uiScale);
   const [cameraDistance, setCameraDistance] = useState(settings.cameraDistance);
+  const [view, setView] = useState(settings.view);
+  const [lookSensitivity, setLookSensitivity] = useState(settings.lookSensitivity ?? 1);
+  const changeView = (value) => {
+    setView(value);
+    setSetting('view', value);
+  };
   const change = (value) => {
     setBrightness(value);
     setSetting('brightness', value);
@@ -110,7 +116,27 @@ export default function Options({ onClose }) {
         <p className="mt-1 text-[0.7rem] text-stone-400">
           {quality === 'auto' ? 'Auto baja la resolución, las sombras y los detalles solo si el juego va lento.' : 'Fija: no cambia aunque el juego vaya lento.'}
         </p>
-        <Choice label="Distancia de cámara" options={CAMERA_DISTANCE_OPTIONS} value={cameraDistance} onChange={changeCamera} />
+        <Choice label="Vista" options={VIEW_OPTIONS} value={view} onChange={changeView} />
+        {view === 'third' ? (
+          <label className="mt-3 block text-sm">
+            Sensibilidad de la cámara · {lookSensitivity.toFixed(1)}
+            <input
+              type="range"
+              min="0.4"
+              max="2"
+              step="0.1"
+              value={lookSensitivity}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setLookSensitivity(v);
+                setSetting('lookSensitivity', v);
+              }}
+              className="mt-1 w-full accent-amber-400"
+            />
+          </label>
+        ) : (
+          <Choice label="Distancia de cámara" options={CAMERA_DISTANCE_OPTIONS} value={cameraDistance} onChange={changeCamera} />
+        )}
         <Choice label="Escala de la interfaz" options={UI_SCALE_OPTIONS} value={uiScale} onChange={changeScale} />
         <div className="mt-4 flex gap-2">
           <button

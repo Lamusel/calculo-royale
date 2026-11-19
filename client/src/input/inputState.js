@@ -32,6 +32,11 @@ export const inputState = {
   pendingAim: null, // ángulo fijado al soltar o al tocar
   pendingDist: null, // distancia de lanzamiento de la granada
 
+  // Tercera persona (tanda 9): la cámara va detrás del hombro; la mira es hacia donde mira la cámara
+  thirdActive: false, // la escena lo activa cuando la vista en tercera persona está en uso
+  camYaw: 0, // ángulo de la cámara en coordenadas del mapa (igual que aim)
+  camPitch: 0.12, // inclinación de la cámara (solo visual: el mundo es 2D por dentro)
+
   weapon: 'pistol', // arma en mano (la fija el GameClient)
   scope: null, // mira del jugador: 'reddot' | 'scope2x' | 'scope4x' (la cámara se adelanta al apuntar)
 };
@@ -58,7 +63,26 @@ export const actions = {
 function movement() {
   const s = inputState;
   const usingStick = s.stickX !== 0 || s.stickY !== 0;
-  return usingStick ? [s.stickX, s.stickY] : [s.keyX, s.keyY];
+  const [x, y] = usingStick ? [s.stickX, s.stickY] : [s.keyX, s.keyY];
+  if (!s.thirdActive || (x === 0 && y === 0)) return [x, y];
+  // Tercera persona: adelante es hacia donde mira la cámara
+  return rotateToCamera(x, y, s.camYaw);
+}
+
+// Gira un vector de controles (y = adelante) para que "adelante" sea el ángulo yaw del mapa
+export function rotateToCamera(x, y, yaw) {
+  const a = yaw - Math.PI / 2;
+  const c = Math.cos(a);
+  const sn = Math.sin(a);
+  return [x * c - y * sn, x * sn + y * c];
+}
+
+// Gira la cámara (mouse o dedo): dx y dy en píxeles
+export function lookBy(dx, dy, sensitivity) {
+  const s = inputState;
+  s.camYaw -= dx * sensitivity;
+  s.lookedAt = performance.now();
+  s.camPitch = Math.max(-0.25, Math.min(0.55, s.camPitch + dy * sensitivity * 0.6));
 }
 
 // Ángulo de apuntado actual, sin consumir nada (para dibujar cada cuadro)
@@ -66,6 +90,10 @@ export function currentAim(now = performance.now()) {
   const s = inputState;
   const [mx, my] = movement();
   const moving = mx !== 0 || my !== 0;
+  if (s.thirdActive) {
+    s.lastAim = s.pendingAim ?? s.camYaw;
+    return s.lastAim;
+  }
   let aim = s.pendingAim ?? s.stickAim ?? s.mouseAim;
   if (aim === null && s.retainedAim !== null) {
     if (!moving || now - s.retainedAt < RETAIN_AIM_MS) aim = s.retainedAim;

@@ -25,6 +25,7 @@ import { AmmoCard, AmmoToast } from '../ui/AmmoCard.jsx';
 import HUD from '../ui/HUD.jsx';
 import Killfeed from '../ui/Killfeed.jsx';
 import { CrateResult, LockModal } from '../ui/LockModal.jsx';
+import Crosshair from '../ui/Crosshair.jsx';
 import RadarOverlay from '../ui/RadarOverlay.jsx';
 import { RadioFeed, ZoneStatus } from '../ui/Radio.jsx';
 import Results from '../ui/Results.jsx';
@@ -174,6 +175,7 @@ function ClientUI({ client, frameRef, room, myId, isTouch, onLeave, replaying })
         <OperatorPanel client={client} self={view.self} roster={room.players} followName={followName} gulagFights={frameRef.current.gulag?.[1]?.length ?? 0} />
       )}
       {panel && <HostPanel stats={client.classStats} code={room.code} onClose={() => setPanel(false)} />}
+      {!replaying && <Crosshair isTouch={isTouch} />}
       <CombatHUD view={view} phase={room.phase} roster={room.players} myId={myId} isTouch={isTouch} client={client} />
       {!operating && <AmmoCard client={client} />}
       <AmmoToast result={client.ammoResult} />
